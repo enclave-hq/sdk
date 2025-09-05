@@ -24,11 +24,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/qizhongzhu/zkpay-client-library.git"
+    "url": "git@github.com:QuantrixLab/ZKPaySDK.git"
   },
-  "homepage": "https://github.com/qizhongzhu/zkpay-client-library#readme",
+  "homepage": "https://github.com/QuantrixLab/ZKPaySDK#readme",
   "bugs": {
-    "url": "https://github.com/qizhongzhu/zkpay-client-library/issues"
+    "url": "https://github.com/QuantrixLab/ZKPaySDK/issues"
   },
   "dependencies": {
     "axios": "^1.0.0",
@@ -59,7 +59,3 @@
     "doc": "docs"
   }
 }
-
-
-
-
