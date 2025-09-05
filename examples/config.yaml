@@ -1,0 +1,96 @@
+# ZKPay E2E Automation Configuration
+
+# 测试环境配置
+environment:
+  name: "bsc-mainnet"
+  description: "BSC Mainnet environment for E2E testing"
+
+# API服务配置
+services:
+  zkpay_backend:
+    url: "${ZKPAY_BACKEND_URL:-https://backend.zkpay.network/api/v2}"
+    timeout: 300000 # 5分钟超时，用于 ZKVM 证明生成（通常需要60-120秒）
+    retry_attempts: 3
+    retry_delay: 2000
+
+# 区块链配置
+blockchain:
+  management_chain:
+    name: "BSC Mainnet"
+    chain_id: 56
+    rpc_url: "${BSC_MAINNET_RPC:-https://bsc-dataseed1.binance.org}"
+    contracts:
+      zkpay_contract: "${BSC_ZKPAY_CONTRACT:-0x0000000000000000000000000000000000000001}"
+      treasury_contract: "${BSC_TREASURY_CONTRACT:-0x0000000000000000000000000000000000000002}"
+    tokens:
+      test_usdt:
+        address: "0xbFBD79DbF5369D013a3D31812F67784efa6e0309"
+        decimals: 6
+        symbol: "TUSDT"
+        token_id: 65535
+
+  source_chains:
+    - name: "BSC Mainnet"
+      chain_id: 56
+      rpc_url: "${BSC_MAINNET_RPC:-https://bsc-dataseed1.binance.org}"
+      contracts:
+        treasury_contract: "${BSC_TREASURY_CONTRACT:-0x0000000000000000000000000000000000000002}"
+      tokens:
+        test_usdt:
+          address: "0xbFBD79DbF5369D013a3D31812F67784efa6e0309"
+          decimals: 6
+          symbol: "TUSDT"
+          token_id: 65535
+
+# 测试用户配置
+test_users:
+  default:
+    private_key: "${TEST_USER_PRIVATE_KEY:-0x0000000000000000000000000000000000000002}"
+    # 从private_key自动派生address
+
+  # alternative:
+  #   private_key: "${TEST_USER_ALT_PRIVATE_KEY:-0x2234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef}"
+
+# 测试参数
+test_config:
+  # 存款测试配置
+  deposit:
+    default_amount: "10.0" # TestUSDT
+    default_token: "test_usdt" # 默认使用TestUSDT
+    max_wait_time: 300 # 秒
+    confirmation_blocks: 2
+
+  # 证明生成配置
+  proof_generation:
+    max_wait_time: 180 # 秒
+    retry_interval: 10 # 秒
+
+  # 提现测试配置
+  withdraw:
+    recipient_chains: [56] # BSC Mainnet
+    max_wait_time: 300 # 秒
+    confirmation_blocks: 3
+    default_recipient_address: "${DEFAULT_RECIPIENT_ADDRESS:-0x0848d929b9d35bfb7aa50641d392a4ad83e145ce}" # 默认接收地址
+
+# 日志配置
+logging:
+  level: "info" # trace | debug | info | warn | error
+  file: "e2e-test.log"
+  max_size: "10MB"
+  max_files: 5
+  console_output: true
+  detailed_errors: true
+
+# 重试和容错配置
+reliability:
+  max_retries: 3
+  retry_backoff: "exponential" # linear | exponential
+  retry_base_delay: 1000 # 毫秒
+  timeout_multiplier: 1.5
+
+# 验证配置
+verification:
+  strict_mode: true # 严格验证模式
+  balance_check: true # 验证余额变化
+  event_verification: true # 验证区块链事件
+  receipt_verification: true # 验证交易收据
