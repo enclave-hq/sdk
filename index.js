@@ -16,7 +16,7 @@ const { ZKPayClientExample } = require('./examples/zkpay-client-example');
 const { ZKPayClientTest } = require('./tests/test-zkpay-client');
 
 // 工具和日志
-const { createLogger, TestResultLogger } = require('../logger');
+const { createLogger, TestResultLogger } = require('./utils/logger');
 
 // 注意：签名消息生成现在使用CommitmentManager内部的方法，不再导出独立的签名工具
 

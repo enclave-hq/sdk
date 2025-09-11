@@ -2,7 +2,7 @@
 
 const axios = require('axios');
 const { ethers } = require('ethers');
-const { createLogger } = require('../../logger');
+const { createLogger } = require('../utils/logger');
 
 // Treasury Contract ABI for payout function
 const TREASURY_ABI = [
@@ -25,9 +25,12 @@ class ZKPayWithdrawManager {
         this.logger.info('💸 初始化Withdraw管理器...');
         
         // 初始化API客户端
+        const apiUrl = process.env.ZKPAY_API_URL || 'https://backend.zkpay.network';
+        const timeout = parseInt(process.env.ZKPAY_API_TIMEOUT) || 300000;
+        
         this.apiClient = axios.create({
-            baseURL: this.config.services.zkpay_backend.url,
-            timeout: this.config.services.zkpay_backend.timeout,
+            baseURL: apiUrl,
+            timeout: timeout,
             headers: {
                 'Content-Type': 'application/json'
             }

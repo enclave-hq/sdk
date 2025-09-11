@@ -3,11 +3,14 @@
 // ZKPay 客户端库使用示例
 // 展示如何使用ZKPay客户端库进行完整的操作流程
 
+// 加载环境变量
+require('dotenv').config();
+
 const yaml = require('js-yaml');
 const fs = require('fs');
 const path = require('path');
 const { ZKPayClient } = require('../core/zkpay-client-library');
-const { createLogger } = require('./logger');
+const { createLogger } = require('../utils/logger');
 
 /**
  * ZKPay 客户端使用示例
@@ -24,8 +27,8 @@ class ZKPayClientExample {
      * 初始化示例
      */
     async initialize() {
-        // 加载配置
-        this.loadConfig();
+        // 直接使用环境变量创建配置
+        this.createConfigFromEnv();
         
         // 创建客户端
         this.client = new ZKPayClient(this.config, this.logger);
@@ -37,7 +40,70 @@ class ZKPayClientExample {
     }
 
     /**
-     * 加载配置文件
+     * 从环境变量创建配置
+     */
+    createConfigFromEnv() {
+        const testPrivateKey = process.env.TEST_PRIVATE_KEY;
+        if (!testPrivateKey || testPrivateKey === 'YOUR_TEST_PRIVATE_KEY_HERE') {
+            throw new Error('请在.env文件中设置TEST_PRIVATE_KEY环境变量');
+        }
+
+        this.config = {
+            services: {
+                zkpay_backend: {
+                    url: 'https://backend.zkpay.network',
+                    timeout: 300000
+                }
+            },
+            test_users: {
+                default: {
+                    private_key: testPrivateKey
+                }
+            },
+            blockchain: {
+                management_chain: {
+                    chain_id: 56,
+                    rpc_url: 'https://bsc-dataseed1.binance.org',
+                    contracts: {
+                        treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
+                    },
+                    tokens: {
+                        test_usdt: {
+                            address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',
+                            decimals: 6,
+                            symbol: 'TUSDT',
+                            token_id: 65535
+                        }
+                    }
+                },
+                source_chains: [{
+                    chain_id: 56,
+                    rpc_url: 'https://bsc-dataseed1.binance.org',
+                    contracts: {
+                        treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
+                    },
+                    tokens: {
+                        test_usdt: {
+                            address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',
+                            decimals: 6,
+                            symbol: 'TUSDT',
+                            token_id: 65535
+                        }
+                    }
+                }]
+            },
+            test_config: {
+                withdraw: {
+                    default_recipient_address: process.env.TEST_RECIPIENT_ADDRESS || '0x0848d929b9d35bfb7aa50641d392a4ad83e145ce'
+                }
+            }
+        };
+        
+        this.logger.info('✅ 从环境变量创建配置成功');
+    }
+
+    /**
+     * 加载配置文件（保留作为备用方法）
      */
     loadConfig() {
         try {
@@ -74,9 +140,9 @@ class ZKPayClientExample {
         this.logger.info('🔰 示例1: 登录和基础信息查询');
         
         try {
-            // 使用配置中的私钥登录
-            const privateKey = Object.values(this.config.test_users)[0].private_key;
-            const loginResult = await this.client.login(privateKey, 'example_user');
+            // 使用环境变量中的私钥登录
+            const privateKey = process.env.TEST_PRIVATE_KEY;
+            const loginResult = await this.client.login(privateKey);
             
             this.logger.info('✅ 登录成功:', {
                 address: loginResult.address,
@@ -84,11 +150,12 @@ class ZKPayClientExample {
             });
             
             // 检查Token余额
-            const balance = await this.client.checkTokenBalance(56, 'test_usdt');
+            const testUsdtAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309';
+            const balance = await this.client.checkTokenBalance(56, testUsdtAddress);
             this.logger.info('💰 Token余额:', balance);
             
             // 检查授权额度
-            const allowance = await this.client.checkTokenAllowance(56, 'test_usdt');
+            const allowance = await this.client.checkTokenAllowance(56, testUsdtAddress);
             this.logger.info('🔍 授权额度:', allowance);
             
             // 获取用户存款记录
@@ -140,6 +207,16 @@ class ZKPayClientExample {
                 status: depositRecord.status
             });
             
+            // 等待checkbook状态变为ready_for_commitment
+            this.logger.info('⏳ 等待checkbook状态变为ready_for_commitment...');
+            await this.client.waitForCommitmentStatus(
+                depositRecord.checkbook_id,
+                ['ready_for_commitment'],
+                180000 // 3分钟超时（毫秒）
+            );
+            
+            this.logger.info('✅ checkbook状态已变为ready_for_commitment，可以执行commitment操作');
+            
             return { depositResult, depositRecord };
             
         } catch (error) {
@@ -155,6 +232,20 @@ class ZKPayClientExample {
         this.logger.info('🔰 示例3: 创建分配并执行Commitment（同步方式）');
         
         try {
+            // 首先检查checkbook状态
+            this.logger.info('🔍 检查checkbook状态...');
+            const checkbook = await this.client.getCheckbookDetails(checkbookId);
+            this.logger.info(`📊 当前checkbook状态: ${checkbook.status}`);
+            
+            if (checkbook.status !== 'ready_for_commitment') {
+                this.logger.info('⏳ checkbook状态不是ready_for_commitment，等待状态变化...');
+                await this.client.waitForCommitmentStatus(
+                    checkbookId,
+                    ['ready_for_commitment'],
+                    180000 // 3分钟超时（毫秒）
+                );
+            }
+            
             // 创建分配方案
             const allocations = [{
                 recipient_chain_id: 714,
@@ -190,6 +281,20 @@ class ZKPayClientExample {
         this.logger.info('🔰 示例4: 创建分配并执行Commitment（异步方式）');
         
         try {
+            // 首先检查checkbook状态
+            this.logger.info('🔍 检查checkbook状态...');
+            const checkbook = await this.client.getCheckbookDetails(checkbookId);
+            this.logger.info(`📊 当前checkbook状态: ${checkbook.status}`);
+            
+            if (checkbook.status !== 'ready_for_commitment') {
+                this.logger.info('⏳ checkbook状态不是ready_for_commitment，等待状态变化...');
+                await this.client.waitForCommitmentStatus(
+                    checkbookId,
+                    ['ready_for_commitment'],
+                    180000 // 3分钟超时（毫秒）
+                );
+            }
+            
             // 创建分配方案
             const allocations = [{
                 recipient_chain_id: 714,
@@ -309,6 +414,79 @@ class ZKPayClientExample {
     // ==================== 高级操作示例 ====================
 
     /**
+     * 示例6: 演示正确的checkbook状态等待流程
+     */
+    async example6_CheckbookStatusFlow() {
+        this.logger.info('🔰 示例6: 演示正确的checkbook状态等待流程');
+        
+        try {
+            // 获取用户存款记录
+            const deposits = await this.client.getUserDeposits();
+            this.logger.info(`📋 找到 ${deposits.length} 条存款记录`);
+            
+            if (deposits.length === 0) {
+                this.logger.warn('⚠️ 没有存款记录，请先执行存款操作');
+                return null;
+            }
+            
+            // 找到最新的存款记录
+            const latestDeposit = deposits[0];
+            const checkbookId = latestDeposit.checkbook_id;
+            
+            this.logger.info('🔍 检查最新存款的checkbook状态:', {
+                checkbookId,
+                currentStatus: latestDeposit.status
+            });
+            
+            // 获取详细的checkbook状态
+            const checkbook = await this.client.getCheckbookDetails(checkbookId);
+            this.logger.info(`📊 详细checkbook状态: ${checkbook.status}`);
+            
+            // 根据当前状态决定下一步操作
+            switch (checkbook.status) {
+                case 'ready_for_commitment':
+                    this.logger.info('✅ checkbook已准备好，可以执行commitment');
+                    break;
+                    
+                case 'with_checkbook':
+                case 'issued':
+                    this.logger.info('⏳ checkbook状态为with_checkbook/issued，等待变为ready_for_commitment...');
+                    await this.client.waitForCommitmentStatus(
+                        checkbookId,
+                        ['ready_for_commitment'],
+                        180000 // 3分钟超时（毫秒）
+                    );
+                    this.logger.info('✅ checkbook状态已变为ready_for_commitment');
+                    break;
+                    
+                case 'proof_failed':
+                case 'submission_failed':
+                    this.logger.warn(`⚠️ checkbook状态为${checkbook.status}，可以重试commitment`);
+                    break;
+                    
+                default:
+                    this.logger.info(`📊 当前状态: ${checkbook.status}，继续等待...`);
+                    await this.client.waitForCommitmentStatus(
+                        checkbookId,
+                        ['ready_for_commitment'],
+                        180000 // 3分钟超时（毫秒）
+                    );
+                    break;
+            }
+            
+            return {
+                checkbookId,
+                initialStatus: latestDeposit.status,
+                finalStatus: checkbook.status
+            };
+            
+        } catch (error) {
+            this.logger.error('❌ 示例6执行失败:', error.message);
+            throw error;
+        }
+    }
+
+    /**
      * 示例7: 完整的存款到Commitment流程
      */
     async example7_FullDepositToCommitment() {
@@ -411,6 +589,9 @@ class ZKPayClientExample {
             results.example2 = await this.example2_PerformDeposit();
             const checkbookId = results.example2.depositRecord.checkbook_id;
             
+            // 示例6: 演示checkbook状态等待流程
+            results.example6 = await this.example6_CheckbookStatusFlow();
+            
             // 示例3: Commitment（同步）
             results.example3 = await this.example3_CommitmentSync(checkbookId);
             
@@ -439,11 +620,29 @@ class ZKPayClientExample {
         try {
             // 确保已登录
             if (!this.client.isLoggedIn()) {
-                const privateKey = Object.values(this.config.test_users)[0].private_key;
-                await this.client.login(privateKey, 'example_user');
+                const privateKey = process.env.TEST_PRIVATE_KEY;
+                await this.client.login(privateKey);
             }
             
-            const methodName = `example${exampleName.replace('example', '')}`;
+            // 处理不同的示例名称格式
+            let methodName;
+            if (exampleName.startsWith('example')) {
+                const num = exampleName.replace('example', '');
+                switch (num) {
+                    case '1': methodName = 'example1_LoginAndBasicInfo'; break;
+                    case '2': methodName = 'example2_PerformDeposit'; break;
+                    case '3': methodName = 'example3_CommitmentSync'; break;
+                    case '4': methodName = 'example4_CommitmentAsync'; break;
+                    case '5': methodName = 'example5_GenerateProofSync'; break;
+                    case '6': methodName = 'example6_CheckbookStatusFlow'; break;
+                    case '7': methodName = 'example7_FullDepositToCommitment'; break;
+                    case '8': methodName = 'example8_FullCommitmentToWithdraw'; break;
+                    default: methodName = `example${num}`; break;
+                }
+            } else {
+                methodName = exampleName;
+            }
+            
             if (typeof this[methodName] !== 'function') {
                 throw new Error(`示例方法不存在: ${methodName}`);
             }
@@ -472,6 +671,10 @@ class ZKPayClientExample {
         if (results.example2) {
             console.log(`✅ 存款成功: ${results.example2.depositResult.deposit.txHash}`);
             console.log(`📋 CheckBook ID: ${results.example2.depositRecord.checkbook_id}`);
+        }
+        
+        if (results.example6) {
+            console.log(`✅ Checkbook状态检查: ${results.example6.initialStatus} → ${results.example6.finalStatus}`);
         }
         
         if (results.example3) {

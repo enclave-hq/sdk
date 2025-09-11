@@ -4,7 +4,7 @@
 // 用于验证客户端库的基本功能
 
 const { ZKPayClient } = require('../core/zkpay-client-library');
-const { createLogger } = require('../../logger');
+const { createLogger } = require('../utils/logger');
 const yaml = require('js-yaml');
 const fs = require('fs');
 
@@ -24,11 +24,8 @@ class ZKPayClientTest {
      * 初始化测试
      */
     async initialize() {
-        // 加载配置
-        this.loadConfig();
-        
-        // 创建客户端
-        this.client = new ZKPayClient(this.config, this.logger);
+        // 创建客户端（不需要config）
+        this.client = new ZKPayClient(null, this.logger);
         
         // 初始化客户端
         await this.client.initialize();
@@ -114,7 +111,10 @@ class ZKPayClientTest {
      */
     async test2_UserLogin() {
         return await this.runTest('用户登录', async () => {
-            const privateKey = Object.values(this.config.test_users)[0].private_key;
+            const privateKey = process.env.TEST_PRIVATE_KEY;
+            if (!privateKey || privateKey === 'YOUR_TEST_PRIVATE_KEY_HERE') {
+                throw new Error('请在.env文件中设置TEST_PRIVATE_KEY环境变量');
+            }
             
             // 执行登录
             const loginResult = await this.client.login(privateKey, 'test_user');
@@ -149,7 +149,8 @@ class ZKPayClientTest {
             }
             
             // 查询BSC上的测试USDT余额
-            const balance = await this.client.checkTokenBalance(56, 'test_usdt');
+            const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309';
+            const balance = await this.client.checkTokenBalance(56, tokenAddress);
             
             if (!balance.balance || !balance.formatted) {
                 throw new Error('余额查询结果格式错误');
@@ -173,7 +174,9 @@ class ZKPayClientTest {
             }
             
             // 查询授权额度
-            const allowance = await this.client.checkTokenAllowance(56, 'test_usdt');
+            const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309';
+            const treasuryAddress = '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8';
+            const allowance = await this.client.checkTokenAllowance(56, tokenAddress, treasuryAddress);
             
             if (!allowance.hasOwnProperty('allowance') || !allowance.formatted) {
                 throw new Error('授权额度查询结果格式错误');

@@ -1,11 +1,10 @@
 // ZKPay 钱包管理器 - 处理私钥、签名和账户管理
 
 const { ethers } = require('ethers');
-const { createLogger } = require('../../logger');
+const { createLogger } = require('../utils/logger');
 
 class ZKPayWalletManager {
-    constructor(config, logger) {
-        this.config = config;
+    constructor(logger) {
         this.logger = logger || createLogger('WalletManager');
         this.wallets = new Map();
         this.providers = new Map();
@@ -30,18 +29,106 @@ class ZKPayWalletManager {
     }
 
     /**
+     * SLIP44币种ID到实际链ID的映射表
+     * 注意：SLIP44是币种ID标准，不是链ID标准
+     * 某些币种使用SLIP44 ID，但需要通过不同的链ID进行RPC交互
+     */
+    getActualChainId(slip44CoinId) {
+        const slip44ToChainMapping = {
+            // Ethereum 系列 (SLIP44 60)
+            60: 1,    // Ethereum Mainnet
+            
+            // BSC 系列 (SLIP44 714)
+            714: 56,  // BSC Mainnet
+            
+            // Polygon 系列 (SLIP44 966)
+            966: 137, // Polygon Mainnet
+            
+            // Arbitrum 系列 (SLIP44 42161)
+            42161: 42161, // Arbitrum One
+            
+            // Optimism 系列 (SLIP44 10)
+            10: 10,   // Optimism Mainnet
+            
+            // Tron 系列 (SLIP44 195)
+            195: 195, // Tron Mainnet
+            
+            // 其他链通常SLIP44 ID与Chain ID相同
+        };
+        
+        return slip44ToChainMapping[slip44CoinId] || slip44CoinId;
+    }
+
+    /**
+     * 获取RPC URL（优先从环境变量，然后使用默认值）
+     */
+    getRpcUrl(chainId) {
+        // 首先检查是否是SLIP44 ID，如果是则转换为实际链ID
+        const actualChainId = this.getActualChainId(chainId);
+        
+        // 常用链的默认RPC URL（使用实际链ID）
+        const defaultRpcUrls = {
+            1: 'https://eth.llamarpc.com', // Ethereum Mainnet
+            56: 'https://bsc-dataseed1.binance.org', // BSC Mainnet (Tron SLIP44 714 映射到这里)
+            97: 'https://data-seed-prebsc-1-s1.binance.org:8545', // BSC Testnet
+            137: 'https://polygon-rpc.com', // Polygon Mainnet
+            42161: 'https://arb1.arbitrum.io/rpc', // Arbitrum One
+            421614: 'https://sepolia-rollup.arbitrum.io/rpc', // Arbitrum Sepolia
+            10: 'https://mainnet.optimism.io', // Optimism Mainnet
+            420: 'https://sepolia.optimism.io', // Optimism Sepolia
+            4002: 'https://rpc.testnet.fantom.network', // Fantom Testnet
+            25: 'https://evm.cronos.org', // Cronos Mainnet
+            338: 'https://evm-t3.cronos.org', // Cronos Testnet
+            1284: 'https://rpc.api.moonbeam.network', // Moonbeam
+            1287: 'https://rpc.api.moonbase.moonbeam.network', // Moonbase
+            43114: 'https://api.avax.network/ext/bc/C/rpc', // Avalanche C-Chain
+            43113: 'https://api.avax-test.network/ext/bc/C/rpc', // Avalanche Fuji
+            100: 'https://rpc.gnosischain.com', // Gnosis Chain
+            10200: 'https://rpc.chiadochain.net', // Gnosis Chiado
+        };
+
+        // 优先从环境变量获取（使用原始chainId）
+        const envVarName = `RPC_URL_${chainId}`;
+        const envRpcUrl = process.env[envVarName];
+        
+        if (envRpcUrl) {
+            this.logger.debug(`📡 使用环境变量RPC URL: ${envVarName} = ${envRpcUrl}`);
+            return envRpcUrl;
+        }
+
+        // 使用默认RPC URL（使用实际链ID）
+        const defaultUrl = defaultRpcUrls[actualChainId];
+        if (defaultUrl) {
+            if (actualChainId !== chainId) {
+                this.logger.debug(`📡 SLIP44映射: ${chainId} -> ${actualChainId}, 使用RPC: ${defaultUrl}`);
+            } else {
+                this.logger.debug(`📡 使用默认RPC URL: Chain ${chainId} = ${defaultUrl}`);
+            }
+            return defaultUrl;
+        }
+
+        throw new Error(`未找到链 ${chainId} (实际链ID: ${actualChainId}) 的RPC URL，请设置环境变量 ${envVarName} 或使用支持的链ID`);
+    }
+
+    /**
      * 初始化区块链RPC提供者
      */
     async initializeProviders() {
-        // 管理链提供者
-        const managementChain = this.config.blockchain.management_chain;
-        this.providers.set('management', new ethers.JsonRpcProvider(managementChain.rpc_url));
-        this.logger.debug(`📡 管理链提供者已连接: ${managementChain.name}`);
-
-        // 源链提供者
-        for (const sourceChain of this.config.blockchain.source_chains) {
-            this.providers.set(`source_${sourceChain.chain_id}`, new ethers.JsonRpcProvider(sourceChain.rpc_url));
-            this.logger.debug(`📡 源链提供者已连接: ${sourceChain.name} (${sourceChain.chain_id})`);
+        // 支持常用链的RPC提供者
+        const supportedChains = [1, 56, 97, 137, 80001, 42161, 421614, 10, 420, 250, 4002, 25, 338, 1284, 1287, 43114, 43113, 100, 10200, 714];
+        
+        for (const chainId of supportedChains) {
+            try {
+                const rpcUrl = this.getRpcUrl(chainId);
+                const provider = new ethers.JsonRpcProvider(rpcUrl);
+                
+                // 测试连接
+                const network = await provider.getNetwork();
+                this.providers.set(chainId.toString(), provider);
+                this.logger.debug(`📡 链 ${chainId} RPC提供者已连接: ${rpcUrl} (实际链ID: ${network.chainId})`);
+            } catch (error) {
+                this.logger.warn(`⚠️ 链 ${chainId} RPC连接失败: ${error.message}`);
+            }
         }
 
         // 测试连接
@@ -57,42 +144,11 @@ class ZKPayWalletManager {
     }
 
     /**
-     * 初始化测试用户钱包
+     * 初始化测试用户钱包（现在通过login方法动态创建）
      */
     async initializeWallets() {
-        for (const [userName, userConfig] of Object.entries(this.config.test_users)) {
-            if (!userConfig.private_key) {
-                this.logger.warn(`⚠️ 用户 ${userName} 没有配置私钥，跳过`);
-                continue;
-            }
-
-            try {
-                // 创建钱包实例
-                const wallet = new ethers.Wallet(userConfig.private_key);
-                
-                // 为每个链创建连接的钱包
-                const walletConnections = new Map();
-                
-                for (const [providerName, provider] of this.providers) {
-                    walletConnections.set(providerName, wallet.connect(provider));
-                }
-
-                this.wallets.set(userName, {
-                    wallet: wallet,
-                    connections: walletConnections,
-                    address: wallet.address
-                });
-
-                this.logger.info(`👤 用户 ${userName} 钱包已加载: ${wallet.address}`);
-                
-                // 检查余额
-                await this.checkUserBalances(userName);
-                
-            } catch (error) {
-                this.logger.error(`❌ 用户 ${userName} 钱包初始化失败:`, error.message);
-                throw error;
-            }
-        }
+        // 不再从config初始化钱包，改为通过login方法动态创建
+        this.logger.info('📝 钱包将通过login方法动态创建，无需预初始化');
     }
 
     /**
@@ -106,16 +162,14 @@ class ZKPayWalletManager {
 
         this.logger.info(`💰 检查用户 ${userName} 的余额:`);
 
-        // 检查管理链余额
-        const managementProvider = this.providers.get('management');
-        const managementBalance = await managementProvider.getBalance(userWallet.address);
-        this.logger.info(`  📊 管理链 (${this.config.blockchain.management_chain.name}): ${ethers.formatEther(managementBalance)} ETH`);
-
-        // 检查源链余额
-        for (const sourceChain of this.config.blockchain.source_chains) {
-            const provider = this.providers.get(`source_${sourceChain.chain_id}`);
-            const balance = await provider.getBalance(userWallet.address);
-            this.logger.info(`  📊 ${sourceChain.name}: ${ethers.formatEther(balance)} ETH`);
+        // 检查所有已连接的链的余额
+        for (const [chainId, provider] of this.providers) {
+            try {
+                const balance = await provider.getBalance(userWallet.address);
+                this.logger.info(`  📊 链 ${chainId}: ${ethers.formatEther(balance)} ETH`);
+            } catch (error) {
+                this.logger.warn(`  ⚠️ 链 ${chainId} 余额检查失败: ${error.message}`);
+            }
         }
     }
 
@@ -136,26 +190,10 @@ class ZKPayWalletManager {
     getWalletForChain(chainId, userName = 'default') {
         const userWallet = this.getUserWallet(userName);
         
-        // 查找对应的提供者
-        let providerName;
-        if (chainId === this.config.blockchain.management_chain.chain_id) {
-            providerName = 'management';
-        } else {
-            const sourceChain = this.config.blockchain.source_chains.find(chain => chain.chain_id === chainId);
-            if (sourceChain) {
-                providerName = `source_${chainId}`;
-            }
-        }
-
-        if (!providerName) {
-            throw new Error(`不支持的链ID: ${chainId}`);
-        }
-
-        const connectedWallet = userWallet.connections.get(providerName);
-        if (!connectedWallet) {
-            throw new Error(`用户 ${userName} 在链 ${chainId} 上没有连接的钱包`);
-        }
-
+        // 直接使用链ID获取提供者
+        const provider = this.getProvider(chainId);
+        const connectedWallet = userWallet.wallet.connect(provider);
+        
         return connectedWallet;
     }
 
@@ -163,10 +201,21 @@ class ZKPayWalletManager {
      * 获取提供者
      */
     getProvider(chainId) {
-        if (chainId === this.config.blockchain.management_chain.chain_id) {
-            return this.providers.get('management');
-        } else {
-            return this.providers.get(`source_${chainId}`);
+        // 首先尝试从已初始化的提供者中获取
+        const existingProvider = this.providers.get(chainId.toString());
+        if (existingProvider) {
+            return existingProvider;
+        }
+
+        // 如果不存在，动态创建提供者
+        try {
+            const rpcUrl = this.getRpcUrl(chainId);
+            const provider = new ethers.JsonRpcProvider(rpcUrl);
+            this.providers.set(chainId.toString(), provider);
+            this.logger.debug(`📡 动态创建链 ${chainId} 的RPC提供者: ${rpcUrl}`);
+            return provider;
+        } catch (error) {
+            throw new Error(`无法为链 ${chainId} 创建RPC提供者: ${error.message}`);
         }
     }
 
@@ -255,12 +304,9 @@ class ZKPayWalletManager {
      * 检查链配置是否有效
      */
     isValidChain(chainId) {
-        const chains = [
-            this.config.blockchain?.management_chain,
-            ...(this.config.blockchain?.source_chains || [])
-        ];
-
-        return chains.some(chain => chain && chain.chain_id === chainId);
+        // 检查是否在支持的链列表中
+        const supportedChains = [1, 56, 97, 137, 80001, 42161, 421614, 10, 420, 250, 4002, 25, 338, 1284, 1287, 43114, 43113, 100, 10200, 714];
+        return supportedChains.includes(chainId);
     }
 
     /**

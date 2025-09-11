@@ -1,7 +1,7 @@
 // ZKPay Commitment 管理器 - 处理 Commitment 生成和提交流程
 
 const axios = require('axios');
-const { createLogger } = require('../../logger');
+const { createLogger } = require('../utils/logger');
 
 class ZKPayCommitmentManager {
     constructor(config, walletManager, logger) {
@@ -19,9 +19,12 @@ class ZKPayCommitmentManager {
         this.logger.info('🔗 初始化Commitment管理器...');
         
         // 初始化API客户端
+        const apiUrl = process.env.ZKPAY_API_URL || 'https://backend.zkpay.network';
+        const timeout = parseInt(process.env.ZKPAY_API_TIMEOUT) || 300000;
+        
         this.apiClient = axios.create({
-            baseURL: this.config.services.zkpay_backend.url,
-            timeout: this.config.services.zkpay_backend.timeout,
+            baseURL: apiUrl,
+            timeout: timeout,
             headers: {
                 'Content-Type': 'application/json'
             }

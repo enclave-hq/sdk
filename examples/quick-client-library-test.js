@@ -3,8 +3,11 @@
 // ZKPay Client Library 快速验证测试
 // 用于快速验证client-library的基本功能是否正常
 
+// 加载环境变量
+require('dotenv').config();
+
 const { ZKPayClient } = require('../core/zkpay-client-library');
-const { createLogger } = require('./logger');
+const { createLogger } = require('../utils/logger');
 const yaml = require('js-yaml');
 const fs = require('fs');
 const path = require('path');
