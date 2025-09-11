@@ -50,11 +50,11 @@ class ZKPayClientExample {
 
         // 创建参数化配置
         const treasuryContracts = new Map([
-            [56, '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8']
+            [714, '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8']  // SLIP44 BSC
         ]);
         
         const tokenConfigs = new Map([
-            ['56_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309']
+            ['714_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309']  // SLIP44 BSC
         ]);
 
         this.options = {
@@ -119,7 +119,7 @@ class ZKPayClientExample {
         this.logger.info('🔰 示例2: 执行存款操作');
         
         try {
-            const chainId = 56;
+            const chainId = 714;  // SLIP44 BSC
             const tokenSymbol = 'test_usdt';
             const amount = '10.0';
             
@@ -437,7 +437,7 @@ class ZKPayClientExample {
         this.logger.info('🔰 示例7: 完整的存款到Commitment流程');
         
         try {
-            const chainId = 56;
+            const chainId = 714;  // SLIP44 BSC
             const tokenSymbol = 'test_usdt';
             const amount = '15.0';
             

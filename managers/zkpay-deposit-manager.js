@@ -31,6 +31,11 @@ class ZKPayDepositManager {
         this.confirmationBlocks = options.confirmationBlocks || 3;
         this.treasuryContracts = options.treasuryContracts || new Map();
         this.tokenConfigs = options.tokenConfigs || new Map();
+        
+        // 调试配置设置
+        console.log('🔍 DepositManager构造函数配置:');
+        console.log('  treasuryContracts:', Array.from(this.treasuryContracts.entries()));
+        console.log('  tokenConfigs:', Array.from(this.tokenConfigs.entries()));
     }
 
     /**
@@ -125,17 +130,15 @@ class ZKPayDepositManager {
     /**
      * 授权Token
      */
-    async approveToken(chainId, tokenSymbol, spenderAddress, amount, userName = 'default') {
-        this.logger.info(`🔓 开始授权Token: ${tokenSymbol} 在链 ${chainId}`);
+    async approveToken(chainId, tokenAddress, spenderAddress, amount, userName = 'default') {
+        this.logger.info(`🔓 开始授权Token: ${tokenAddress} 在链 ${chainId}`);
         this.logger.info(`   授权给: ${spenderAddress}`);
         this.logger.info(`   授权金额: ${amount}`);
 
         const wallet = this.walletManager.getWalletForChain(chainId, userName);
-        const tokenContract = this.contracts.get(`token_${chainId}_${tokenSymbol}`).connect(wallet);
         
-        if (!tokenContract) {
-            throw new Error(`Token合约不存在: ${chainId}_${tokenSymbol}`);
-        }
+        // 直接使用Token地址创建合约实例
+        const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
 
         // 获取Token信息
         const decimals = await tokenContract.decimals();
@@ -206,25 +209,25 @@ class ZKPayDepositManager {
     /**
      * 执行存款
      */
-    async executeDeposit(chainId, tokenSymbol, amount, recipientAddress, userName = 'default') {
-        this.logger.info(`💰 开始执行存款: ${amount} ${tokenSymbol} 在链 ${chainId}`);
+    async executeDeposit(chainId, tokenAddress, amount, recipientAddress, userName = 'default') {
+        this.logger.info(`💰 开始执行存款: ${amount} ${tokenAddress} 在链 ${chainId}`);
         this.logger.info(`   接收地址: ${recipientAddress}`);
 
         const wallet = this.walletManager.getWalletForChain(chainId, userName);
-        const treasuryContract = this.contracts.get(`treasury_${chainId}`).connect(wallet);
         
-        if (!treasuryContract) {
-            throw new Error(`Treasury合约不存在: 链 ${chainId}`);
+        // 获取Treasury合约地址
+        let treasuryAddress = this.treasuryContracts.get(chainId);
+        if (!treasuryAddress) {
+            const actualChainId = this.walletManager.getActualChainId(chainId);
+            treasuryAddress = this.treasuryContracts.get(actualChainId);
         }
+        
+        if (!treasuryAddress) {
+            throw new Error(`链 ${chainId} 没有配置Treasury合约`);
+        }
+        
+        const treasuryContract = new ethers.Contract(treasuryAddress, TREASURY_ABI, wallet);
 
-        // 获取Token信息
-        const tokenKey = `${chainId}_${tokenSymbol}`;
-        const tokenAddress = this.tokenConfigs.get(tokenKey);
-        
-        if (!tokenAddress) {
-            throw new Error(`链 ${chainId} 上不支持Token ${tokenSymbol}`);
-        }
-        
         // 动态获取Token的decimals
         const provider = this.walletManager.getProvider(chainId);
         const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
@@ -300,20 +303,53 @@ class ZKPayDepositManager {
      */
     async parseDepositEvent(receipt, treasuryContract) {
         try {
+            this.logger.info(`🔍 解析存款事件，日志数量: ${receipt.logs.length}`);
+            
             // 查找DepositReceived事件
-            for (const log of receipt.logs) {
+            for (let i = 0; i < receipt.logs.length; i++) {
+                const log = receipt.logs[i];
+                this.logger.info(`🔍 日志 ${i}: 地址=${log.address}, 主题数量=${log.topics.length}`);
+                
                 try {
                     const parsedLog = treasuryContract.interface.parseLog(log);
-                    if (parsedLog.name === 'DepositReceived') {
-                        return {
-                            user: parsedLog.args.user,
-                            token: parsedLog.args.token,
-                            amount: parsedLog.args.amount,
-                            tokenId: parsedLog.args.tokenId,
-                            depositId: parsedLog.args.depositId
-                        };
+                    if (parsedLog) {
+                        this.logger.info(`🔍 解析成功: ${parsedLog.name}`);
+                        
+                        if (parsedLog.name === 'DepositReceived') {
+                            this.logger.info(`✅ 找到DepositReceived事件:`, {
+                                user: parsedLog.args.user,
+                                token: parsedLog.args.token,
+                                amount: parsedLog.args.amount.toString(),
+                                tokenId: parsedLog.args.tokenId.toString(),
+                                depositId: parsedLog.args.depositId.toString()
+                            });
+                            
+                            return {
+                                user: parsedLog.args.user,
+                                token: parsedLog.args.token,
+                                amount: parsedLog.args.amount,
+                                tokenId: parsedLog.args.tokenId,
+                                depositId: parsedLog.args.depositId
+                            };
+                        }
+                    } else {
+                        this.logger.info(`🔍 日志 ${i} 解析返回null，尝试手动解析事件签名`);
+                        // 手动解析事件签名
+                        if (log.topics.length > 0) {
+                            const eventSignature = log.topics[0];
+                            this.logger.info(`🔍 事件签名: ${eventSignature}`);
+                            
+                            // 检查是否是DepositReceived事件
+                            const expectedSignature = treasuryContract.interface.getEvent('DepositReceived').topicHash;
+                            this.logger.info(`🔍 期望签名: ${expectedSignature}`);
+                            
+                            if (eventSignature === expectedSignature) {
+                                this.logger.info(`✅ 事件签名匹配，但解析失败，可能是参数问题`);
+                            }
+                        }
                     }
                 } catch (e) {
+                    this.logger.info(`🔍 日志 ${i} 解析失败: ${e.message}`);
                     // 忽略解析失败的日志
                     continue;
                 }
@@ -331,25 +367,42 @@ class ZKPayDepositManager {
     /**
      * 完整的存款流程（包含授权）- 参考webserver实现
      */
-    async performFullDeposit(chainId, tokenSymbol, amount, recipientAddress, userName = 'default') {
-        this.logger.info(`🚀 开始完整存款流程: ${amount} ${tokenSymbol} 在链 ${chainId}`);
+    async performFullDeposit(chainId, tokenAddress, amount, recipientAddress, userName = 'default') {
+        this.logger.info(`🚀 开始完整存款流程: ${amount} ${tokenAddress} 在链 ${chainId}`);
 
         const results = {
             approve: null,
             deposit: null,
             chainId,
-            tokenSymbol,
+            tokenAddress,
             amount,
             recipientAddress,
             userName
         };
 
         try {
-            // 获取Treasury合约地址
-            const treasuryAddress = this.treasuryContracts.get(chainId);
+            // 获取Treasury合约地址 - 支持SLIP44转换
+            this.logger.info(`🔍 调试: 查找链 ${chainId} 的Treasury配置`);
+            this.logger.info(`🔍 调试: treasuryContracts类型:`, typeof this.treasuryContracts);
+            this.logger.info(`🔍 调试: treasuryContracts大小:`, this.treasuryContracts.size);
+            this.logger.info(`🔍 调试: treasuryContracts内容:`, Array.from(this.treasuryContracts.entries()));
+            this.logger.info(`🔍 调试: 查找的chainId类型:`, typeof chainId);
+            this.logger.info(`🔍 调试: 查找的chainId值:`, chainId);
+            
+            // 首先尝试直接使用SLIP44 ID查找
+            let treasuryAddress = this.treasuryContracts.get(chainId);
+            
+            // 如果没有找到，尝试转换为实际ChainID再查找
+            if (!treasuryAddress) {
+                const actualChainId = this.walletManager.getActualChainId(chainId);
+                treasuryAddress = this.treasuryContracts.get(actualChainId);
+                this.logger.info(`🔍 调试: SLIP44转换 ${chainId} -> ${actualChainId}, 找到Treasury: ${treasuryAddress}`);
+            }
+            
+            this.logger.info(`🔍 调试: 最终找到的Treasury地址: ${treasuryAddress}`);
             
             if (!treasuryAddress) {
-                throw new Error(`链 ${chainId} 没有配置Treasury合约`);
+                throw new Error(`链 ${chainId} (实际链ID: ${this.walletManager.getActualChainId(chainId)}) 没有配置Treasury合约`);
             }
 
             // 步骤1: 检查并授权Token（如果需要）
@@ -359,19 +412,19 @@ class ZKPayDepositManager {
             // 检查当前授权额度
             const allowanceResult = await this.checkTokenAllowance(
                 chainId, 
-                tokenSymbol, 
+                tokenAddress, 
                 wallet.address, 
                 treasuryAddress
             );
             
-            this.logger.info(`🔍 当前授权额度: ${allowanceResult.formatted} ${tokenSymbol}`);
+            this.logger.info(`🔍 当前授权额度: ${allowanceResult.formatted} ${allowanceResult.symbol}`);
             
             // 如果授权不足，进行授权
             if (parseFloat(allowanceResult.formatted) < parseFloat(amount)) {
                 this.logger.info(`📋 步骤1a: 授权Token给Treasury合约`);
                 results.approve = await this.approveToken(
                     chainId, 
-                    tokenSymbol, 
+                    tokenAddress, 
                     treasuryAddress, 
                     amount, 
                     userName
@@ -385,7 +438,7 @@ class ZKPayDepositManager {
             this.logger.info(`📋 步骤2: 执行存款到Treasury合约`);
             results.deposit = await this.executeDeposit(
                 chainId, 
-                tokenSymbol, 
+                tokenAddress, 
                 amount, 
                 recipientAddress, 
                 userName

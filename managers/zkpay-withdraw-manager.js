@@ -209,17 +209,25 @@ class ZKPayWithdrawManager {
         this.logger.info(`   Check ID: ${checkId}`);
 
         const startTime = Date.now();
-        const pollInterval = 10000; // 10秒轮询一次
+        const pollInterval = 3000; // 3秒轮询一次
         
         // 使用传入的用户地址，如果没有则使用默认地址
         const ownerAddress = userAddress || '0xaAf9CB43102654126aEff96a4AD25F23E7C969A2';
         const OWNER_DATA = '0x000000000000000000000000' + ownerAddress.replace('0x', '').toLowerCase();
+        
+        this.logger.info(`🔍 调试: 使用用户地址: ${ownerAddress}`);
+        this.logger.info(`🔍 调试: 转换后的OWNER_DATA: ${OWNER_DATA}`);
 
         while (Date.now() - startTime < maxWaitTime * 1000) {
             try {
                 // 使用deposits/by-owner接口查询状态
                 const response = await this.apiClient.get(`/api/v2/deposits/by-owner?chain_id=714&owner_data=${OWNER_DATA}&page=1&size=10&deleted=false`);
                 const deposits = response.data.data || response.data;
+                
+                this.logger.debug(`🔍 调试: API响应 - 找到 ${deposits.length} 条存款记录`);
+                if (deposits.length > 0) {
+                    this.logger.debug(`🔍 调试: 第一条存款记录的checks:`, deposits[0].checks?.map(c => ({ id: c.id, status: c.status })));
+                }
                 
                 // 找到包含目标checkId的存款记录
                 let targetCheck = null;

@@ -36,7 +36,7 @@ async function testReadyCheckBook() {
             },
             blockchain: {
                 management_chain: {
-                    chain_id: 56,
+                    chain_id: 714,  // SLIP44 BSC
                     rpc_url: 'https://bsc-dataseed1.binance.org',
                     contracts: {
                         treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
@@ -51,7 +51,7 @@ async function testReadyCheckBook() {
                     }
                 },
                 source_chains: [{
-                    chain_id: 56,
+                    chain_id: 714,  // SLIP44 BSC
                     rpc_url: 'https://bsc-dataseed1.binance.org',
                     contracts: {
                         treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'

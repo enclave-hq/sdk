@@ -103,7 +103,7 @@ class ZKPayClientExample {
             await this.client.login(privateKey);
             
             // 定义参数
-            const chainId = 56;
+            const chainId = 714;  // SLIP44 BSC
             const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309';
             const treasuryAddress = '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8';
             const amount = '10.0';

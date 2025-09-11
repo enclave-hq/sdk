@@ -198,8 +198,10 @@ class ZKPayCommitmentManager {
                     chain_id: backendChainId,
                     owner_data: ownerData,
                     page: 1,
-                    size: 10,
-                    deleted: false
+                    size: 20, // 增加查询数量，确保包含最新记录
+                    deleted: false,
+                    sort: 'created_at',
+                    order: 'desc' // 按创建时间倒序，最新的在前面
                 }
             });
             

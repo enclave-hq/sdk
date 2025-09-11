@@ -42,22 +42,22 @@ const treasuryAddress = '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8';
 const amount = '10.0';
 
 // 获取Token信息（包括decimals）
-const tokenInfo = await client.getTokenInfo(56, testUsdtAddress);
+const tokenInfo = await client.getTokenInfo(714, testUsdtAddress);
 console.log(`Token: ${tokenInfo.symbol} (${tokenInfo.name}) - ${tokenInfo.decimals} decimals`);
 
 // 检查余额和授权 (使用Token地址)
-const balance = await client.checkTokenBalance(56, testUsdtAddress);
-const allowance = await client.checkTokenAllowance(56, testUsdtAddress, treasuryAddress);
+const balance = await client.checkTokenBalance(714, testUsdtAddress);
+const allowance = await client.checkTokenAllowance(714, testUsdtAddress, treasuryAddress);
 
 // 授权代币 (使用Token地址和动态decimals)
 if (allowance.balance < ethers.parseUnits(amount, tokenInfo.decimals)) {
-    await client.approveToken(56, testUsdtAddress, amount, treasuryAddress);
+    await client.approveToken(714, testUsdtAddress, amount, treasuryAddress);
 }
 
 // 执行存款 (使用Token地址)
-const depositResult = await client.deposit(56, testUsdtAddress, amount, treasuryAddress);
+const depositResult = await client.deposit(714, testUsdtAddress, amount, treasuryAddress);
 const depositRecord = await client.waitForDepositDetection(
-    depositResult.txHash, 56, 60
+    depositResult.txHash, 714, 60
 );
 ```
 
@@ -107,22 +107,22 @@ async function stepByStepFlow() {
     const amount = '10.0';
     
     // 获取Token信息（包括decimals）
-    const tokenInfo = await client.getTokenInfo(56, testUsdtAddress);
+    const tokenInfo = await client.getTokenInfo(714, testUsdtAddress);
     console.log(`Token: ${tokenInfo.symbol} (${tokenInfo.name}) - ${tokenInfo.decimals} decimals`);
     
     // 检查余额和授权 (使用Token地址)
-    const balance = await client.checkTokenBalance(56, testUsdtAddress);
-    const allowance = await client.checkTokenAllowance(56, testUsdtAddress, treasuryAddress);
+    const balance = await client.checkTokenBalance(714, testUsdtAddress);
+    const allowance = await client.checkTokenAllowance(714, testUsdtAddress, treasuryAddress);
     
     // 授权代币 (如果需要，使用Token地址和动态decimals)
     if (allowance.balance < ethers.parseUnits(amount, tokenInfo.decimals)) {
-        await client.approveToken(56, testUsdtAddress, amount, treasuryAddress);
+        await client.approveToken(714, testUsdtAddress, amount, treasuryAddress);
     }
     
     // 存款 (使用Token地址)
-    const depositResult = await client.deposit(56, testUsdtAddress, amount, treasuryAddress);
+    const depositResult = await client.deposit(714, testUsdtAddress, amount, treasuryAddress);
     const depositRecord = await client.waitForDepositDetection(
-        depositResult.txHash, 56, 60
+        depositResult.txHash, 714, 60
     );
     
     // 承诺
@@ -165,7 +165,7 @@ async function convenientFlow() {
     }];
     
     const depositToCommitment = await client.performFullDepositToCommitment(
-        56, 'test_usdt', '10.0', allocations, { waitForCommitment: true }
+        714, 'test_usdt', '10.0', allocations, { waitForCommitment: true }
     );
     
     // 从承诺到提现
@@ -240,7 +240,7 @@ const config = {
     blockchain: {
         // 源链配置数组（管理链配置已移除，统一使用source_chains）
         source_chains: [{
-            chain_id: 56,                           // 必需：源链ID
+            chain_id: 714,                          // 必需：源链ID (SLIP44 BSC)
             rpc_url: 'https://bsc-dataseed1.binance.org',  // 必需：RPC节点地址
             contracts: {
                 treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'  // 必需：Treasury合约地址
@@ -345,14 +345,14 @@ const client = new ZKPayClient(logger, {
 #### Token配置说明
 Token配置只需要提供合约地址，其他信息（decimals、symbol、name）会自动从合约中读取：
 
-**配置格式**：`chainId_symbol -> tokenAddress`
+**配置格式**：`slip44Id_symbol -> tokenAddress`
 ```javascript
 const tokenConfigs = new Map([
-    ['56_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309'],  // BSC上的测试USDT
-    ['1_usdt', '0xdAC17F958D2ee523a2206206994597C13D831ec7'],        // Ethereum上的USDT
-    ['137_usdc', '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'],      // Polygon上的USDC
-    ['56_busd', '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56'],       // BSC上的BUSD
-    ['1_weth', '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2']         // Ethereum上的WETH
+    ['714_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309'],  // BSC上的测试USDT (SLIP44 714)
+    ['60_usdt', '0xdAC17F958D2ee523a2206206994597C13D831ec7'],        // Ethereum上的USDT (SLIP44 60)
+    ['966_usdc', '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'],      // Polygon上的USDC (SLIP44 966)
+    ['714_busd', '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56'],       // BSC上的BUSD (SLIP44 714)
+    ['60_weth', '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2']         // Ethereum上的WETH (SLIP44 60)
 ]);
 ```
 
@@ -367,11 +367,11 @@ const tokenConfigs = new Map([
 ```javascript
 // 创建参数化配置
 const treasuryContracts = new Map([
-    [56, '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8']
+    [714, '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8']  // SLIP44 BSC
 ]);
 
 const tokenConfigs = new Map([
-    ['56_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309']
+    ['714_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309']  // SLIP44 BSC
 ]);
 
 // 初始化客户端
@@ -395,14 +395,14 @@ const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309';
 const treasuryAddress = '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8';
 const amount = '10.0';
 
-await client.deposit(56, tokenAddress, amount, treasuryAddress);
+await client.deposit(714, tokenAddress, amount, treasuryAddress);
 ```
 
 ## 🔢 动态获取Token Decimals示例
 
 ```javascript
 // 获取Token信息
-const tokenInfo = await client.getTokenInfo(56, '0xbFBD79DbF5369D013a3D31812F67784efa6e0309');
+const tokenInfo = await client.getTokenInfo(714, '0xbFBD79DbF5369D013a3D31812F67784efa6e0309');
 console.log(`Token: ${tokenInfo.symbol} (${tokenInfo.name})`);
 console.log(`Decimals: ${tokenInfo.decimals}`);
 
@@ -412,14 +412,14 @@ const amountWei = ethers.parseUnits(amount, tokenInfo.decimals);
 console.log(`${amount} ${tokenInfo.symbol} = ${amountWei.toString()} Wei`);
 
 // 检查余额时使用动态decimals
-const balance = await client.checkTokenBalance(56, tokenInfo.address);
+const balance = await client.checkTokenBalance(714, tokenInfo.address);
 console.log(`余额: ${balance.formatted} ${tokenInfo.symbol}`);
 
 // 授权时使用动态decimals
 if (balance.balance < amountWei) {
     console.log('余额不足，需要充值');
 } else {
-    await client.approveToken(56, tokenInfo.address, amount, treasuryAddress);
+    await client.approveToken(714, tokenInfo.address, amount, treasuryAddress);
 }
 ```
 
@@ -429,17 +429,17 @@ SDK支持从环境变量获取RPC URL，或使用默认值：
 
 ### 环境变量配置
 ```bash
-# 设置特定链的RPC URL (使用EVM Chain ID)
-export RPC_URL_56=https://bsc-dataseed1.binance.org
-export RPC_URL_1=https://eth.llamarpc.com
-export RPC_URL_137=https://polygon-rpc.com
+# 设置特定链的RPC URL (使用SLIP44 ID，SDK会自动转换)
+export RPC_URL_714=https://bsc-dataseed1.binance.org  # SLIP44 BSC
+export RPC_URL_60=https://eth.llamarpc.com            # SLIP44 Ethereum
+export RPC_URL_966=https://polygon-rpc.com            # SLIP44 Polygon
 
 # 或者使用.env文件
-echo "RPC_URL_56=https://bsc-dataseed1.binance.org" >> .env
-echo "RPC_URL_1=https://eth.llamarpc.com" >> .env
+echo "RPC_URL_714=https://bsc-dataseed1.binance.org" >> .env
+echo "RPC_URL_60=https://eth.llamarpc.com" >> .env
 
-# 注意：环境变量使用EVM Chain ID，但SDK支持SLIP44 ID映射
-# 例如：SLIP44 714 (Tron) 会自动映射到 Chain ID 56 (BSC RPC)
+# 注意：环境变量使用SLIP44 ID，SDK会自动转换为实际Chain ID
+# 例如：SLIP44 714 (BSC) 会自动映射到 Chain ID 56 (BSC RPC)
 ```
 
 ### 支持的链和SLIP44映射

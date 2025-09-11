@@ -48,7 +48,7 @@ async function testAsyncFeatures() {
         
         const allocations = [
             {
-                recipient_chain_id: 56,
+                recipient_chain_id: 714,  // SLIP44 BSC
                 recipient_address: client.getCurrentUser().address,
                 amount: "1800000", // 1.8 USDT
             }
@@ -99,7 +99,7 @@ async function testAsyncFeatures() {
             const withdrawResult = await client.generateProofAsync(
                 withCheckbookDeposit.checkbookId,
                 [{
-                    recipient_chain_id: 56,
+                    recipient_chain_id: 714,  // SLIP44 BSC
                     recipient_address: recipientAddress,
                     amount: "1800000"
                 }]

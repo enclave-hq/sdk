@@ -261,7 +261,7 @@ class ZKPayClient {
 
     /**
      * 执行Token授权
-     * @param {number} chainId - 链ID
+     * @param {number} slip44Id - SLIP44链ID (如714表示BSC)
      * @param {string} tokenSymbol - Token符号
      * @param {string} amount - 授权金额
      */
@@ -289,7 +289,7 @@ class ZKPayClient {
 
     /**
      * 执行存款
-     * @param {number} chainId - 链ID
+     * @param {number} slip44Id - SLIP44链ID (如714表示BSC)
      * @param {string} tokenAddress - Token合约地址
      * @param {string} amount - 存款金额
      * @param {string} treasuryAddress - Treasury合约地址
@@ -306,8 +306,7 @@ class ZKPayClient {
                 tokenAddress,
                 amount,
                 this.currentUser.address,
-                treasuryAddress,
-                this.currentUser.privateKey
+                this.currentUser.userName
             );
             
             this.logger.info('✅ 存款成功');
@@ -321,7 +320,7 @@ class ZKPayClient {
 
     /**
      * 检查Token余额
-     * @param {number} chainId - 链ID
+     * @param {number} slip44Id - SLIP44链ID (如714表示BSC)
      * @param {string} tokenContractAddress - Token合约地址
      */
     async checkTokenBalance(chainId, tokenContractAddress) {
@@ -345,7 +344,7 @@ class ZKPayClient {
 
     /**
      * 检查Token授权额度
-     * @param {number} chainId - 链ID
+     * @param {number} slip44Id - SLIP44链ID (如714表示BSC)
      * @param {string} tokenContractAddress - Token合约地址
      */
     async checkTokenAllowance(chainId, tokenContractAddress) {
@@ -372,9 +371,10 @@ class ZKPayClient {
 
     /**
      * 获取用户的存款记录（CheckBook）
-     * @param {number} chainId - 链ID (可选，默认为714)
+     * @param {string} userAddress - 用户地址 (可选)
+     * @param {number} slip44Id - SLIP44链ID (可选，默认为714 BSC)
      */
-    async getUserDeposits(userAddress = null, chainId = 714) {
+    async getUserDeposits(userAddress = null, slip44Id = 714) {
         const targetAddress = userAddress || (this.isLoggedIn() ? this.currentUser.address : null);
         if (!targetAddress) {
             throw new Error('需要提供用户地址或先登录');
@@ -383,14 +383,24 @@ class ZKPayClient {
         this.logger.info(`📋 获取用户存款记录: ${targetAddress}`);
         
         try {
-            const deposits = await this.commitmentManager.getUserDeposits(targetAddress, chainId);
+            const deposits = await this.commitmentManager.getUserDeposits(targetAddress, slip44Id);
             
             this.logger.info(`✅ 找到 ${deposits.length} 条存款记录`);
+            
+            // 调试：打印原始API响应结构
+            this.logger.info(`🔍 调试: deposits类型:`, typeof deposits);
+            this.logger.info(`🔍 调试: deposits长度:`, deposits.length);
+            if (deposits.length > 0) {
+                this.logger.info(`🔍 调试: deposits[0]类型:`, typeof deposits[0]);
+                this.logger.info(`🔍 调试: deposits[0]内容:`, deposits[0]);
+                this.logger.info(`🔍 调试: 原始API响应结构:`, JSON.stringify(deposits[0], null, 2));
+                this.logger.info(`🔍 调试: deposits[0]的所有字段:`, Object.keys(deposits[0]));
+            }
             
             // 格式化返回数据，提供更友好的接口
             return deposits.map(deposit => ({
                 id: deposit.id,
-                checkbookId: deposit.checkbook_id,
+                checkbookId: deposit.checkbook_id || deposit.id, // 如果checkbook_id不存在，使用id作为fallback
                 localDepositId: deposit.local_deposit_id,
                 status: deposit.status,
                 chainId: deposit.chain_id,
@@ -446,16 +456,16 @@ class ZKPayClient {
     /**
      * 等待存款被后端检测并创建记录
      * @param {string} txHash - 交易哈希
-     * @param {number} chainId - 链ID
+     * @param {number} slip44Id - SLIP44链ID (如714表示BSC)
      * @param {number} maxWaitTime - 最大等待时间（秒）
      */
-    async waitForDepositDetection(txHash, chainId, maxWaitTime = 60) {
+    async waitForDepositDetection(txHash, slip44Id, maxWaitTime = 60) {
         this.ensureLoggedIn();
         
         try {
             const deposit = await this.commitmentManager.waitForDepositDetection(
                 txHash,
-                chainId,
+                slip44Id,
                 this.currentUser.address,
                 maxWaitTime
             );
@@ -681,6 +691,11 @@ class ZKPayClient {
         while (Date.now() - startTime < maxWaitTime * 1000) {
             try {
                 const deposits = await this.getUserDeposits();
+                this.logger.info(`🔍 调试: 查找checkbookId: ${checkbookId}`);
+                this.logger.info(`🔍 调试: 存款记录数量: ${deposits.length}`);
+                this.logger.info(`🔍 调试: 存款记录checkbookId列表:`, deposits.map(d => d.checkbookId));
+                this.logger.info(`🔍 调试: 存款记录原始结构:`, deposits.map(d => ({ id: d.id, checkbookId: d.checkbookId, checkbook_id: d.checkbook_id, status: d.status })));
+                
                 const deposit = deposits.find(d => d.checkbookId === checkbookId);
                 
                 if (deposit && targetStatuses.includes(deposit.status)) {
@@ -693,7 +708,7 @@ class ZKPayClient {
                     throw new Error(`Commitment失败: ${deposit.status}`);
                 }
                 
-                this.logger.debug(`📈 当前状态: ${deposit?.status || '未知'} → 等待 ${targetStatuses.join('/')}`);
+                this.logger.info(`📈 当前状态: ${deposit?.status || '未知'} → 等待 ${targetStatuses.join('/')}`);
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
                 
             } catch (error) {
@@ -851,12 +866,20 @@ class ZKPayClient {
 
     /**
      * 获取Treasury合约地址
+     * @param {number} slip44Id - SLIP44链ID
      */
-    getTreasuryAddress(chainId) {
-        const treasuryAddress = this.treasuryContracts.get(chainId);
+    getTreasuryAddress(slip44Id) {
+        // 首先尝试直接使用SLIP44 ID查找
+        let treasuryAddress = this.treasuryContracts.get(slip44Id);
+        
+        // 如果没有找到，尝试转换为实际ChainID再查找
+        if (!treasuryAddress) {
+            const actualChainId = this.walletManager.getActualChainId(slip44Id);
+            treasuryAddress = this.treasuryContracts.get(actualChainId);
+        }
         
         if (!treasuryAddress) {
-            throw new Error(`链 ${chainId} 没有配置Treasury合约`);
+            throw new Error(`链 ${slip44Id} (实际链ID: ${this.walletManager.getActualChainId(slip44Id)}) 没有配置Treasury合约`);
         }
         
         return treasuryAddress;
@@ -864,16 +887,50 @@ class ZKPayClient {
 
     /**
      * 获取Token合约地址
+     * @param {number} slip44Id - SLIP44链ID
+     * @param {string} tokenSymbol - Token符号
      */
-    getTokenAddress(chainId, tokenSymbol) {
-        const tokenKey = `${chainId}_${tokenSymbol}`;
-        const tokenAddress = this.tokenConfigs.get(tokenKey);
+    getTokenAddress(slip44Id, tokenSymbol) {
+        // 首先尝试直接使用SLIP44 ID查找
+        let tokenKey = `${slip44Id}_${tokenSymbol}`;
+        let tokenAddress = this.tokenConfigs.get(tokenKey);
+        
+        // 如果没有找到，尝试转换为实际ChainID再查找
+        if (!tokenAddress) {
+            const actualChainId = this.walletManager.getActualChainId(slip44Id);
+            tokenKey = `${actualChainId}_${tokenSymbol}`;
+            tokenAddress = this.tokenConfigs.get(tokenKey);
+        }
         
         if (!tokenAddress) {
-            throw new Error(`链 ${chainId} 的Token ${tokenSymbol} 没有配置合约地址`);
+            throw new Error(`链 ${slip44Id} (实际链ID: ${this.walletManager.getActualChainId(slip44Id)}) 的Token ${tokenSymbol} 没有配置合约地址`);
         }
         
         return tokenAddress;
+    }
+
+    /**
+     * 从Token地址获取Token符号
+     * @param {number} slip44Id - SLIP44链ID
+     * @param {string} tokenAddress - Token合约地址
+     */
+    getTokenSymbolFromAddress(slip44Id, tokenAddress) {
+        // 遍历tokenConfigs查找匹配的地址
+        for (const [tokenKey, address] of this.tokenConfigs) {
+            if (address === tokenAddress) {
+                // 检查是否匹配当前链
+                if (tokenKey.startsWith(`${slip44Id}_`)) {
+                    return tokenKey.split('_')[1]; // 返回tokenSymbol部分
+                }
+                // 也检查实际ChainID
+                const actualChainId = this.walletManager.getActualChainId(slip44Id);
+                if (tokenKey.startsWith(`${actualChainId}_`)) {
+                    return tokenKey.split('_')[1]; // 返回tokenSymbol部分
+                }
+            }
+        }
+        
+        throw new Error(`无法找到Token地址 ${tokenAddress} 对应的符号`);
     }
 
     /**
@@ -913,13 +970,13 @@ class ZKPayClient {
 
     /**
      * 完整的存款到Commitment流程
-     * @param {number} chainId - 链ID
+     * @param {number} slip44Id - SLIP44链ID (如714表示BSC)
      * @param {string} tokenSymbol - Token符号
      * @param {string} amount - 金额
      * @param {Array} allocations - 分配方案
      * @param {Object} options - 选项
      */
-    async performFullDepositToCommitment(chainId, tokenSymbol, amount, allocations, options = {}) {
+    async performFullDepositToCommitment(slip44Id, tokenSymbol, amount, allocations, options = {}) {
         const {
             waitForCommitment = true,
             maxWaitTime = 300
@@ -931,15 +988,15 @@ class ZKPayClient {
         try {
             // 步骤1: 执行存款
             this.logger.info('📋 步骤1: 执行存款');
-            const treasuryAddress = this.getTreasuryAddress(chainId);
-            const tokenAddress = this.getTokenAddress(chainId, tokenSymbol);
-            const depositResult = await this.deposit(chainId, tokenAddress, amount, treasuryAddress);
+            const treasuryAddress = this.getTreasuryAddress(slip44Id);
+            const tokenAddress = this.getTokenAddress(slip44Id, tokenSymbol);
+            const depositResult = await this.deposit(slip44Id, tokenAddress, amount, treasuryAddress);
             
             // 步骤2: 等待后端检测存款
             this.logger.info('📋 步骤2: 等待后端检测存款');
             const depositRecord = await this.waitForDepositDetection(
                 depositResult.deposit.txHash,
-                chainId,
+                slip44Id,
                 60
             );
             

@@ -114,7 +114,7 @@ class QuickClientLibraryTest {
 
             // 3. 测试Token操作
             await this.runTest('Token操作', async () => {
-                const chainId = 56;
+                const chainId = 714;  // SLIP44 BSC
                 const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309'; // BSC Testnet USDT
                 
                 const balance = await this.client.checkTokenBalance(chainId, tokenAddress);
@@ -169,7 +169,7 @@ class QuickClientLibraryTest {
 
             // 6. 测试存款
             const depositResult = await this.runTest('存款操作', async () => {
-                const chainId = 56;
+                const chainId = 714;  // SLIP44 BSC
                 const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309'; // BSC Testnet USDT
                 const amount = '2.0'; // 最低金额要求
                 
@@ -194,7 +194,7 @@ class QuickClientLibraryTest {
             await this.runTest('分配和签名', async () => {
                 const allocations = [
                     {
-                        recipient_chain_id: 56,
+                        recipient_chain_id: 714,  // SLIP44 BSC
                         recipient_address: this.client.getCurrentUser().address,
                         amount: "1800000", // 1.8 USDT (6位精度，扣除手续费后的可用金额)
                     }
@@ -219,7 +219,7 @@ class QuickClientLibraryTest {
             // 11. 测试提现证明生成
             await this.runTest('提现证明生成', async () => {
                 const recipientInfo = {
-                    chain_id: 56,
+                    chain_id: 714,  // SLIP44 BSC
                     address: this.client.getCurrentUser().address,
                     amount: "1800000", // 1.8 USDT (6位精度)
                     token_symbol: "TUSDT"
