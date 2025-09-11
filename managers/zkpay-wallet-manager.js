@@ -35,25 +35,10 @@ class ZKPayWalletManager {
      */
     getActualChainId(slip44CoinId) {
         const slip44ToChainMapping = {
-            // Ethereum 系列 (SLIP44 60)
-            60: 1,    // Ethereum Mainnet
-            
-            // BSC 系列 (SLIP44 714)
-            714: 56,  // BSC Mainnet
-            
-            // Polygon 系列 (SLIP44 966)
-            966: 137, // Polygon Mainnet
-            
-            // Arbitrum 系列 (SLIP44 42161)
-            42161: 42161, // Arbitrum One
-            
-            // Optimism 系列 (SLIP44 10)
-            10: 10,   // Optimism Mainnet
-            
-            // Tron 系列 (SLIP44 195)
-            195: 195, // Tron Mainnet
-            
-            // 其他链通常SLIP44 ID与Chain ID相同
+            // 只保留必要的映射
+            60: 1,    // Ethereum Mainnet (SLIP44 60 -> Chain ID 1)
+            714: 56,  // BSC Mainnet (SLIP44 714 -> Chain ID 56)
+            195: 195, // Tron Mainnet (SLIP44 195 -> Chain ID 195)
         };
         
         return slip44ToChainMapping[slip44CoinId] || slip44CoinId;
@@ -66,25 +51,11 @@ class ZKPayWalletManager {
         // 首先检查是否是SLIP44 ID，如果是则转换为实际链ID
         const actualChainId = this.getActualChainId(chainId);
         
-        // 常用链的默认RPC URL（使用实际链ID）
+        // 只保留必要的链的RPC URL
         const defaultRpcUrls = {
-            1: 'https://eth.llamarpc.com', // Ethereum Mainnet
-            56: 'https://bsc-dataseed1.binance.org', // BSC Mainnet (Tron SLIP44 714 映射到这里)
-            97: 'https://data-seed-prebsc-1-s1.binance.org:8545', // BSC Testnet
-            137: 'https://polygon-rpc.com', // Polygon Mainnet
-            42161: 'https://arb1.arbitrum.io/rpc', // Arbitrum One
-            421614: 'https://sepolia-rollup.arbitrum.io/rpc', // Arbitrum Sepolia
-            10: 'https://mainnet.optimism.io', // Optimism Mainnet
-            420: 'https://sepolia.optimism.io', // Optimism Sepolia
-            4002: 'https://rpc.testnet.fantom.network', // Fantom Testnet
-            25: 'https://evm.cronos.org', // Cronos Mainnet
-            338: 'https://evm-t3.cronos.org', // Cronos Testnet
-            1284: 'https://rpc.api.moonbeam.network', // Moonbeam
-            1287: 'https://rpc.api.moonbase.moonbeam.network', // Moonbase
-            43114: 'https://api.avax.network/ext/bc/C/rpc', // Avalanche C-Chain
-            43113: 'https://api.avax-test.network/ext/bc/C/rpc', // Avalanche Fuji
-            100: 'https://rpc.gnosischain.com', // Gnosis Chain
-            10200: 'https://rpc.chiadochain.net', // Gnosis Chiado
+            1: 'https://eth.llamarpc.com', // Ethereum Mainnet (SLIP44 60)
+            56: 'https://bsc-dataseed1.binance.org', // BSC Mainnet (SLIP44 714)
+            195: 'https://api.trongrid.io/jsonrpc', // Tron Mainnet (SLIP44 195)
         };
 
         // 优先从环境变量获取（使用原始chainId）
@@ -114,8 +85,8 @@ class ZKPayWalletManager {
      * 初始化区块链RPC提供者
      */
     async initializeProviders() {
-        // 支持常用链的RPC提供者
-        const supportedChains = [1, 56, 97, 137, 80001, 42161, 421614, 10, 420, 250, 4002, 25, 338, 1284, 1287, 43114, 43113, 100, 10200, 714];
+        // 只支持必要的链：714(BSC), 195(TRON), 60(ETH)
+        const supportedChains = [714, 195, 60];
         
         for (const chainId of supportedChains) {
             try {
@@ -171,6 +142,17 @@ class ZKPayWalletManager {
                 this.logger.warn(`  ⚠️ 链 ${chainId} 余额检查失败: ${error.message}`);
             }
         }
+    }
+
+    /**
+     * 设置用户钱包
+     */
+    setUserWallet(userName, wallet, address) {
+        this.wallets.set(userName, {
+            wallet: wallet,
+            address: address
+        });
+        this.logger.debug(`👤 用户钱包已设置: ${userName} -> ${address}`);
     }
 
     /**
@@ -305,7 +287,7 @@ class ZKPayWalletManager {
      */
     isValidChain(chainId) {
         // 检查是否在支持的链列表中
-        const supportedChains = [1, 56, 97, 137, 80001, 42161, 421614, 10, 420, 250, 4002, 25, 338, 1284, 1287, 43114, 43113, 100, 10200, 714];
+        const supportedChains = [1, 56, 97, 137, 42161, 421614, 10, 420, 4002, 25, 338, 1284, 1287, 43114, 43113, 100, 10200, 714];
         return supportedChains.includes(chainId);
     }
 

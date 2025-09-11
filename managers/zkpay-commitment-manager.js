@@ -4,12 +4,19 @@ const axios = require('axios');
 const { createLogger } = require('../utils/logger');
 
 class ZKPayCommitmentManager {
-    constructor(config, walletManager, logger) {
-        this.config = config;
+    constructor(walletManager, logger, options = {}) {
         this.walletManager = walletManager;
         this.logger = logger || createLogger('CommitmentManager');
         this.apiClient = null;
         this.wsConnection = null;
+        
+        // 参数化配置
+        this.defaultRecipientAddress = options.defaultRecipientAddress || "0x0848d929b9d35bfb7aa50641d392a4ad83e145ce";
+        this.maxWaitTime = options.maxWaitTime || 300000;
+        this.apiConfig = options.apiConfig || {
+            baseURL: process.env.ZKPAY_API_URL || 'https://backend.zkpay.network',
+            timeout: parseInt(process.env.ZKPAY_API_TIMEOUT) || 300000
+        };
     }
 
     /**
@@ -19,12 +26,9 @@ class ZKPayCommitmentManager {
         this.logger.info('🔗 初始化Commitment管理器...');
         
         // 初始化API客户端
-        const apiUrl = process.env.ZKPAY_API_URL || 'https://backend.zkpay.network';
-        const timeout = parseInt(process.env.ZKPAY_API_TIMEOUT) || 300000;
-        
         this.apiClient = axios.create({
-            baseURL: apiUrl,
-            timeout: timeout,
+            baseURL: this.apiConfig.baseURL,
+            timeout: this.apiConfig.timeout,
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -321,7 +325,7 @@ class ZKPayCommitmentManager {
             // 1. 设置参数
             const chainId = parseInt(depositRecord.chain_id);
             const targetChainId = 714; // BSC的SLIP-44 ID
-            const finalRecipientAddress = this.config.test_config?.withdraw?.default_recipient_address || "0x0848d929b9d35bfb7aa50641d392a4ad83e145ce"; // 从配置文件读取接收地址
+            const finalRecipientAddress = this.defaultRecipientAddress; // 使用参数化配置的接收地址
             const finalAmount = depositRecord.allocatable_amount || depositRecord.gross_amount;  // 如果 allocatable_amount 为空，使用 gross_amount
 
             this.logger.info(`🎯 Commitment参数:`, {
@@ -782,7 +786,7 @@ class ZKPayCommitmentManager {
             this.logger.info(`📋 步骤4: 等待Commitment确认`);
             results.waitConfirmation = await this.waitForCommitmentConfirmation(
                 checkbookId, 
-                this.config.test_config.proof_generation.max_wait_time
+                this.maxWaitTime
             );
 
             this.logger.info(`🎉 完整Commitment流程成功完成!`);

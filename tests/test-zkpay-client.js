@@ -5,7 +5,6 @@
 
 const { ZKPayClient } = require('../core/zkpay-client-library');
 const { createLogger } = require('../utils/logger');
-const yaml = require('js-yaml');
 const fs = require('fs');
 
 /**
@@ -24,8 +23,11 @@ class ZKPayClientTest {
      * 初始化测试
      */
     async initialize() {
-        // 创建客户端（不需要config）
-        this.client = new ZKPayClient(null, this.logger);
+        // 创建测试配置
+        this.createTestConfig();
+        
+        // 创建客户端
+        this.client = new ZKPayClient(this.config, this.logger);
         
         // 初始化客户端
         await this.client.initialize();
@@ -34,25 +36,61 @@ class ZKPayClientTest {
     }
 
     /**
-     * 加载配置文件
+     * 创建测试配置
      */
-    loadConfig() {
-        try {
-            const configPath = require('path').resolve(this.configFile);
-            const configContent = fs.readFileSync(configPath, 'utf8');
-            
-            // 处理环境变量替换
-            const processedContent = configContent.replace(/\${([^}]+)}/g, (match, envVar) => {
-                const [varName, defaultValue] = envVar.split(':-');
-                return process.env[varName] || defaultValue || match;
-            });
-            
-            this.config = yaml.load(processedContent);
-            this.logger.info('✅ 配置文件加载成功');
-        } catch (error) {
-            this.logger.error('❌ 配置文件加载失败:', error.message);
-            throw error;
-        }
+    createTestConfig() {
+        this.config = {
+            services: {
+                zkpay_backend: {
+                    url: process.env.ZKPAY_BACKEND_URL || 'https://backend.zkpay.network',
+                    timeout: 300000
+                }
+            },
+            blockchain: {
+                management_chain: {
+                    chain_id: 56,
+                    rpc_url: 'https://bsc-dataseed1.binance.org',
+                    contracts: {
+                        treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
+                    },
+                    tokens: {
+                        test_usdt: {
+                            address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',
+                            decimals: 6,
+                            symbol: 'TUSDT',
+                            token_id: 65535
+                        }
+                    }
+                },
+                source_chains: [{
+                    chain_id: 56,
+                    rpc_url: 'https://bsc-dataseed1.binance.org',
+                    contracts: {
+                        treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
+                    },
+                    tokens: {
+                        test_usdt: {
+                            address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',
+                            decimals: 6,
+                            symbol: 'TUSDT',
+                            token_id: 65535
+                        }
+                    }
+                }]
+            },
+            runtime: {
+                withdraw: {
+                    default_recipient_address: process.env.TEST_RECIPIENT_ADDRESS || '0x0848d929b9d35bfb7aa50641d392a4ad83e145ce'
+                },
+                deposit: {
+                    confirmation_blocks: 3
+                },
+                proof_generation: {
+                    max_wait_time: 300000
+                }
+            }
+        };
+        this.logger.info('✅ 测试配置创建成功');
     }
 
     /**
@@ -305,7 +343,7 @@ class ZKPayClientTest {
             }
             
             // 重新登录
-            const privateKey = Object.values(this.config.test_users)[0].private_key;
+            const privateKey = Object.values(this.config.test.users)[0].private_key;
             await this.client.login(privateKey, 'test_user');
             
             return { errorHandlingWorking: true };

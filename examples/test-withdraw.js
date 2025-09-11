@@ -24,60 +24,29 @@ async function testWithdraw() {
             throw new Error('请在.env文件中设置TEST_RECIPIENT_ADDRESS环境变量');
         }
 
-        // 配置
-        const config = {
-            services: {
-                zkpay_backend: {
-                    url: 'https://backend.zkpay.network',
-                    timeout: 300000
-                }
+        // 创建参数化配置
+        const treasuryContracts = new Map([
+            [56, '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8']
+        ]);
+        
+        const tokenConfigs = new Map([
+            ['56_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309']
+        ]);
+
+        const options = {
+            apiConfig: {
+                baseURL: 'https://backend.zkpay.network',
+                timeout: 300000
             },
-            test_users: {
-                default: {
-                    private_key: testPrivateKey
-                }
-            },
-            blockchain: {
-                management_chain: {
-                    chain_id: 56,
-                    rpc_url: 'https://bsc-dataseed1.binance.org',
-                    contracts: {
-                        treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
-                    },
-                    tokens: {
-                        test_usdt: {
-                            address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',
-                            decimals: 6,
-                            symbol: 'TUSDT',
-                            token_id: 65535
-                        }
-                    }
-                },
-                source_chains: [{
-                    chain_id: 56,
-                    rpc_url: 'https://bsc-dataseed1.binance.org',
-                    contracts: {
-                        treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
-                    },
-                    tokens: {
-                        test_usdt: {
-                            address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',
-                            decimals: 6,
-                            symbol: 'TUSDT',
-                            token_id: 65535
-                        }
-                    }
-                }]
-            },
-            test_config: {
-                withdraw: {
-                    default_recipient_address: recipientAddress
-                }
-            }
+            treasuryContracts,
+            tokenConfigs,
+            confirmationBlocks: 3,
+            maxWaitTime: 300000,
+            defaultRecipientAddress: recipientAddress
         };
         
         // 创建客户端
-        const client = new ZKPayClient(config, logger);
+        const client = new ZKPayClient(logger, options);
         await client.initialize();
         
         // 登录 - 使用环境变量中的私钥

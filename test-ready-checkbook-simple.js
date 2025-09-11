@@ -5,7 +5,6 @@
  */
 
 const { ZKPayClient } = require('./core/zkpay-client-library.js');
-const yaml = require('js-yaml');
 const fs = require('fs');
 const { createLogger } = require('./examples/logger');
 
@@ -27,20 +26,61 @@ async function testReadyCheckBook() {
         // 1. 初始化ZKPayClient
         logger.info('🔧 初始化ZKPayClient...');
         
-        // 加载配置
-        const configContent = fs.readFileSync('./examples/config.yaml', 'utf8');
-        const processedContent = configContent.replace(/\${([^}]+)}/g, (match, envVar) => {
-            const [varName, defaultValue] = envVar.split(':-');
-            return process.env[varName] || defaultValue || match;
-        });
-        const config = yaml.load(processedContent);
+        // 创建配置
+        const config = {
+            services: {
+                zkpay_backend: {
+                    url: process.env.ZKPAY_BACKEND_URL || 'https://backend.zkpay.network',
+                    timeout: 300000
+                }
+            },
+            blockchain: {
+                management_chain: {
+                    chain_id: 56,
+                    rpc_url: 'https://bsc-dataseed1.binance.org',
+                    contracts: {
+                        treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
+                    },
+                    tokens: {
+                        test_usdt: {
+                            address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',
+                            decimals: 6,
+                            symbol: 'TUSDT',
+                            token_id: 65535
+                        }
+                    }
+                },
+                source_chains: [{
+                    chain_id: 56,
+                    rpc_url: 'https://bsc-dataseed1.binance.org',
+                    contracts: {
+                        treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
+                    },
+                    tokens: {
+                        test_usdt: {
+                            address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',
+                            decimals: 6,
+                            symbol: 'TUSDT',
+                            token_id: 65535
+                        }
+                    }
+                }]
+            },
+            test: {
+                users: {
+                    default: {
+                        private_key: null // 将在下面设置
+                    }
+                }
+            }
+        };
         
         // 使用Master Operator私钥
         const privateKey = process.env.MASTER_OPERATOR_BSC_PRIVATE_KEY?.startsWith('0x') 
             ? process.env.MASTER_OPERATOR_BSC_PRIVATE_KEY 
             : `0x${process.env.MASTER_OPERATOR_BSC_PRIVATE_KEY}`;
             
-        config.test_users.default.private_key = privateKey;
+        config.test.users.default.private_key = privateKey;
         
         // 修复API URL
         if (config.services.zkpay_backend.url.endsWith('/api/v2')) {

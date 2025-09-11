@@ -5,17 +5,6 @@ const axios = require('axios');
 const { ethers } = require('ethers');
 const { createLogger } = require('../utils/logger');
 
-// ERC20 Token ABI (只包含需要的方法)
-const ERC20_ABI = [
-    "function approve(address spender, uint256 amount) external returns (bool)",
-    "function allowance(address owner, address spender) external view returns (uint256)",
-    "function balanceOf(address account) external view returns (uint256)",
-    "function decimals() external view returns (uint8)",
-    "function symbol() external view returns (string)",
-    "function name() external view returns (string)",
-    "function transfer(address to, uint256 amount) external returns (bool)"
-];
-
 // 导入现有的管理器
 const { ZKPayWalletManager } = require('../managers/zkpay-wallet-manager');
 const { ZKPayDepositManager } = require('../managers/zkpay-deposit-manager');
@@ -28,9 +17,21 @@ const { ZKPayWithdrawManager } = require('../managers/zkpay-withdraw-manager');
  * ZKPay 客户端库 - 提供完整的ZKPay操作接口
  */
 class ZKPayClient {
-    constructor(config, logger) {
-        this.config = config;
+    constructor(logger, options = {}) {
         this.logger = logger || createLogger('ZKPayClient');
+        
+        // 参数化配置
+        this.apiConfig = options.apiConfig || {
+            baseURL: process.env.ZKPAY_API_URL || 'https://backend.zkpay.network',
+            timeout: parseInt(process.env.ZKPAY_API_TIMEOUT) || 300000
+        };
+        this.treasuryContracts = options.treasuryContracts || new Map();
+        this.tokenConfigs = options.tokenConfigs || new Map();
+        this.runtimeConfig = {
+            confirmationBlocks: options.confirmationBlocks || 3,
+            maxWaitTime: options.maxWaitTime || 300000,
+            defaultRecipientAddress: options.defaultRecipientAddress
+        };
         
         // 管理器实例
         this.walletManager = null;
@@ -81,13 +82,9 @@ class ZKPayClient {
      * 初始化API客户端
      */
     async initializeApiClient() {
-        // 使用固定的API URL
-        const apiUrl = process.env.ZKPAY_API_URL || 'https://backend.zkpay.network';
-        const timeout = parseInt(process.env.ZKPAY_API_TIMEOUT) || 300000;
-        
         this.apiClient = axios.create({
-            baseURL: apiUrl,
-            timeout: timeout,
+            baseURL: this.apiConfig.baseURL,
+            timeout: this.apiConfig.timeout,
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -165,15 +162,28 @@ class ZKPayClient {
         await this.walletManager.initialize();
         
         // 初始化存款管理器
-        this.depositManager = new ZKPayDepositManager(this.walletManager, this.logger);
+        this.depositManager = new ZKPayDepositManager(this.walletManager, this.logger, {
+            confirmationBlocks: this.runtimeConfig.confirmationBlocks,
+            treasuryContracts: this.treasuryContracts,
+            tokenConfigs: this.tokenConfigs
+        });
         await this.depositManager.initialize();
         
         // 初始化Commitment管理器
-        this.commitmentManager = new ZKPayCommitmentManager(null, this.walletManager, this.logger);
+        this.commitmentManager = new ZKPayCommitmentManager(this.walletManager, this.logger, {
+            defaultRecipientAddress: this.runtimeConfig.defaultRecipientAddress,
+            maxWaitTime: this.runtimeConfig.maxWaitTime,
+            apiConfig: this.apiConfig
+        });
         await this.commitmentManager.initialize();
         
         // 初始化提现管理器
-        this.withdrawManager = new ZKPayWithdrawManager(null, this.walletManager, this.logger);
+        this.withdrawManager = new ZKPayWithdrawManager(this.walletManager, this.logger, {
+            maxWaitTime: this.runtimeConfig.maxWaitTime,
+            apiConfig: this.apiConfig,
+            treasuryContracts: this.treasuryContracts,
+            tokenConfigs: this.tokenConfigs
+        });
         await this.withdrawManager.initialize();
         
         this.logger.info('📋 所有管理器初始化完成');
@@ -200,8 +210,12 @@ class ZKPayClient {
             this.currentUser = {
                 address: userAddress,
                 privateKey: privateKey,
-                wallet: wallet
+                wallet: wallet,
+                userName: 'default' // 设置默认用户名
             };
+            
+            // 将钱包设置到钱包管理器中
+            this.walletManager.setUserWallet('default', wallet, userAddress);
             
             this.logger.info(`✅ 用户钱包设置成功: ${userAddress}`);
             
@@ -251,19 +265,17 @@ class ZKPayClient {
      * @param {string} tokenSymbol - Token符号
      * @param {string} amount - 授权金额
      */
-    async approveToken(chainId, tokenAddress, amount, treasuryAddress) {
+    async approveToken(chainId, tokenSymbol, amount) {
         this.ensureLoggedIn();
-        this.logger.info(`🔓 执行Token授权: ${amount} 在链 ${chainId}`);
-        this.logger.info(`   Token地址: ${tokenAddress}`);
-        this.logger.info(`   Treasury地址: ${treasuryAddress}`);
+        this.logger.info(`🔓 执行Token授权: ${amount} ${tokenSymbol} 在链 ${chainId}`);
         
         try {
             const result = await this.depositManager.approveToken(
                 chainId,
-                tokenAddress,
-                treasuryAddress,
+                tokenSymbol,
+                this.getTreasuryAddress(chainId),
                 amount,
-                this.currentUser.privateKey
+                this.currentUser.userName
             );
             
             this.logger.info('✅ Token授权成功');
@@ -278,12 +290,13 @@ class ZKPayClient {
     /**
      * 执行存款
      * @param {number} chainId - 链ID
-     * @param {string} tokenSymbol - Token符号
+     * @param {string} tokenAddress - Token合约地址
      * @param {string} amount - 存款金额
+     * @param {string} treasuryAddress - Treasury合约地址
      */
     async deposit(chainId, tokenAddress, amount, treasuryAddress) {
         this.ensureLoggedIn();
-        this.logger.info(`💰 执行存款: ${amount} 在链 ${chainId}`);
+        this.logger.info(`💰 执行存款: ${amount} ${tokenAddress} 在链 ${chainId}`);
         this.logger.info(`   Token地址: ${tokenAddress}`);
         this.logger.info(`   Treasury地址: ${treasuryAddress}`);
         
@@ -311,35 +324,6 @@ class ZKPayClient {
      * @param {number} chainId - 链ID
      * @param {string} tokenContractAddress - Token合约地址
      */
-    async getTokenInfo(chainId, tokenContractAddress) {
-        this.ensureLoggedIn();
-        
-        try {
-            const provider = this.walletManager.getProvider(chainId);
-            const tokenContract = new ethers.Contract(tokenContractAddress, ERC20_ABI, provider);
-            
-            const [decimals, symbol, name] = await Promise.all([
-                tokenContract.decimals(),
-                tokenContract.symbol(),
-                tokenContract.name()
-            ]);
-            
-            const tokenInfo = {
-                address: tokenContractAddress,
-                decimals: decimals,
-                symbol: symbol,
-                name: name
-            };
-            
-            this.logger.info(`🪙 Token信息: ${symbol} (${name}) - ${decimals} decimals`);
-            return tokenInfo;
-            
-        } catch (error) {
-            this.logger.error('❌ 获取Token信息失败:', error.message);
-            throw error;
-        }
-    }
-
     async checkTokenBalance(chainId, tokenContractAddress) {
         this.ensureLoggedIn();
         
@@ -364,7 +348,7 @@ class ZKPayClient {
      * @param {number} chainId - 链ID
      * @param {string} tokenContractAddress - Token合约地址
      */
-    async checkTokenAllowance(chainId, tokenContractAddress, treasuryAddress) {
+    async checkTokenAllowance(chainId, tokenContractAddress) {
         this.ensureLoggedIn();
         
         try {
@@ -372,7 +356,7 @@ class ZKPayClient {
                 chainId,
                 tokenContractAddress,
                 this.currentUser.address,
-                treasuryAddress
+                this.getTreasuryAddress(chainId)
             );
             
             this.logger.info(`🔍 Token授权额度: ${result.formatted} ${result.symbol}`);
@@ -781,7 +765,8 @@ class ZKPayClient {
                 
                 const completionResult = await this.withdrawManager.waitForWithdrawCompletion(
                     checkId,
-                    300 // 5分钟超时
+                    300, // 5分钟超时
+                    this.currentUser.address
                 );
                 
                 return {
@@ -826,7 +811,7 @@ class ZKPayClient {
                 checkId,
                 // 提供状态监控方法
                 waitForCompletion: (maxWaitTime = 300) => {
-                    return this.withdrawManager.waitForWithdrawCompletion(checkId, maxWaitTime);
+                    return this.withdrawManager.waitForWithdrawCompletion(checkId, maxWaitTime, this.currentUser.address);
                 },
                 // 提供状态查询方法
                 checkStatus: () => {
@@ -835,7 +820,7 @@ class ZKPayClient {
                 // 提供等待并返回最终结果的方法
                 waitUntilCompleted: async (maxWaitTime = 300) => {
                     this.logger.info(`⏳ 开始等待提现完成 (最大等待时间: ${maxWaitTime}秒)...`);
-                    const completionResult = await this.withdrawManager.waitForWithdrawCompletion(checkId, maxWaitTime);
+                    const completionResult = await this.withdrawManager.waitForWithdrawCompletion(checkId, maxWaitTime, this.currentUser.address);
                     return {
                         ...proofResult,
                         checkId,
@@ -868,12 +853,27 @@ class ZKPayClient {
      * 获取Treasury合约地址
      */
     getTreasuryAddress(chainId) {
-        // 固定使用BSC的Treasury合约地址
-        if (chainId === 56) {
-            return '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8';
+        const treasuryAddress = this.treasuryContracts.get(chainId);
+        
+        if (!treasuryAddress) {
+            throw new Error(`链 ${chainId} 没有配置Treasury合约`);
         }
         
-        throw new Error(`链 ${chainId} 没有配置Treasury合约`);
+        return treasuryAddress;
+    }
+
+    /**
+     * 获取Token合约地址
+     */
+    getTokenAddress(chainId, tokenSymbol) {
+        const tokenKey = `${chainId}_${tokenSymbol}`;
+        const tokenAddress = this.tokenConfigs.get(tokenKey);
+        
+        if (!tokenAddress) {
+            throw new Error(`链 ${chainId} 的Token ${tokenSymbol} 没有配置合约地址`);
+        }
+        
+        return tokenAddress;
     }
 
     /**
@@ -898,17 +898,7 @@ class ZKPayClient {
      * 获取支持的链列表
      */
     getSupportedChains() {
-        // 固定返回BSC作为管理链
-        return [
-            {
-                chain_id: 56,
-                name: 'BSC Mainnet',
-                rpc_url: 'https://bsc-dataseed1.binance.org',
-                contracts: {
-                    treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
-                }
-            }
-        ];
+        return Array.from(this.treasuryContracts.keys());
     }
 
     /**
@@ -941,7 +931,9 @@ class ZKPayClient {
         try {
             // 步骤1: 执行存款
             this.logger.info('📋 步骤1: 执行存款');
-            const depositResult = await this.deposit(chainId, tokenSymbol, amount);
+            const treasuryAddress = this.getTreasuryAddress(chainId);
+            const tokenAddress = this.getTokenAddress(chainId, tokenSymbol);
+            const depositResult = await this.deposit(chainId, tokenAddress, amount, treasuryAddress);
             
             // 步骤2: 等待后端检测存款
             this.logger.info('📋 步骤2: 等待后端检测存款');

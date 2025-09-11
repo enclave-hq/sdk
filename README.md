@@ -222,21 +222,169 @@ async function convenientFlow() {
 - `performFullDepositToCommitment(chainId, tokenSymbol, amount, allocations, options)`: 存款到承诺
 - `performFullCommitmentToWithdraw(checkbookId, recipientInfo, options)`: 承诺到提现
 
-## ⚙️ 初始化要求
+## ⚙️ 配置说明
+
+### 完整配置结构
 
 ```javascript
-// 只需要基本的服务配置
 const config = {
+    // 1. 服务配置
     services: {
         zkpay_backend: {
-            url: 'https://backend.zkpay.network',
-            timeout: 300000
+            url: 'https://backend.zkpay.network',    // 必需：ZKPay后端API地址
+            timeout: 300000                          // 必需：API请求超时时间(毫秒)
+        }
+    },
+
+    // 2. 区块链配置
+    blockchain: {
+        // 源链配置数组（管理链配置已移除，统一使用source_chains）
+        source_chains: [{
+            chain_id: 56,                           // 必需：源链ID
+            rpc_url: 'https://bsc-dataseed1.binance.org',  // 必需：RPC节点地址
+            contracts: {
+                treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'  // 必需：Treasury合约地址
+            },
+            tokens: {
+                test_usdt: {                          // Token配置
+                    address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',  // 必需：Token合约地址
+                    decimals: 6,                        // 必需：Token精度
+                    symbol: 'TUSDT',                    // 必需：Token符号
+                    token_id: 65535                     // 必需：Token ID
+                }
+            }
+        }]
+    },
+
+    // 3. 运行时配置
+    runtime: {
+        withdraw: {
+            default_recipient_address: '0x0848d929b9d35bfb7aa50641d392a4ad83e145ce',  // 可选：默认接收地址
+            max_wait_time: 300000                   // 必需：提现最大等待时间(毫秒)
+        },
+        deposit: {
+            confirmation_blocks: 3                  // 必需：存款确认区块数
+        },
+        proof_generation: {
+            max_wait_time: 300000                   // 必需：证明生成最大等待时间(毫秒)
+        }
+    },
+
+    // 4. 测试配置（可选）
+    test: {
+        users: {
+            default: {
+                private_key: '0x...'                // 可选：测试用户私钥
+            }
         }
     }
 };
+```
+
+### 配置架构优化说明
+
+**重构后的配置架构特点：**
+
+1. **参数化传递**：ZKPayClient和所有Manager都使用参数化配置，不再依赖复杂的config对象
+2. **职责分离**：WalletManager负责RPC连接，其他Manager负责业务逻辑
+3. **配置简化**：移除了management_chain配置，统一使用参数化Map结构
+4. **代码清晰**：只有一套配置方式，避免兼容性混乱
+
+**新的使用方式：**
+```javascript
+// 创建参数化配置
+const treasuryContracts = new Map([
+    [56, '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8']
+]);
+
+// Token配置：只需要配置地址，decimals和symbol从合约自动读取
+const tokenConfigs = new Map([
+    ['56_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309']
+]);
+
+// 创建客户端
+const client = new ZKPayClient(logger, {
+    apiConfig: {
+        baseURL: 'https://backend.zkpay.network',
+        timeout: 300000
+    },
+    treasuryContracts,
+    tokenConfigs,
+    confirmationBlocks: 3,
+    maxWaitTime: 300000,
+    defaultRecipientAddress: '0x0848d929b9d35bfb7aa50641d392a4ad83e145ce'
+});
+```
+
+### 最小配置
+
+对于基本功能，只需要以下最小配置：
+
+```javascript
+const client = new ZKPayClient(logger, {
+    apiConfig: {
+        baseURL: 'https://backend.zkpay.network',
+        timeout: 300000
+    }
+});
+```
+
+### 配置字段说明
+
+#### 必需字段
+- `apiConfig.baseURL` - ZKPay后端API地址
+- `apiConfig.timeout` - API请求超时时间
+
+#### 可选字段
+- `treasuryContracts` - Treasury合约地址Map (chainId -> address)
+- `tokenConfigs` - Token地址Map (chainId_symbol -> tokenAddress)
+- `confirmationBlocks` - 存款确认区块数 (默认: 3)
+- `maxWaitTime` - 最大等待时间 (默认: 300000ms)
+- `defaultRecipientAddress` - 默认接收地址
+
+#### Token配置说明
+Token配置只需要提供合约地址，其他信息（decimals、symbol、name）会自动从合约中读取：
+
+**配置格式**：`chainId_symbol -> tokenAddress`
+```javascript
+const tokenConfigs = new Map([
+    ['56_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309'],  // BSC上的测试USDT
+    ['1_usdt', '0xdAC17F958D2ee523a2206206994597C13D831ec7'],        // Ethereum上的USDT
+    ['137_usdc', '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'],      // Polygon上的USDC
+    ['56_busd', '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56'],       // BSC上的BUSD
+    ['1_weth', '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2']         // Ethereum上的WETH
+]);
+```
+
+**优势**：
+- ✅ **简化配置**：只需要配置合约地址
+- ✅ **自动获取**：decimals、symbol、name从合约自动读取
+- ✅ **避免错误**：不会因为手动配置decimals导致精度错误
+- ✅ **支持任意Token**：只要是ERC20标准Token都可以使用
+
+### 初始化示例
+
+```javascript
+// 创建参数化配置
+const treasuryContracts = new Map([
+    [56, '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8']
+]);
+
+const tokenConfigs = new Map([
+    ['56_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309']
+]);
 
 // 初始化客户端
-const client = new ZKPayClient(config, logger);
+const client = new ZKPayClient(logger, {
+    apiConfig: {
+        baseURL: 'https://backend.zkpay.network',
+        timeout: 300000
+    },
+    treasuryContracts,
+    tokenConfigs,
+    confirmationBlocks: 3,
+    maxWaitTime: 300000
+});
 await client.initialize();
 
 // 登录用户（私钥通过参数传入，不存储在配置中）
@@ -389,7 +537,7 @@ echo "TEST_USER_PRIVATE_KEY=0x你的私钥" > .env
 cd examples
 
 # 运行基础功能测试
-node quick-client-library-test.js --config config.yaml
+node quick-client-library-test.js
 
 # 运行完整示例
 node zkpay-client-example.js --all
@@ -440,7 +588,6 @@ node zkpay-client-example.js --example example1
 
 - `ethers` - 以太坊交互
 - `axios` - HTTP 请求
-- `js-yaml` - 配置文件解析
 - `dotenv` - 环境变量管理
 - 现有的 logger 和 manager 组件
 
@@ -448,5 +595,4 @@ node zkpay-client-example.js --example example1
 
 - 原始 E2E 测试: `../zkpay-e2e-test.js`
 - 日志工具: `../logger.js`
-- 配置文件: `../config.yaml`
 - 使用示例: `examples/zkpay-client-example.js`

@@ -11,11 +11,19 @@ const TREASURY_ABI = [
 ];
 
 class ZKPayWithdrawManager {
-    constructor(config, walletManager, logger) {
-        this.config = config;
+    constructor(walletManager, logger, options = {}) {
         this.walletManager = walletManager;
         this.logger = logger || createLogger('WithdrawManager');
         this.apiClient = null;
+        
+        // 参数化配置
+        this.maxWaitTime = options.maxWaitTime || 300000;
+        this.apiConfig = options.apiConfig || {
+            baseURL: process.env.ZKPAY_API_URL || 'https://backend.zkpay.network',
+            timeout: parseInt(process.env.ZKPAY_API_TIMEOUT) || 300000
+        };
+        this.treasuryContracts = options.treasuryContracts || new Map();
+        this.tokenConfigs = options.tokenConfigs || new Map();
     }
 
     /**
@@ -25,12 +33,9 @@ class ZKPayWithdrawManager {
         this.logger.info('💸 初始化Withdraw管理器...');
         
         // 初始化API客户端
-        const apiUrl = process.env.ZKPAY_API_URL || 'https://backend.zkpay.network';
-        const timeout = parseInt(process.env.ZKPAY_API_TIMEOUT) || 300000;
-        
         this.apiClient = axios.create({
-            baseURL: apiUrl,
-            timeout: timeout,
+            baseURL: this.apiConfig.baseURL,
+            timeout: this.apiConfig.timeout,
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -199,13 +204,16 @@ class ZKPayWithdrawManager {
     /**
      * 等待提现完成 - 使用deposits/by-owner接口查询状态
      */
-    async waitForWithdrawCompletion(checkId, maxWaitTime = 180) {
+    async waitForWithdrawCompletion(checkId, maxWaitTime = 180, userAddress = null) {
         this.logger.info(`⏳ 等待提现完成 (最大等待时间: ${maxWaitTime}秒)...`);
         this.logger.info(`   Check ID: ${checkId}`);
 
         const startTime = Date.now();
         const pollInterval = 10000; // 10秒轮询一次
-        const OWNER_DATA = '0x0000000000000000000000006302a773ad151472bdc2340412716a883cffe434';
+        
+        // 使用传入的用户地址，如果没有则使用默认地址
+        const ownerAddress = userAddress || '0xaAf9CB43102654126aEff96a4AD25F23E7C969A2';
+        const OWNER_DATA = '0x000000000000000000000000' + ownerAddress.replace('0x', '').toLowerCase();
 
         while (Date.now() - startTime < maxWaitTime * 1000) {
             try {
@@ -318,16 +326,9 @@ class ZKPayWithdrawManager {
             }
 
             // 查找目标链的Treasury合约配置
-            let targetChainConfig = null;
-            if (targetChainId === this.config.blockchain.management_chain.chain_id) {
-                targetChainConfig = this.config.blockchain.management_chain;
-            } else {
-                targetChainConfig = this.config.blockchain.source_chains.find(
-                    chain => chain.chain_id === targetChainId
-                );
-            }
+            const treasuryAddress = this.treasuryContracts.get(targetChainId);
 
-            if (!targetChainConfig || !targetChainConfig.contracts?.treasury_contract) {
+            if (!treasuryAddress) {
                 this.logger.warn(`⚠️ 目标链 ${targetChainId} 没有配置Treasury合约，跳过事件验证`);
                 return {
                     verified: true,
@@ -339,7 +340,7 @@ class ZKPayWithdrawManager {
 
             // 创建Treasury合约实例来解析事件
             const treasuryContract = new ethers.Contract(
-                targetChainConfig.contracts.treasury_contract,
+                treasuryAddress,
                 TREASURY_ABI,
                 provider
             );
@@ -472,26 +473,18 @@ class ZKPayWithdrawManager {
 
         try {
             // 查找目标链配置
-            let targetChainConfig = null;
-            if (chainId === this.config.blockchain.management_chain.chain_id) {
-                targetChainConfig = this.config.blockchain.management_chain;
-            } else {
-                targetChainConfig = this.config.blockchain.source_chains.find(
-                    chain => chain.chain_id === chainId
-                );
-            }
+            const tokenKey = `${chainId}_${tokenSymbol}`;
+            const tokenAddress = this.tokenConfigs.get(tokenKey);
 
-            if (!targetChainConfig || !targetChainConfig.tokens[tokenSymbol]) {
+            if (!tokenAddress) {
                 this.logger.warn(`⚠️ 目标链 ${chainId} 不支持Token ${tokenSymbol}，跳过余额检查`);
                 return null;
             }
-
-            const tokenConfig = targetChainConfig.tokens[tokenSymbol];
             const provider = this.walletManager.getProvider(chainId);
 
             // 创建Token合约实例
             const tokenContract = new ethers.Contract(
-                tokenConfig.address,
+                tokenAddress,
                 [
                     "function balanceOf(address account) external view returns (uint256)",
                     "function decimals() external view returns (uint8)",
@@ -555,20 +548,21 @@ class ZKPayWithdrawManager {
             try {
                 if (recipientInfo.chain_id && recipientInfo.token_symbol) {
                     const provider = this.walletManager.getProvider(recipientInfo.chain_id);
-                    const targetChainConfig = this.config.blockchain.source_chains.find(
-                        chain => chain.chain_id === recipientInfo.chain_id
-                    ) || (this.config.blockchain.management_chain.chain_id === recipientInfo.chain_id ? 
-                        this.config.blockchain.management_chain : null);
+                    const tokenKey = `${recipientInfo.chain_id}_${recipientInfo.token_symbol}`;
+                    const tokenAddress = this.tokenConfigs.get(tokenKey);
                     
-                    if (targetChainConfig && targetChainConfig.tokens[recipientInfo.token_symbol]) {
-                        const tokenConfig = targetChainConfig.tokens[recipientInfo.token_symbol];
+                    if (tokenAddress) {
                         const tokenContract = new ethers.Contract(
-                            tokenConfig.address,
-                            ["function balanceOf(address account) external view returns (uint256)"],
+                            tokenAddress,
+                            [
+                                "function balanceOf(address account) external view returns (uint256)",
+                                "function decimals() external view returns (uint8)"
+                            ],
                             provider
                         );
                         beforeBalance = await tokenContract.balanceOf(recipientInfo.address);
-                        this.logger.info(`💰 目标地址初始余额: ${ethers.formatUnits(beforeBalance, tokenConfig.decimals)} ${recipientInfo.token_symbol}`);
+                        const decimals = await tokenContract.decimals();
+                        this.logger.info(`💰 目标地址初始余额: ${ethers.formatUnits(beforeBalance, decimals)} ${recipientInfo.token_symbol}`);
                     }
                 }
             } catch (error) {
@@ -669,7 +663,7 @@ class ZKPayWithdrawManager {
             const checkId = results.checkId;
             results.waitCompletion = await this.waitForWithdrawCompletion(
                 checkId, 
-                this.config.test_config.withdraw.max_wait_time
+                this.maxWaitTime
             );
 
             // 步骤4: 验证提现交易

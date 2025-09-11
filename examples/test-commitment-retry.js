@@ -7,7 +7,6 @@ require('dotenv').config();
 
 const { ZKPayClient } = require('../core/zkpay-client-library');
 const { createLogger } = require('../utils/logger');
-const yaml = require('js-yaml');
 const fs = require('fs');
 
 async function testCommitmentWithFailedCheckbook() {
@@ -26,17 +25,16 @@ async function testCommitmentWithFailedCheckbook() {
             throw new Error('请在.env文件中设置TEST_RECIPIENT_ADDRESS环境变量');
         }
 
-        // 加载配置
-        const configContent = fs.readFileSync('config.yaml', 'utf8');
-        const config = yaml.load(configContent);
-        
-        // 更新配置中的私钥
-        if (config.test_users && config.test_users.default) {
-            config.test_users.default.private_key = testPrivateKey;
-        }
+        // 使用参数化配置
+        const options = {
+            apiConfig: {
+                baseURL: process.env.ZKPAY_BACKEND_URL || 'https://backend.zkpay.network',
+                timeout: 300000
+            }
+        };
         
         // 创建客户端
-        const client = new ZKPayClient(config, logger);
+        const client = new ZKPayClient(logger, options);
         await client.initialize();
         
         // 登录

@@ -12,18 +12,16 @@ async function simpleTest() {
     console.log('🚀 开始简化测试...\n');
     
     try {
-        // 基本配置
-        const config = {
-            services: {
-                zkpay_backend: {
-                    url: process.env.ZKPAY_BACKEND_URL || 'https://backend.zkpay.network',
-                    timeout: 300000
-                }
+        // 参数化配置
+        const options = {
+            apiConfig: {
+                baseURL: process.env.ZKPAY_BACKEND_URL || 'https://backend.zkpay.network',
+                timeout: 300000
             }
         };
 
         // 创建客户端
-        const client = new ZKPayClient(config, logger);
+        const client = new ZKPayClient(logger, options);
         await client.initialize();
         console.log('✅ 客户端初始化成功');
 
@@ -36,13 +34,10 @@ async function simpleTest() {
         await client.login(privateKey);
         console.log('✅ 用户登录成功');
 
-        // 测试获取Token信息
+        // 测试检查Token余额（包含Token信息）
         const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309'; // BSC Testnet USDT
-        const tokenInfo = await client.getTokenInfo(56, tokenAddress);
-        console.log(`✅ Token信息: ${tokenInfo.symbol} (${tokenInfo.name}) - ${tokenInfo.decimals} decimals`);
-
-        // 测试检查余额
         const balance = await client.checkTokenBalance(56, tokenAddress);
+        console.log(`✅ Token信息: ${balance.symbol} (${balance.name}) - ${balance.decimals} decimals`);
         console.log(`✅ Token余额: ${balance.formatted} ${balance.symbol}`);
 
         console.log('\n🎉 所有测试通过！');

@@ -6,7 +6,6 @@
 // 加载环境变量
 require('dotenv').config();
 
-const yaml = require('js-yaml');
 const fs = require('fs');
 const path = require('path');
 const { ZKPayClient } = require('../core/zkpay-client-library');
@@ -19,6 +18,7 @@ class ZKPayClientExample {
     constructor(configFile) {
         this.configFile = configFile;
         this.config = null;
+        this.options = null;
         this.logger = createLogger('ZKPayExample');
         this.client = null;
     }
@@ -30,8 +30,8 @@ class ZKPayClientExample {
         // 直接使用环境变量创建配置
         this.createConfigFromEnv();
         
-        // 创建客户端
-        this.client = new ZKPayClient(this.config, this.logger);
+        // 创建客户端 - 使用新的参数化方式
+        this.client = new ZKPayClient(this.logger, this.options);
         
         // 初始化客户端
         await this.client.initialize();
@@ -48,88 +48,30 @@ class ZKPayClientExample {
             throw new Error('请在.env文件中设置TEST_PRIVATE_KEY环境变量');
         }
 
-        this.config = {
-            services: {
-                zkpay_backend: {
-                    url: 'https://backend.zkpay.network',
-                    timeout: 300000
-                }
+        // 创建参数化配置
+        const treasuryContracts = new Map([
+            [56, '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8']
+        ]);
+        
+        const tokenConfigs = new Map([
+            ['56_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309']
+        ]);
+
+        this.options = {
+            apiConfig: {
+                baseURL: process.env.ZKPAY_BACKEND_URL || 'https://backend.zkpay.network',
+                timeout: parseInt(process.env.ZKPAY_API_TIMEOUT) || 300000
             },
-            test_users: {
-                default: {
-                    private_key: testPrivateKey
-                }
-            },
-            blockchain: {
-                management_chain: {
-                    chain_id: 56,
-                    rpc_url: 'https://bsc-dataseed1.binance.org',
-                    contracts: {
-                        treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
-                    },
-                    tokens: {
-                        test_usdt: {
-                            address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',
-                            decimals: 6,
-                            symbol: 'TUSDT',
-                            token_id: 65535
-                        }
-                    }
-                },
-                source_chains: [{
-                    chain_id: 56,
-                    rpc_url: 'https://bsc-dataseed1.binance.org',
-                    contracts: {
-                        treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'
-                    },
-                    tokens: {
-                        test_usdt: {
-                            address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',
-                            decimals: 6,
-                            symbol: 'TUSDT',
-                            token_id: 65535
-                        }
-                    }
-                }]
-            },
-            test_config: {
-                withdraw: {
-                    default_recipient_address: process.env.TEST_RECIPIENT_ADDRESS || '0x0848d929b9d35bfb7aa50641d392a4ad83e145ce'
-                }
-            }
+            treasuryContracts,
+            tokenConfigs,
+            confirmationBlocks: parseInt(process.env.CONFIRMATION_BLOCKS) || 3,
+            maxWaitTime: parseInt(process.env.MAX_WAIT_TIME) || 300000,
+            defaultRecipientAddress: process.env.TEST_RECIPIENT_ADDRESS || '0x0848d929b9d35bfb7aa50641d392a4ad83e145ce'
         };
         
-        this.logger.info('✅ 从环境变量创建配置成功');
+        this.logger.info('✅ 从环境变量创建参数化配置成功');
     }
 
-    /**
-     * 加载配置文件（保留作为备用方法）
-     */
-    loadConfig() {
-        try {
-            const configPath = path.resolve(this.configFile);
-            const configContent = fs.readFileSync(configPath, 'utf8');
-            
-            // 处理环境变量替换
-            const processedContent = this.processEnvironmentVariables(configContent);
-            this.config = yaml.load(processedContent);
-            
-            this.logger.info('✅ 配置文件加载成功');
-        } catch (error) {
-            this.logger.error('❌ 配置文件加载失败:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * 处理配置文件中的环境变量
-     */
-    processEnvironmentVariables(content) {
-        return content.replace(/\${([^}]+)}/g, (match, envVar) => {
-            const [varName, defaultValue] = envVar.split(':-');
-            return process.env[varName] || defaultValue || match;
-        });
-    }
 
     // ==================== 基础操作示例 ====================
 
@@ -188,7 +130,9 @@ class ZKPayClientExample {
             }
             
             // 执行存款（包含授权）
-            const depositResult = await this.client.deposit(chainId, tokenSymbol, amount);
+            const treasuryAddress = '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8';
+            const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309';
+            const depositResult = await this.client.deposit(chainId, tokenAddress, amount, treasuryAddress);
             
             this.logger.info('✅ 存款成功:', {
                 txHash: depositResult.deposit.txHash,

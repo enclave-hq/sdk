@@ -26,18 +26,28 @@ class NewAPITest {
     async initialize() {
         console.log(chalk.blue('🔧 初始化新API测试...'));
         
-        // 基本配置（只需要后端服务URL）
-        const config = {
-            services: {
-                zkpay_backend: {
-                    url: process.env.ZKPAY_BACKEND_URL || 'https://backend.zkpay.network',
-                    timeout: 300000
-                }
-            }
+        // 参数化配置（包含Treasury合约配置）
+        const treasuryContracts = new Map([
+            [56, '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8']
+        ]);
+        
+        const tokenConfigs = new Map([
+            ['56_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309']
+        ]);
+
+        const options = {
+            apiConfig: {
+                baseURL: process.env.ZKPAY_BACKEND_URL || 'https://backend.zkpay.network',
+                timeout: 300000
+            },
+            treasuryContracts,
+            tokenConfigs,
+            confirmationBlocks: 3,
+            maxWaitTime: 300000
         };
 
         // 创建客户端
-        this.client = new ZKPayClient(config, this.logger);
+        this.client = new ZKPayClient(this.logger, options);
         await this.client.initialize();
         
         console.log(chalk.green('✅ 新API测试初始化完成'));
@@ -59,12 +69,12 @@ class NewAPITest {
                 return await this.client.login(privateKey);
             });
 
-            // 测试2: 获取Token信息
+            // 测试2: 获取Token信息（通过余额检查）
             await this.runTest('获取Token信息', async () => {
                 const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309'; // BSC Testnet USDT
-                const tokenInfo = await this.client.getTokenInfo(56, tokenAddress);
-                console.log(`Token: ${tokenInfo.symbol} (${tokenInfo.name}) - ${tokenInfo.decimals} decimals`);
-                return tokenInfo;
+                const balance = await this.client.checkTokenBalance(56, tokenAddress);
+                console.log(`Token: ${balance.symbol} (${balance.name}) - ${balance.decimals} decimals`);
+                return balance;
             });
 
             // 测试3: 检查Token余额

@@ -11,8 +11,8 @@ async function checkRpcUrls() {
     
     console.log('🔍 检查RPC URL配置...\n');
     
-    // 测试几个主要链的RPC URL
-    const testChains = [1, 56, 97, 137, 42161, 10];
+    // 只测试必要的链：714(BSC), 195(TRON), 60(ETH)
+    const testChains = [714, 195, 60];
     
     for (const chainId of testChains) {
         try {

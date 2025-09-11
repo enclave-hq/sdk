@@ -21,9 +21,11 @@ async function testCompleteFlow() {
                     timeout: 300000
                 }
             },
-            test_users: {
-                default: {
-                    private_key: '0x54120fa75dce78069ce21b0cf8ccf5ee0ef914c04837490321c5836498f3337b'
+            test: {
+                users: {
+                    default: {
+                        private_key: '0x54120fa75dce78069ce21b0cf8ccf5ee0ef914c04837490321c5836498f3337b'
+                    }
                 }
             },
             blockchain: {

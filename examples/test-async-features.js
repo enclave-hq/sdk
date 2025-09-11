@@ -3,26 +3,31 @@
  * 演示如何使用异步方法等待操作完成或超时
  */
 
+// 加载环境变量
+require('dotenv').config();
+
 const { ZKPayClient } = require('../core/zkpay-client-library');
-const yaml = require('js-yaml');
 const fs = require('fs');
 
 async function testAsyncFeatures() {
     try {
         console.log('🚀 ZKPay Client Library 异步功能测试\n');
 
-        // 1. 初始化客户端
-        const configContent = fs.readFileSync('./config.yaml', 'utf8');
-        const processedContent = configContent.replace(/\\\${([^}]+)}/g, (match, envVar) => {
-            const [varName, defaultValue] = envVar.split(':-');
-            return process.env[varName] || defaultValue || match;
-        });
-        const config = yaml.load(processedContent);
+        // 1. 初始化客户端（使用参数化配置）
+        const options = {
+            apiConfig: {
+                baseURL: process.env.ZKPAY_BACKEND_URL || 'https://backend.zkpay.network',
+                timeout: 300000
+            }
+        };
         
-        const client = new ZKPayClient(config);
+        const client = new ZKPayClient(null, options);
         await client.initialize();
         
-        const privateKey = Object.values(config.test_users)[0].private_key;
+        const privateKey = process.env.TEST_PRIVATE_KEY;
+        if (!privateKey) {
+            throw new Error('请设置环境变量 TEST_PRIVATE_KEY');
+        }
         await client.login(privateKey);
         
         console.log('✅ 客户端初始化完成\n');
@@ -90,11 +95,12 @@ async function testAsyncFeatures() {
             console.log(`📋 使用CheckBook: ${withCheckbookDeposit.checkbookId}\n`);
 
             // 异步提交提现（立即返回）
+            const recipientAddress = process.env.TEST_RECIPIENT_ADDRESS || '0x0848d929b9d35bfb7aa50641d392a4ad83e145ce';
             const withdrawResult = await client.generateProofAsync(
                 withCheckbookDeposit.checkbookId,
                 [{
                     recipient_chain_id: 56,
-                    recipient_address: config.test_config.withdraw.default_recipient_address,
+                    recipient_address: recipientAddress,
                     amount: "1800000"
                 }]
             );
