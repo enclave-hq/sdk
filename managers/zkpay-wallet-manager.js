@@ -2,12 +2,63 @@
 
 const { ethers } = require('ethers');
 const { createLogger } = require('../utils/logger');
+const { ISignerInterface, PrivateKeySignerAdapter } = require('../utils/kms-signer-interface');
+
+/**
+ * KMS钱包适配器
+ * 将KMS签名器包装成ethers兼容的钱包接口
+ */
+class KMSWalletAdapter {
+    constructor(signer, provider, address, logger) {
+        this.signer = signer;
+        this.provider = provider;
+        this.address = address;
+        this.logger = logger;
+    }
+
+    async signTransaction(transaction) {
+        const chainId = await this.provider.getNetwork().then(n => n.chainId);
+        return await this.signer.signTransaction(transaction, Number(chainId), this.address);
+    }
+
+    async sendTransaction(transaction) {
+        const signedTx = await this.signTransaction(transaction);
+        // 对于KMS签名器，signedTx已经是完整的签名交易字符串
+        // 使用broadcastTransaction而不是sendTransaction
+        try {
+            return await this.provider.broadcastTransaction(signedTx);
+        } catch (error) {
+            // 如果broadcastTransaction不存在，尝试sendTransaction
+            if (error.message && error.message.includes('broadcastTransaction')) {
+                this.logger.warn('⚠️ broadcastTransaction不可用，尝试使用sendTransaction');
+                return await this.provider.sendTransaction(signedTx);
+            }
+            throw error;
+        }
+    }
+
+    async estimateGas(transaction) {
+        return await this.provider.estimateGas({
+            ...transaction,
+            from: this.address
+        });
+    }
+
+    connect(provider) {
+        return new KMSWalletAdapter(this.signer, provider, this.address, this.logger);
+    }
+
+    getAddress() {
+        return this.address;
+    }
+}
 
 class ZKPayWalletManager {
     constructor(logger) {
         this.logger = logger || createLogger('WalletManager');
         this.wallets = new Map();
         this.providers = new Map();
+        this.signers = new Map(); // 存储签名器实例
         this.tronEnergyManager = null;
     }
 
@@ -145,14 +196,42 @@ class ZKPayWalletManager {
     }
 
     /**
-     * 设置用户钱包
+     * 设置用户钱包（传统方式，使用私钥）
      */
     setUserWallet(userName, wallet, address) {
         this.wallets.set(userName, {
             wallet: wallet,
             address: address
         });
+        
+        // 同时创建私钥签名器适配器
+        const signer = new PrivateKeySignerAdapter(wallet.privateKey, this.logger);
+        this.signers.set(userName, signer);
+        
         this.logger.debug(`👤 用户钱包已设置: ${userName} -> ${address}`);
+    }
+
+    /**
+     * 设置用户签名器（新方式，支持KMS）
+     * @param {string} userName - 用户名
+     * @param {ISignerInterface} signer - 签名器实例
+     * @param {string} address - 用户地址
+     */
+    setUserSigner(userName, signer, address) {
+        if (!(signer instanceof ISignerInterface)) {
+            throw new Error('签名器必须实现ISignerInterface接口');
+        }
+
+        this.signers.set(userName, signer);
+        
+        // 为了兼容性，也创建一个虚拟钱包对象
+        this.wallets.set(userName, {
+            wallet: null, // KMS模式下不需要真实钱包
+            address: address,
+            isKMSMode: true
+        });
+        
+        this.logger.info(`🔐 用户签名器已设置: ${userName} -> ${address} (KMS模式)`);
     }
 
     /**
@@ -172,7 +251,15 @@ class ZKPayWalletManager {
     getWalletForChain(chainId, userName = 'default') {
         const userWallet = this.getUserWallet(userName);
         
-        // 直接使用链ID获取提供者
+        // 检查是否为KMS模式
+        if (userWallet.isKMSMode) {
+            // KMS模式下返回特殊的钱包适配器
+            const provider = this.getProvider(chainId);
+            const signer = this.signers.get(userName);
+            return new KMSWalletAdapter(signer, provider, userWallet.address, this.logger);
+        }
+        
+        // 传统模式
         const provider = this.getProvider(chainId);
         const connectedWallet = userWallet.wallet.connect(provider);
         
@@ -205,6 +292,14 @@ class ZKPayWalletManager {
      * 签名消息
      */
     async signMessage(message, userName = 'default') {
+        const signer = this.signers.get(userName);
+        if (signer) {
+            // 使用签名器接口
+            const userWallet = this.getUserWallet(userName);
+            return await signer.signMessage(message, userWallet.address);
+        }
+        
+        // 回退到传统模式
         const userWallet = this.getUserWallet(userName);
         return await userWallet.wallet.signMessage(message);
     }
@@ -213,6 +308,14 @@ class ZKPayWalletManager {
      * 签名类型化数据
      */
     async signTypedData(domain, types, value, userName = 'default') {
+        const signer = this.signers.get(userName);
+        if (signer && signer.signTypedData) {
+            // 使用签名器接口（如果支持类型化数据签名）
+            const userWallet = this.getUserWallet(userName);
+            return await signer.signTypedData(domain, types, value, userWallet.address);
+        }
+        
+        // 回退到传统模式
         const userWallet = this.getUserWallet(userName);
         return await userWallet.wallet.signTypedData(domain, types, value);
     }

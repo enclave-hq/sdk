@@ -92,12 +92,13 @@ class ZKPayClientExample {
             });
             
             // 检查Token余额
+            const chainId = 714;  // SLIP44 BSC
             const testUsdtAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309';
-            const balance = await this.client.checkTokenBalance(56, testUsdtAddress);
+            const balance = await this.client.checkTokenBalance(chainId, testUsdtAddress);
             this.logger.info('💰 Token余额:', balance);
             
             // 检查授权额度
-            const allowance = await this.client.checkTokenAllowance(56, testUsdtAddress);
+            const allowance = await this.client.checkTokenAllowance(chainId, testUsdtAddress);
             this.logger.info('🔍 授权额度:', allowance);
             
             // 获取用户存款记录

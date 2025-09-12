@@ -231,6 +231,55 @@ class ZKPayClient {
     }
 
     /**
+     * 使用签名器登录（支持KMS）
+     * @param {ISignerInterface} signer - 签名器实例
+     * @param {string} userAddress - 用户地址
+     * @param {string} userName - 用户名（可选，默认为'default'）
+     */
+    async loginWithSigner(signer, userAddress, userName = 'default') {
+        this.logger.info('🔐 使用签名器设置用户钱包...');
+        
+        try {
+            // 验证签名器接口
+            const { ISignerInterface } = require('../utils/kms-signer-interface');
+            if (!(signer instanceof ISignerInterface)) {
+                throw new Error('签名器必须实现ISignerInterface接口');
+            }
+
+            // 验证签名器可用性
+            const isAvailable = await signer.isAvailable();
+            if (!isAvailable) {
+                throw new Error('签名器不可用');
+            }
+            
+            this.logger.info(`👤 用户地址: ${userAddress} (KMS模式)`);
+            
+            // 设置当前用户
+            this.isAuthenticated = true;
+            this.currentUser = {
+                address: userAddress,
+                signer: signer,
+                userName: userName,
+                isKMSMode: true
+            };
+            
+            // 将签名器设置到钱包管理器中
+            this.walletManager.setUserSigner(userName, signer, userAddress);
+            
+            this.logger.info(`✅ 用户签名器设置成功: ${userAddress} (KMS模式)`);
+            
+            return {
+                success: true,
+                address: userAddress,
+                isKMSMode: true
+            };
+        } catch (error) {
+            this.logger.error('❌ 设置用户签名器失败:', error.message);
+            throw error;
+        }
+    }
+
+    /**
      * 检查登录状态
      */
     isLoggedIn() {
@@ -388,10 +437,10 @@ class ZKPayClient {
             this.logger.info(`✅ 找到 ${deposits.length} 条存款记录`);
             
             // 调试：打印原始API响应结构
-            this.logger.info(`🔍 调试: deposits类型:`, typeof deposits);
-            this.logger.info(`🔍 调试: deposits长度:`, deposits.length);
+            this.logger.info(`🔍 调试: deposits类型: ${typeof deposits}`);
+            this.logger.info(`🔍 调试: deposits长度: ${deposits.length}`);
             if (deposits.length > 0) {
-                this.logger.info(`🔍 调试: deposits[0]类型:`, typeof deposits[0]);
+                this.logger.info(`🔍 调试: deposits[0]类型: ${typeof deposits[0]}`);
                 this.logger.info(`🔍 调试: deposits[0]内容:`, deposits[0]);
                 this.logger.info(`🔍 调试: 原始API响应结构:`, JSON.stringify(deposits[0], null, 2));
                 this.logger.info(`🔍 调试: deposits[0]的所有字段:`, Object.keys(deposits[0]));
@@ -586,7 +635,8 @@ class ZKPayClient {
             // 使用原始E2E测试的方法：直接调用commitmentManager的方法
             const result = await this.commitmentManager.submitCommitmentV2WithDepositInfo(
                 deposit.raw,  // 使用原始存款记录
-                this.currentUser.address
+                this.currentUser.address,
+                this.currentUser.userName
             );
             
             this.logger.info(`✅ Commitment提交成功: 状态 ${result.status}`);
@@ -642,7 +692,8 @@ class ZKPayClient {
             // 使用与同步方法相同的逻辑：调用commitmentManager的方法
             const result = await this.commitmentManager.submitCommitmentV2WithDepositInfo(
                 deposit.raw,  // 使用原始存款记录
-                this.currentUser.address
+                this.currentUser.address,
+                this.currentUser.userName
             );
             
             this.logger.info(`✅ Commitment提交成功（异步）: 状态 ${result.status}`);

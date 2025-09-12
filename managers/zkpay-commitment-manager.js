@@ -152,6 +152,7 @@ class ZKPayCommitmentManager {
                 // 查找匹配交易哈希的存款记录
                 const matchingDeposit = deposits.find(deposit => 
                     deposit.deposit_tx_hash && 
+                    typeof deposit.deposit_tx_hash === 'string' &&
                     deposit.deposit_tx_hash.toLowerCase() === txHash.toLowerCase()
                 );
 
@@ -248,11 +249,11 @@ class ZKPayCommitmentManager {
                     const updatedDeposit = await this.waitForDepositStatus(chainId, localDepositId, ['ready_for_commitment'], 180);
                     
                     // 状态变化后，直接提交 commitment
-                    return await this.submitCommitmentV2WithDepositInfo(updatedDeposit, userAddress);
+                    return await this.submitCommitmentV2WithDepositInfo(updatedDeposit, userAddress, 'kms-demo-user');
                     
                 case 'ready_for_commitment':
                     this.logger.info(`✅ 存款已准备好，直接提交Commitment...`);
-                    return await this.submitCommitmentV2WithDepositInfo(depositRecord, userAddress);
+                    return await this.submitCommitmentV2WithDepositInfo(depositRecord, userAddress, 'kms-demo-user');
                     
                 case 'with_checkbook':
                 case 'issued':
@@ -317,7 +318,7 @@ class ZKPayCommitmentManager {
     /**
      * 使用存款信息提交 Commitment V2 - 完整的签名和分配信息
      */
-    async submitCommitmentV2WithDepositInfo(depositRecord, userAddress) {
+    async submitCommitmentV2WithDepositInfo(depositRecord, userAddress, userName = 'default') {
         this.logger.info(`📤 提交 Commitment V2 (使用存款信息)...`);
         this.logger.info(`   存款ID: ${depositRecord.id}`);
         this.logger.info(`   Chain ID: ${depositRecord.chain_id}`);
@@ -345,28 +346,29 @@ class ZKPayCommitmentManager {
                 targetChainId
             );
 
-            const signature = await this.walletManager.signMessage(signatureMessage, 'default');
+            const signature = await this.walletManager.signMessage(signatureMessage, userName);
             this.logger.info(`✅ 签名生成成功: ${signature.slice(0, 20)}...`);
 
             // 3. 构建完整的V2请求 - 使用你提供的payload格式
+            
             const requestData = {
                 checkbook_id: depositRecord.checkbook_id,  // 使用正确的 checkbook_id 字段
                 chain_id: targetChainId,
-                local_deposit_id: depositRecord.local_deposit_id,
+                local_deposit_id: parseInt(depositRecord.local_deposit_id),  // 🔧 修复：使用正确的字段名和数值类型
                 allocations: [{
                     recipient_chain_id: targetChainId,
-                    recipient_address: await this.convertToUniversalAddress(targetChainId, finalRecipientAddress), // 保留0x前缀
+                    recipient_address: '0x' + await this.convertToUniversalAddress(targetChainId, finalRecipientAddress), // recipient_address需要0x前缀
                     amount: finalAmount || depositRecord.gross_amount,  // 如果 allocatable_amount 为空，使用 gross_amount
                     token_id: depositRecord.token_id  // 🔧 修复：直接使用存款记录中的正确token_id
                 }],
                 signature: {
                     chain_id: targetChainId,
-                    signature_data: signature.replace(/^0x/, ''),
+                    signature_data: signature.startsWith('0x') ? signature : `0x${signature}`,  // 🔧 修复：确保签名数据包含0x前缀
                     public_key: null
                 },
                 owner_address: {
                     chain_id: targetChainId,
-                    address: depositRecord.owner?.data || await this.convertToUniversalAddress(targetChainId, userAddress) // 保留0x前缀
+                    address: await this.convertToUniversalAddress(targetChainId, userAddress) // 使用Universal Address格式
                 },
                 token_symbol: this.getTokenSymbolById(depositRecord.token_id),
                 token_decimals: 18,
@@ -442,7 +444,10 @@ class ZKPayCommitmentManager {
             token_id: 65535  // TEST_USDT的正确Token ID
         }];
         
-        const depositId = depositRecord.local_deposit_id?.toString() || depositRecord.id;
+        // 将local_deposit_id转换为32字节十六进制格式用于签名消息
+        const depositId = depositRecord.local_deposit_id ? 
+            depositRecord.local_deposit_id.toString(16).padStart(64, '0') : 
+            depositRecord.id;
         const tokenSymbol = this.getTokenSymbolById(depositRecord.token_id);
         const tokenDecimals = 18;
         const ownerAddress = {
@@ -603,6 +608,17 @@ class ZKPayCommitmentManager {
             65535: "TUSDT"  // 特殊测试Token
         };
         return tokenMap[tokenId] || "TOKEN";
+    }
+
+    /**
+     * 根据 Token ID 获取小数位数
+     */
+    getTokenDecimalsById(tokenId) {
+        const decimalsMap = {
+            1: 6,      // USDT is 6 decimals
+            65535: 6   // TUSDT is also 6 decimals  
+        };
+        return decimalsMap[tokenId] || 18;
     }
 
     /**
@@ -908,8 +924,8 @@ class ZKPayCommitmentManager {
     async convertToUniversalAddress(chainId, address) {
         // 简单的地址转换 - 对于BSC等EVM链，转换为32字节格式
         const cleanAddress = address.replace(/^0x/, '').toLowerCase();
-        // 前12字节为0，后20字节为地址
-        return '0x' + '000000000000000000000000' + cleanAddress;
+        // 前12字节为0，后20字节为地址 - 后端期望不含0x前缀
+        return '000000000000000000000000' + cleanAddress;
     }
 
     /**
