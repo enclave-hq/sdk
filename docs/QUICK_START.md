@@ -19,8 +19,45 @@ await client.initialize();
 
 ### 3. 登录
 
+#### 方式1: 直接私钥登录
 ```javascript
 await client.login("0x你的私钥", "用户名");
+```
+
+#### 方式2: KMS签名器登录
+```javascript
+// 基础KMS配置
+const { ZKPayKMSSigner } = require("../utils/zkpay-kms-adapter");
+
+const kmsConfig = {
+    baseURL: 'http://localhost:18082',
+    keyAlias: 'my_bsc_key',
+    encryptedKey: 'encrypted_private_key_from_kms',
+    slip44Id: 714,  // BSC
+    address: '0x...',
+    defaultSignatureType: 'eip191'
+};
+
+const kmsSigner = new ZKPayKMSSigner(kmsConfig);
+await client.loginWithSigner(kmsSigner, kmsConfig.address);
+```
+
+#### 方式3: SAAS KMS登录
+```javascript
+// SAAS KMS配置
+const { SaasKMSSigner } = require("../utils/saas-kms-signer");
+
+const saasKmsConfig = {
+    kmsUrl: 'https://kms.your-saas.com',
+    enterpriseId: 'your_enterprise_id',
+    chainId: 714,
+    userAddress: '0x...',
+    keyAlias: 'enterprise_key',
+    k1Key: 'your_k1_key'
+};
+
+const saasSigner = new SaasKMSSigner(saasKmsConfig);
+await client.loginWithSigner(saasSigner, saasKmsConfig.userAddress);
 ```
 
 ### 4. 执行操作
@@ -116,12 +153,28 @@ const withdraw = await client.performFullCommitmentToWithdraw(
 
 ## 🧪 运行测试
 
+### 基础测试
 ```bash
 # 运行示例
 node zkpay-client-example.js --config config.yaml --all
 
 # 运行测试
 node test-zkpay-client.js --config config.yaml
+```
+
+### KMS集成测试
+```bash
+# KMS完整流程测试
+node kms-full-flow-example.js --amount 10.0
+
+# 使用提供的私钥进行KMS测试
+node kms-full-flow-example.js --use-provided-key --private-key 0x... --amount 10.0
+
+# KMS集成示例
+node zkpay-kms-integration-example.js
+
+# KMS密钥初始化示例
+node kms-key-initialization-example.js
 ```
 
 ## 📖 更多文档

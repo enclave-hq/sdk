@@ -1,18 +1,20 @@
-# ZKPay 端到端自动化测试工具
+# ZKPay SDK 文档中心
 
 ## 🎯 功能概述
 
-这是一个完整的 ZKPay 端到端自动化测试工具，能够从给定私钥开始，自动执行从 Token Approve、Deposit 到 Commitment 生成、Withdraw 的完整流程。
+ZKPay SDK 是一个完整的隐私支付解决方案，提供从私钥管理到跨链隐私转账的全套工具和服务。支持多种认证方式，包括直接私钥登录和企业级KMS集成。
 
 ### 核心功能
 
-1. **钱包管理** - 自动管理测试用户的私钥和多链钱包连接
+1. **钱包管理** - 支持直接私钥和KMS签名器的多种认证方式
 2. **存款流程** - 自动执行 Token 授权和存款操作
 3. **Commitment 流程** - 自动生成隐私证明和提交承诺
 4. **提现流程** - 自动生成提现证明和执行跨链提现
 5. **端到端测试** - 完整的工作流程自动化测试
 6. **压力测试** - 多用户并发测试支持
 7. **结果验证** - 自动验证交易结果和余额变化
+8. **KMS集成** - 企业级密钥管理系统支持
+9. **多链支持** - 支持多个区块链网络的统一管理
 
 ## 🏗️ 系统架构
 
@@ -52,8 +54,8 @@
 ### 1. 环境准备
 
 ```bash
-# 克隆到e2e-automation目录
-cd /Users/qizhongzhu/zkpay/e2e-automation
+# 进入zksdk目录
+cd zksdk
 
 # 安装依赖
 npm install
@@ -64,6 +66,7 @@ npm run check-env
 
 ### 2. 配置设置
 
+#### 基础配置
 复制并编辑环境变量配置：
 
 ```bash
@@ -72,6 +75,37 @@ cp env.example .env
 ```
 
 编辑 `config.yaml` 文件，根据你的测试环境调整配置。
+
+#### KMS配置
+对于企业用户，可以配置KMS服务：
+
+**环境变量方式：**
+```bash
+# SAAS KMS配置
+export SAAS_KMS_URL="https://kms.your-saas.com"
+export SAAS_ENTERPRISE_ID="your_enterprise_id"
+export SAAS_K1_KEY="your_k1_key"
+export SAAS_USER_ADDRESS="0x..."
+export SAAS_KEY_ALIAS="enterprise_key"
+```
+
+**配置文件方式：**
+创建 `kms-config.json` 文件：
+```json
+{
+  "kms": {
+    "type": "saas",
+    "config": {
+      "kmsUrl": "https://kms.your-saas.com",
+      "enterpriseId": "your_enterprise_id",
+      "chainId": 714,
+      "userAddress": "0x...",
+      "keyAlias": "enterprise_key",
+      "k1Key": "your_k1_key"
+    }
+  }
+}
+```
 
 ### 3. 运行测试
 

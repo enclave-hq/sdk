@@ -136,8 +136,7 @@ class ZKPayClientExample {
             const depositResult = await this.client.deposit(chainId, tokenAddress, amount, treasuryAddress);
             
             this.logger.info('✅ 存款成功:', {
-                txHash: depositResult.deposit.txHash,
-                depositId: depositResult.deposit.depositEvent?.depositId
+                txHash: depositResult.deposit.txHash
             });
             
             // 等待后端检测存款

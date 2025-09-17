@@ -2,6 +2,7 @@
 
 const axios = require('axios');
 const { createLogger } = require('../utils/logger');
+const AddressFormatter = require('../utils/address-formatter');
 
 class ZKPayCommitmentManager {
     constructor(walletManager, logger, options = {}) {
@@ -146,8 +147,16 @@ class ZKPayCommitmentManager {
 
         while (Date.now() - startTime < maxWaitTime * 1000) {
             try {
+                this.logger.info(`🔄 轮询存款记录 (第${Math.floor((Date.now() - startTime) / pollInterval) + 1}次)...`);
+                
                 // 查询用户的存款记录
                 const deposits = await this.getUserDeposits(userAddress, 714); // 使用SLIP-44链ID
+                
+                this.logger.info(`📋 查询到 ${deposits.length} 条存款记录`);
+                if (deposits.length > 0) {
+                    this.logger.info(`🔍 最新存款交易哈希: ${deposits[0].deposit_tx_hash}`);
+                    this.logger.info(`🎯 目标交易哈希: ${txHash}`);
+                }
                 
                 // 查找匹配交易哈希的存款记录
                 const matchingDeposit = deposits.find(deposit => 
@@ -164,11 +173,13 @@ class ZKPayCommitmentManager {
                     return matchingDeposit;
                 }
 
+                this.logger.info(`⏳ 未找到匹配记录，等待${pollInterval/1000}秒后重试...`);
                 // 等待下次轮询
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
                 
             } catch (error) {
                 this.logger.warn(`⚠️ 轮询存款记录时出错: ${error.message}`);
+                this.logger.warn(`⚠️ 错误详情: ${error.response?.data || error.stack}`);
                 await new Promise(resolve => setTimeout(resolve, pollInterval));
             }
         }
@@ -192,34 +203,47 @@ class ZKPayCommitmentManager {
             const cleanAddress = userAddress.replace(/^0x/, '').toLowerCase().padStart(40, '0');
             const ownerData = '0x' + '0'.repeat(24) + cleanAddress;
             
-            this.logger.debug(`🔍 API查询参数: chain_id=${backendChainId}, owner_data=${ownerData}`);
+            this.logger.info(`🔍 API查询参数: chain_id=${backendChainId}, owner_data=${ownerData}`);
             
-            const response = await this.apiClient.get('/api/v2/deposits/by-owner', {
-                params: {
-                    chain_id: backendChainId,
-                    owner_data: ownerData,
-                    page: 1,
-                    size: 20, // 增加查询数量，确保包含最新记录
-                    deleted: false,
-                    sort: 'created_at',
-                    order: 'desc' // 按创建时间倒序，最新的在前面
-                }
-            });
+            const apiUrl = '/api/v2/deposits/by-owner';
+            const params = {
+                chain_id: backendChainId,
+                owner_data: ownerData,
+                page: 1,
+                size: 20, // 增加查询数量，确保包含最新记录
+                deleted: false,
+                sort: 'created_at',
+                order: 'desc' // 按创建时间倒序，最新的在前面
+            };
+            
+            this.logger.info(`🌐 完整API调用: ${this.apiConfig.baseURL}${apiUrl}?${new URLSearchParams(params).toString()}`);
+            
+            const response = await this.apiClient.get(apiUrl, { params });
             
             const result = response.data;
-            this.logger.debug(`✅ 查询成功，找到 ${result.data ? result.data.length : 0} 条存款记录`);
+            this.logger.info(`✅ API响应状态: ${response.status}`);
+            this.logger.info(`📊 查询结果: 找到 ${result.data ? result.data.length : 0} 条存款记录`);
+            
+            if (result.error) {
+                this.logger.error(`❌ API返回错误: ${result.error}`);
+                throw new Error(`API错误: ${result.error}`);
+            }
             
             // 打印每个存款记录的 checkbook_id（仅在debug模式）
             if (result.data && result.data.length > 0) {
                 result.data.forEach((deposit, index) => {
-                    this.logger.debug(`📋 存款 ${index + 1}: checkbook_id=${deposit.checkbook_id}, local_deposit_id=${deposit.local_deposit_id}, status=${deposit.status}`);
+                    this.logger.info(`📋 存款 ${index + 1}: tx=${deposit.deposit_tx_hash}, status=${deposit.status}, created=${deposit.created_at}`);
                 });
+            } else {
+                this.logger.warn(`⚠️ 未找到任何存款记录`);
+                this.logger.info(`🔍 响应结构: ${JSON.stringify(result, null, 2)}`);
             }
             
             return result.data || [];
 
         } catch (error) {
             this.logger.error(`❌ 查询用户存款失败:`, error.response?.data || error.message);
+            this.logger.error(`❌ 错误详情: ${JSON.stringify(error.response?.data || error.message, null, 2)}`);
             throw error;
         }
     }
@@ -357,7 +381,7 @@ class ZKPayCommitmentManager {
                 local_deposit_id: parseInt(depositRecord.local_deposit_id),  // 🔧 修复：使用正确的字段名和数值类型
                 allocations: [{
                     recipient_chain_id: targetChainId,
-                    recipient_address: '0x' + await this.convertToUniversalAddress(targetChainId, finalRecipientAddress), // recipient_address需要0x前缀
+                    recipient_address: AddressFormatter.toUniversalAddress(targetChainId, finalRecipientAddress), // 使用统一的地址格式化工具
                     amount: finalAmount || depositRecord.gross_amount,  // 如果 allocatable_amount 为空，使用 gross_amount
                     token_id: depositRecord.token_id  // 🔧 修复：直接使用存款记录中的正确token_id
                 }],
@@ -368,7 +392,7 @@ class ZKPayCommitmentManager {
                 },
                 owner_address: {
                     chain_id: targetChainId,
-                    address: await this.convertToUniversalAddress(targetChainId, userAddress) // 使用Universal Address格式
+                    address: AddressFormatter.toUniversalAddress(targetChainId, userAddress) // 使用统一的地址格式化工具
                 },
                 token_symbol: this.getTokenSymbolById(depositRecord.token_id),
                 token_decimals: 18,
@@ -481,10 +505,19 @@ class ZKPayCommitmentManager {
      * 完整签名消息生成 - 与webserver的generateSignMessage完全一致
      */
     generateFullSignMessage(allocations, depositId, tokenSymbol, tokenDecimals, ownerAddress, lang = 2) {
-        // 1. 将depositId转换为32字节数组然后转回大整数（模拟webserver的formatDepositId）
-        const formatDepositId = (id) => {
-            // 简化版本：直接返回数字字符串
-            return id.toString();
+        // 1. 将depositId转换为32字节数组然后转回大整数（与webserver的formatDepositId完全一致）
+        const formatDepositId = (depositIdHex) => {
+            // 移除0x前缀并左填充到64位十六进制（32字节）
+            const cleanHex = depositIdHex.replace(/^0x/, '').padStart(64, '0');
+            
+            // 转换为BigInt并返回十进制字符串
+            let result = BigInt(0);
+            for (let i = 0; i < 32; i++) {
+                const byteValue = parseInt(cleanHex.substr(i * 2, 2), 16);
+                result = result << BigInt(8);
+                result = result | BigInt(byteValue);
+            }
+            return result.toString();
         };
         
         // 2. 格式化金额（模拟webserver的formatAmount，假设18位小数）
@@ -511,15 +544,24 @@ class ZKPayCommitmentManager {
                 throw new Error(`无效地址参数: ${address}, 类型: ${typeof address}`);
             }
             
-            if (chainId === 714 || chainId === 60 || chainId === 966) {
-                // Ethereum系链：确保0x前缀
-                chainAddress = address.startsWith('0x') ? address : `0x${address}`;
-            } else if (chainId === 195) {
-                // TRON：Base58格式
-                chainAddress = address;
+            // 检查是否是Universal Address格式 (64字符长度，前24个字符为0)
+            const cleanAddress = address.replace(/^0x/, '');
+            if (cleanAddress.length === 64 && cleanAddress.startsWith('000000000000000000000000')) {
+                // 这是Universal Address，需要转换为链特定格式
+                chainAddress = AddressFormatter.fromUniversalAddress(address);
+                console.log(`[DEBUG] 转换Universal Address: ${address} -> ${chainAddress}`);
             } else {
-                // 默认使用以太坊格式
-                chainAddress = address.startsWith('0x') ? address : `0x${address}`;
+                // 这是普通地址，直接格式化
+                if (chainId === 714 || chainId === 60 || chainId === 966) {
+                    // Ethereum系链：确保0x前缀
+                    chainAddress = address.startsWith('0x') ? address : `0x${address}`;
+                } else if (chainId === 195) {
+                    // TRON：Base58格式
+                    chainAddress = address;
+                } else {
+                    // 默认使用以太坊格式
+                    chainAddress = address.startsWith('0x') ? address : `0x${address}`;
+                }
             }
             
             // 与universal_address.rs第193行完全一致的格式
@@ -878,7 +920,7 @@ class ZKPayCommitmentManager {
         
         try {
             // 转换地址为universal格式
-            const universalAddress = await this.convertToUniversalAddress(chainId, ownerAddress);
+            const universalAddress = AddressFormatter.toUniversalAddress(chainId, ownerAddress);
             
             const params = new URLSearchParams({
                 chain_id: chainId.toString(),
@@ -918,15 +960,7 @@ class ZKPayCommitmentManager {
         }
     }
 
-    /**
-     * 转换地址为Universal Address格式
-     */
-    async convertToUniversalAddress(chainId, address) {
-        // 简单的地址转换 - 对于BSC等EVM链，转换为32字节格式
-        const cleanAddress = address.replace(/^0x/, '').toLowerCase();
-        // 前12字节为0，后20字节为地址 - 后端期望不含0x前缀
-        return '000000000000000000000000' + cleanAddress;
-    }
+    // 已移除 convertToUniversalAddress 函数，统一使用 AddressFormatter.toUniversalAddress
 
     /**
      * 通过链ID和本地存款ID获取存款状态

@@ -4,6 +4,7 @@
 const axios = require('axios');
 const { ethers } = require('ethers');
 const { createLogger } = require('../utils/logger');
+const AddressFormatter = require('../utils/address-formatter');
 
 // 导入现有的管理器
 const { ZKPayWalletManager } = require('../managers/zkpay-wallet-manager');
@@ -786,7 +787,7 @@ class ZKPayClient {
             local_deposit_id: deposit.localDepositId,
             allocations: allocations.map(allocation => ({
                 recipient_chain_id: allocation.recipient_chain_id,
-                recipient_address: this.convertToUniversalAddress(allocation.recipient_chain_id, allocation.recipient_address), // 保留32字节格式
+                recipient_address: AddressFormatter.toUniversalAddress(allocation.recipient_chain_id, allocation.recipient_address), // 使用统一的地址格式化工具
                 amount: allocation.amount,
                 token_id: deposit.tokenId
             })),
@@ -797,7 +798,7 @@ class ZKPayClient {
             },
             owner_address: {
                 chain_id: 714,
-                address: deposit.raw.owner?.data || this.convertToUniversalAddress(714, this.currentUser.address) // 保留32字节格式
+                address: deposit.raw.owner?.data || AddressFormatter.toUniversalAddress(714, this.currentUser.address) // 使用统一的地址格式化工具
             },
             token_symbol: deposit.tokenSymbol,
             token_decimals: 18,
@@ -1140,13 +1141,7 @@ class ZKPayClient {
         return deposit.checks[0].id;
     }
 
-    /**
-     * 转换地址为Universal Address格式
-     */
-    convertToUniversalAddress(chainId, address) {
-        const cleanAddress = address.replace(/^0x/, '').toLowerCase();
-        return '0x' + '000000000000000000000000' + cleanAddress;
-    }
+    // 已移除 convertToUniversalAddress 函数，统一使用 AddressFormatter.toUniversalAddress
 
     // ==================== 10. 等待状态变化 ====================
 

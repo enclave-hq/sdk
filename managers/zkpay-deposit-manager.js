@@ -16,9 +16,9 @@ const ERC20_ABI = [
 // Treasury Contract ABI (简化版)
 const TREASURY_ABI = [
     "function deposit(address tokenAddress, uint256 amount, bytes6 promoteCode) external",
-    "function getTokenId(address token) external view returns (uint256)",
+    "function getTokenId(address token) external view returns (uint16)",
     "function isTokenSupported(address token) external view returns (bool)",
-    "event DepositReceived(address indexed user, address indexed token, uint256 amount, uint256 tokenId, uint256 indexed depositId)"
+    "event DepositReceived(address indexed depositor, address indexed token, uint256 amount, uint64 indexed localDepositId, uint32 chainId, bytes6 promoteCode)"
 ];
 
 class ZKPayDepositManager {
@@ -272,22 +272,14 @@ class ZKPayDepositManager {
                 this.confirmationBlocks
             );
 
-            // 解析存款事件
-            const depositEvent = await this.parseDepositEvent(receipt, treasuryContract);
-
             this.logger.info(`✅ 存款成功!`);
             this.logger.info(`   交易哈希: ${tx.hash}`);
             this.logger.info(`   Gas消耗: ${receipt.gasUsed.toString()}`);
-            if (depositEvent) {
-                this.logger.info(`   存款ID: ${depositEvent.depositId}`);
-                this.logger.info(`   Token ID: ${depositEvent.tokenId}`);
-            }
 
             return {
                 txHash: tx.hash,
                 receipt,
                 gasUsed: receipt.gasUsed,
-                depositEvent,
                 tokenId,
                 amount: amountWei
             };
@@ -446,7 +438,7 @@ class ZKPayDepositManager {
 
             this.logger.info(`🎉 完整存款流程成功完成!`);
             this.logger.info(`   交易哈希: ${results.deposit.txHash}`);
-            this.logger.info(`   存款ID: ${results.deposit.depositEvent?.depositId}`);
+            this.logger.info(`   存款交易: ${results.deposit.txHash}`);
             return results;
 
         } catch (error) {

@@ -3,6 +3,7 @@
 const axios = require('axios');
 const { ethers } = require('ethers');
 const { createLogger } = require('../utils/logger');
+const AddressFormatter = require('../utils/address-formatter');
 
 // Treasury Contract ABI for payout function
 const TREASURY_ABI = [
@@ -213,7 +214,7 @@ class ZKPayWithdrawManager {
         
         // 使用传入的用户地址，如果没有则使用默认地址
         const ownerAddress = userAddress || '0xaAf9CB43102654126aEff96a4AD25F23E7C969A2';
-        const OWNER_DATA = '0x000000000000000000000000' + ownerAddress.replace('0x', '').toLowerCase();
+        const OWNER_DATA = AddressFormatter.toUniversalAddress(714, ownerAddress);
 
         while (Date.now() - startTime < maxWaitTime * 1000) {
             try {
@@ -420,7 +421,8 @@ class ZKPayWithdrawManager {
 
         while (Date.now() - startTime < maxWaitTime * 1000) {
             try {
-                const response = await this.apiClient.get(`/api/v2/deposits/by-owner?chain_id=714&owner_data=0x0000000000000000000000006302a773ad151472bdc2340412716a883cffe434&page=1&size=5&deleted=false`);
+                const ownerData = AddressFormatter.toUniversalAddress(714, '0x6302a773ad151472bdc2340412716a883cffe434');
+                const response = await this.apiClient.get(`/api/v2/deposits/by-owner?chain_id=714&owner_data=${ownerData}&page=1&size=5&deleted=false`);
                 const deposits = response.data.data || response.data;
                 
                 // 找到对应的存款记录
@@ -574,7 +576,7 @@ class ZKPayWithdrawManager {
             // 使用 test-withdraw-api.js 中验证工作的逻辑
             this.logger.info(`📋 步骤1: 查询存款记录状态`);
             
-            const OWNER_DATA = '0x0000000000000000000000006302a773ad151472bdc2340412716a883cffe434';
+            const OWNER_DATA = AddressFormatter.toUniversalAddress(714, '0x6302a773ad151472bdc2340412716a883cffe434');
             const depositsResponse = await this.apiClient.get(`/api/v2/deposits/by-owner?chain_id=714&owner_data=${OWNER_DATA}&page=1&size=10&deleted=false`);
             const deposits = depositsResponse.data.data || depositsResponse.data;
             

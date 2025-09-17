@@ -66,10 +66,10 @@ class ZKPayKMSSigner extends ISignerInterface {
             
             const response = await this.client.post('/api/v1/sign', {
                 key_alias: this.config.keyAlias,
-                encrypted_key: this.config.encryptedKey,
-                data_to_sign: messageHex, // 使用十六进制格式
+                k1: this.config.encryptedKey, // 使用正确的参数名称
+                data: messageHex, // 使用正确的数据字段名
                 slip44_id: slip44Id, // 使用正确的SLIP44 ID字段
-                signature_type: this.config.defaultSignatureType
+                signature_type: this.config.defaultSignatureType || 'eip191'
             });
 
             if (!response.data.success) {
@@ -129,27 +129,44 @@ class ZKPayKMSSigner extends ISignerInterface {
                 throw new Error('交易gasLimit不能为空');
             }
 
-            const signRequest = {
-                key_alias: this.config.keyAlias,
-                encrypted_key: this.config.encryptedKey,
-                slip44_id: this.config.slip44Id,
+            // 根据KMS文档，需要序列化交易并计算哈希
+            // ethers已在文件顶部导入
+            
+            // 构建标准的ethers交易对象
+            const txData = {
                 to: transaction.to,
                 value: typeof transaction.value === 'bigint' ? transaction.value.toString() : (transaction.value || '0'),
                 data: transaction.data || '0x',
+                gasLimit: typeof transaction.gasLimit === 'bigint' ? transaction.gasLimit.toString() : transaction.gasLimit.toString(),
+                gasPrice: typeof transaction.gasPrice === 'bigint' ? transaction.gasPrice.toString() : transaction.gasPrice.toString(),
                 nonce: typeof transaction.nonce === 'bigint' ? Number(transaction.nonce) : Number(transaction.nonce),
-                gas_limit: typeof transaction.gasLimit === 'bigint' ? Number(transaction.gasLimit) : Number(transaction.gasLimit),
-                gas_price: typeof transaction.gasPrice === 'bigint' ? transaction.gasPrice.toString() : transaction.gasPrice.toString()
+                chainId: this.getEvmChainId(this.config.slip44Id) // 转换为EVM链ID
+            };
+
+            // 序列化交易并计算哈希 (ethers v6兼容)
+            const serializedTx = ethers.Transaction.from(txData).unsignedSerialized;
+            const txHash = ethers.keccak256(serializedTx);
+            
+            this.logger.info('📋 交易序列化信息:');
+            this.logger.info(`  序列化交易: ${serializedTx}`);
+            this.logger.info(`  交易哈希: ${txHash}`);
+
+            const signRequest = {
+                key_alias: this.config.keyAlias,
+                k1: this.config.encryptedKey, // 使用正确的参数名称
+                data: txHash, // 发送交易哈希而不是交易参数
+                slip44_id: this.config.slip44Id,
+                signature_type: 'transaction', // 明确指定为交易签名
+                tx_hash: txHash // 用于审计日志
             };
 
             this.logger.info('📡 向KMS发送交易签名请求:');
             this.logger.info(`  key_alias: ${signRequest.key_alias}`);
             this.logger.info(`  slip44_id: ${signRequest.slip44_id}`);
-            this.logger.info(`  to: ${signRequest.to}`);
-            this.logger.info(`  value: ${signRequest.value}`);
-            this.logger.info(`  nonce: ${signRequest.nonce} (${typeof signRequest.nonce})`);
-            this.logger.info(`  gas_limit: ${signRequest.gas_limit} (${typeof signRequest.gas_limit})`);
-            this.logger.info(`  gas_price: ${signRequest.gas_price} (${typeof signRequest.gas_price})`);
-            const response = await this.client.post('/api/v1/sign/transaction', signRequest, {
+            this.logger.info(`  data (txHash): ${signRequest.data}`);
+            this.logger.info(`  signature_type: ${signRequest.signature_type}`);
+            
+            const response = await this.client.post('/api/v1/sign', signRequest, {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Service-Key': 'zkpay-service-key-zksdk',
@@ -161,9 +178,18 @@ class ZKPayKMSSigner extends ISignerInterface {
                 throw new Error(`KMS交易签名失败: ${response.data.error}`);
             }
 
-            this.logger.info('✅ KMS交易签名成功');
-            this.logger.info(`📦 签名交易数据: ${response.data.raw_transaction?.slice(0, 20)}...`);
-            return response.data.raw_transaction;
+            const signature = response.data.signature;
+            this.logger.info(`✅ KMS交易签名成功: ${signature.slice(0, 20)}...`);
+
+            // 根据KMS文档，签名返回格式为十六进制字符串，需要与原始交易数据组合 (ethers v6兼容)
+            const tx = ethers.Transaction.from(txData);
+            // 确保签名有0x前缀
+            const formattedSignature = signature.startsWith('0x') ? signature : '0x' + signature;
+            tx.signature = ethers.Signature.from(formattedSignature);
+            const signedTx = tx.serialized;
+            this.logger.info(`📦 完整签名交易: ${signedTx.slice(0, 50)}...`);
+            
+            return signedTx;
 
         } catch (error) {
             this.logger.error(`❌ KMS交易签名失败: ${error.response?.data?.error || error.message}`);
@@ -248,6 +274,17 @@ class ZKPayKMSSigner extends ISignerInterface {
         };
         
         return chainMap[slip44Id] || { name: `Chain-${slip44Id}`, evmChainId: slip44Id };
+    }
+
+    /**
+     * 获取EVM链ID（用于交易签名）
+     */
+    getEvmChainId(slip44Id) {
+        const chainInfo = this.getChainInfo(slip44Id);
+        if (chainInfo.evmChainId === null) {
+            throw new Error(`链 ${slip44Id} 不支持EVM交易签名`);
+        }
+        return chainInfo.evmChainId;
     }
 }
 

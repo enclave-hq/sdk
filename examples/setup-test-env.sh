@@ -50,7 +50,7 @@ case $choice in
         ;;
     3)
         echo -e "${YELLOW}⚠️  使用默认测试私钥（仅用于演示）${NC}"
-        PRIVATE_KEY="0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+        PRIVATE_KEY="your_private_key"
         ;;
     *)
         echo -e "${RED}❌ 无效选择${NC}"
@@ -107,5 +107,3 @@ echo "- 私钥已保存在.env文件中，请妥善保管"
 echo ""
 echo -e "${BLUE}如需重新设置，请运行：${NC}"
 echo "   ./setup-test-env.sh"
-
-

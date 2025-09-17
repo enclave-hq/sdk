@@ -26,13 +26,100 @@ ZKPay SDK
 
 ## 🔄 完整业务流程
 
-### 1. 初始化
+### 1. 初始化和认证
 
 ```javascript
 const { ZKPayClient } = require('./core/zkpay-client-library');
 const client = new ZKPayClient(config, logger);
 await client.initialize();
-await client.login(privateKey); // 设置用户钱包
+
+// 方式1: 使用私钥登录
+await client.login(privateKey);
+
+// 方式2: 使用KMS签名器登录
+const kmsSigner = new ZKPayKMSSigner(kmsConfig);
+await client.loginWithSigner(kmsSigner, userAddress);
+```
+
+### API流程概览
+
+ZKPay的完整API流程包含以下关键步骤：
+
+```
+1. 认证登录 → 2. 存款检测 → 3. 承诺分配 → 4. 证明生成 → 5. 提现完成
+     ↓              ↓              ↓              ↓              ↓
+  登录后端        检测链上交易     创建分配签名     生成ZK证明     执行链上提现
+```
+
+#### 详细API调用流程
+
+**阶段1: 初始化和认证**
+```javascript
+// 1.1 初始化客户端
+await client.initialize();
+
+// 1.2 用户认证 (二选一)
+await client.login(privateKey);  // 直接私钥登录
+// 或
+await client.loginWithSigner(kmsSigner, userAddress);  // KMS签名器登录
+```
+
+**阶段2: 存款操作**
+```javascript
+// 2.1 检查Token余额和授权
+const balance = await client.checkTokenBalance(chainId, tokenAddress);
+const allowance = await client.checkTokenAllowance(chainId, tokenAddress, treasuryAddress);
+
+// 2.2 授权Token (如果需要)
+if (allowance.balance < requiredAmount) {
+    await client.approveToken(chainId, tokenAddress, amount, treasuryAddress);
+}
+
+// 2.3 执行存款
+const depositResult = await client.deposit(chainId, tokenAddress, amount, treasuryAddress);
+
+// 2.4 等待后端检测存款
+const depositRecord = await client.waitForDepositDetection(depositResult.txHash, chainId, 60);
+```
+
+**阶段3: 承诺分配**
+```javascript
+// 3.1 创建分配方案
+const allocations = [{
+    recipient_chain_id: targetChainId,
+    recipient_address: recipientAddress,
+    amount: amountInWei
+}];
+
+// 3.2 执行承诺 (同步或异步)
+const commitmentResult = await client.executeCommitmentSync(
+    depositRecord.checkbookId, allocations, true
+);
+```
+
+**阶段4: 证明生成**
+```javascript
+// 4.1 准备提现信息
+const recipientInfo = {
+    chain_id: targetChainId,
+    address: recipientAddress,
+    amount: amountInWei,
+    token_symbol: tokenSymbol
+};
+
+// 4.2 生成提现证明 (同步或异步)
+const proofResult = await client.generateProofSync(
+    depositRecord.checkbookId, recipientInfo, true
+);
+```
+
+**阶段5: 状态监控**
+```javascript
+// 5.1 监控承诺状态
+await client.waitForCommitmentStatus(checkbookId, ['with_checkbook'], 300);
+
+// 5.2 监控证明生成状态
+await client.waitForProofStatus(checkId, ['completed'], 300);
 ```
 
 ### 2. 存款 (Deposit)
@@ -528,6 +615,8 @@ const network = await provider.getNetwork(); // 返回 Chain ID 195
 
 zksdk支持与外部密钥管理系统(KMS)集成，实现私钥的安全管理。支持SLIP44标准和多种签名类型：
 
+### 基础KMS集成
+
 ```javascript
 const { ZKPayClient } = require('zksdk');
 const { ZKPayKMSSigner } = require('zksdk/utils/zkpay-kms-adapter');
@@ -548,6 +637,30 @@ const kmsSigner = new ZKPayKMSSigner(kmsConfig);
 // 使用KMS签名器登录
 const client = new ZKPayClient(config);
 await client.loginWithSigner(kmsSigner, kmsConfig.address);
+```
+
+### SAAS KMS集成
+
+对于企业级用户，支持通过SAAS系统的KMS服务进行签名：
+
+```javascript
+const { SaasKMSSigner } = require('zksdk/utils/saas-kms-signer');
+
+// SAAS KMS配置
+const saasKmsConfig = {
+    kmsUrl: 'https://kms.your-saas.com',
+    enterpriseId: 'your_enterprise_id',
+    chainId: 714,  // BSC
+    userAddress: '0x...',
+    keyAlias: 'enterprise_key',
+    k1Key: 'your_k1_key'
+};
+
+// 创建SAAS KMS签名器
+const saasSigner = new SaasKMSSigner(saasKmsConfig);
+
+// 使用SAAS KMS签名器登录
+await client.loginWithSigner(saasSigner, saasKmsConfig.userAddress);
 ```
 
 ### 支持的区块链网络

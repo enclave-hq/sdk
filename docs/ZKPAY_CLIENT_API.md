@@ -4,6 +4,8 @@ ZKPay 客户端库提供了完整的后台交互接口，包含登录、存款�
 
 ## 快速开始
 
+### 基础使用方式
+
 ```javascript
 const { ZKPayClient } = require("./zkpay-client-library");
 
@@ -13,10 +15,44 @@ const client = new ZKPayClient(config, logger);
 // 初始化
 await client.initialize();
 
-// 登录
+// 方式1: 直接私钥登录
 await client.login(privateKey, "user1");
 
 // 执行操作...
+```
+
+### KMS集成使用方式
+
+```javascript
+// 方式2: 基础KMS登录
+const { ZKPayKMSSigner } = require("../utils/zkpay-kms-adapter");
+
+const kmsConfig = {
+    baseURL: 'http://localhost:18082',
+    keyAlias: 'my_bsc_key',
+    encryptedKey: 'encrypted_private_key_from_kms',
+    slip44Id: 714,  // BSC
+    address: '0x...',
+    defaultSignatureType: 'eip191'
+};
+
+const kmsSigner = new ZKPayKMSSigner(kmsConfig);
+await client.loginWithSigner(kmsSigner, kmsConfig.address);
+
+// 方式3: SAAS KMS登录
+const { SaasKMSSigner } = require("../utils/saas-kms-signer");
+
+const saasKmsConfig = {
+    kmsUrl: 'https://kms.your-saas.com',
+    enterpriseId: 'your_enterprise_id',
+    chainId: 714,
+    userAddress: '0x...',
+    keyAlias: 'enterprise_key',
+    k1Key: 'your_k1_key'
+};
+
+const saasSigner = new SaasKMSSigner(saasKmsConfig);
+await client.loginWithSigner(saasSigner, saasKmsConfig.userAddress);
 ```
 
 ## API 接口
@@ -38,6 +74,21 @@ await client.initialize();
 ```javascript
 const result = await client.login("0x...", "user1");
 // 返回: { success: true, address: '0x...', userName: 'user1', token: '...' }
+```
+
+#### `loginWithSigner(signer, userAddress)`
+
+使用KMS签名器登录到后台
+
+```javascript
+// 基础KMS签名器
+const kmsSigner = new ZKPayKMSSigner(kmsConfig);
+const result = await client.loginWithSigner(kmsSigner, userAddress);
+
+// SAAS KMS签名器
+const saasSigner = new SaasKMSSigner(saasKmsConfig);
+const result = await client.loginWithSigner(saasSigner, userAddress);
+// 返回: { success: true, address: '0x...', userName: 'auto', token: '...' }
 ```
 
 #### `isLoggedIn()`
@@ -313,6 +364,80 @@ const tokens = client.getSupportedTokens(56);
 await client.cleanup();
 ```
 
+## 📊 API调用流程
+
+### 完整API调用流程图
+
+```
+阶段1: 初始化认证    阶段2: 存款操作      阶段3: 承诺分配      阶段4: 证明生成      阶段5: 状态监控
+      ↓                    ↓                    ↓                    ↓                    ↓
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ initialize  │    │checkBalance │    │createAlloc  │    │generateProof│    │waitForStatus│
+│             │    │             │    │AndSign      │    │Sync/Async   │    │             │
+│ login/      │    │checkAllowance│   │             │    │             │    │checkStatus  │
+│ loginWith   │    │             │    │executeCommit│    │             │    │             │
+│ Signer      │    │approveToken │    │ment         │    │             │    │             │
+│             │    │             │    │Sync/Async   │    │             │    │             │
+│             │    │deposit      │    │             │    │             │    │             │
+│             │    │             │    │             │    │             │    │             │
+│             │    │waitForDeposit│   │             │    │             │    │             │
+│             │    │Detection    │    │             │    │             │    │             │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+```
+
+### 阶段详细说明
+
+#### 阶段1: 初始化和认证
+1. **客户端初始化**: `await client.initialize()`
+2. **用户认证** (三种方式)：
+   - 直接私钥: `await client.login(privateKey)`
+   - 基础KMS: `await client.loginWithSigner(kmsSigner, userAddress)`
+   - SAAS KMS: `await client.loginWithSigner(saasSigner, userAddress)`
+
+#### 阶段2: 存款操作
+1. **检查Token余额**: `await client.checkTokenBalance(chainId, tokenAddress)`
+2. **检查Token授权**: `await client.checkTokenAllowance(chainId, tokenAddress, treasuryAddress)`
+3. **授权Token** (如需要): `await client.approveToken(chainId, tokenAddress, amount, treasuryAddress)`
+4. **执行存款**: `await client.deposit(chainId, tokenAddress, amount, treasuryAddress)`
+5. **等待后端检测**: `await client.waitForDepositDetection(txHash, chainId, maxWaitTime)`
+
+#### 阶段3: 承诺分配
+1. **创建分配方案**: 定义allocations数组
+2. **创建分配并签名**: `await client.createAllocationAndSign(checkbookId, allocations)`
+3. **执行承诺** (二选一):
+   - 同步方式: `await client.executeCommitmentSync(checkbookId, allocations, waitForWithCheck)`
+   - 异步方式: `await client.executeCommitmentAsync(checkbookId, allocations)`
+
+#### 阶段4: 证明生成
+1. **准备接收信息**: 定义recipientInfo对象
+2. **生成提现证明** (二选一):
+   - 同步方式: `await client.generateProofSync(checkbookId, recipientInfo, waitForCompleted)`
+   - 异步方式: `await client.generateProofAsync(checkbookId, recipientInfo)`
+
+#### 阶段5: 状态监控
+1. **监控承诺状态**: `await client.waitForCommitmentStatus(checkbookId, targetStatuses, maxWaitTime)`
+2. **监控证明状态**: `await client.waitForProofStatus(checkId, targetStatuses, maxWaitTime)`
+3. **检查当前状态**: `await client.checkStatus()`
+
+### API调用时序图
+
+```
+Client          WalletManager    DepositManager   CommitmentManager   WithdrawManager
+  │                    │               │                 │                 │
+  │─── initialize() ───│               │                 │                 │
+  │                    │               │                 │                 │
+  │─── login() ────────│               │                 │                 │
+  │                    │               │                 │                 │
+  │─── checkBalance ───┼───────────────│                 │                 │
+  │                    │               │                 │                 │
+  │─── deposit() ──────┼───────────────│                 │                 │
+  │                    │               │                 │                 │
+  │─── executeCommitment() ────────────┼─────────────────│                 │
+  │                    │               │                 │                 │
+  │─── generateProof() ────────────────┼─────────────────┼─────────────────│
+  │                    │               │                 │                 │
+```
+
 ## 使用示例
 
 ### 完整流程示例
@@ -449,7 +574,9 @@ try {
 
 ## 配置要求
 
-客户端库需要以下配置结构：
+### 基础配置
+
+客户端库需要以下基础配置结构：
 
 ```yaml
 environment:
@@ -499,14 +626,101 @@ logging:
   level: "info"
 ```
 
+### KMS配置
+
+#### 基础KMS配置
+```json
+{
+  "kms": {
+    "type": "basic",
+    "config": {
+      "baseURL": "http://localhost:18082",
+      "keyAlias": "my_bsc_key",
+      "encryptedKey": "encrypted_private_key_from_kms",
+      "slip44Id": 714,
+      "address": "0x...",
+      "defaultSignatureType": "eip191"
+    }
+  }
+}
+```
+
+#### SAAS KMS配置
+```json
+{
+  "kms": {
+    "type": "saas",
+    "config": {
+      "kmsUrl": "https://kms.your-saas.com",
+      "enterpriseId": "your_enterprise_id",
+      "chainId": 714,
+      "userAddress": "0x...",
+      "keyAlias": "enterprise_key",
+      "k1Key": "your_k1_key"
+    }
+  }
+}
+```
+
+#### 多链KMS配置
+```json
+{
+  "kms": {
+    "type": "multi_chain",
+    "chains": {
+      "bsc": {
+        "slip44Id": 714,
+        "encryptedKey": "bsc_encrypted_key",
+        "address": "0xBSC_ADDRESS",
+        "defaultSignatureType": "eip191"
+      },
+      "ethereum": {
+        "slip44Id": 60,
+        "encryptedKey": "eth_encrypted_key", 
+        "address": "0xETH_ADDRESS",
+        "defaultSignatureType": "eip191"
+      },
+      "tron": {
+        "slip44Id": 195,
+        "encryptedKey": "tron_encrypted_key",
+        "address": "TRON_ADDRESS",
+        "defaultSignatureType": "tip191t"
+      }
+    }
+  }
+}
+```
+
+### 支持的KMS签名类型
+
+| 网络 | SLIP44 ID | 签名类型 | 说明 |
+|------|-----------|----------|------|
+| Ethereum | 60 | eip191 | 以太坊EIP-191标准签名 |
+| BSC | 714 | eip191 | 币安智能链EIP-191签名 |
+| Tron | 195 | tip191t | 波场TIP-191T签名 |
+| Polygon | 966 | eip191 | Polygon EIP-191签名 |
+| Arbitrum | 42161 | eip191 | Arbitrum EIP-191签名 |
+| Optimism | 10 | eip191 | Optimism EIP-191签名 |
+
 ## 注意事项
 
-1. **登录状态**: 大部分操作需要先调用 `login()` 方法
+### 基础使用注意事项
+1. **登录状态**: 大部分操作需要先调用 `login()` 或 `loginWithSigner()` 方法
 2. **异步操作**: 同步和异步方法的区别在于是否等待操作完成
 3. **错误处理**: 所有方法都可能抛出异常，需要适当的错误处理
 4. **资源清理**: 使用完毕后调用 `cleanup()` 方法清理资源
 5. **金额精度**: Token 金额需要考虑精度，通常为 18 位小数
 6. **链 ID**: 使用 SLIP-44 标准的链 ID（如 BSC 为 714）
+
+### KMS集成注意事项
+7. **KMS连接**: 确保KMS服务可访问，网络连接稳定
+8. **签名类型**: 不同区块链网络需要使用对应的签名类型（eip191/tip191t）
+9. **密钥管理**: KMS中的密钥别名(keyAlias)必须唯一且正确配置
+10. **企业认证**: SAAS KMS需要有效的企业ID和K1密钥进行认证
+11. **多链支持**: 使用多链KMS时，确保每个链的配置正确
+12. **安全性**: KMS签名器会自动处理私钥安全，无需手动管理私钥
+13. **错误重试**: KMS服务可能因网络问题失败，建议实现重试机制
+14. **日志记录**: KMS操作会产生详细日志，便于调试和审计
 
 ## 更多示例
 

@@ -84,7 +84,7 @@ class KMSFullFlowExample {
             const kmsConfig = {
                 baseURL: kmsBaseURL,
                 keyAlias: keyAlias,
-                encryptedKey: result.encrypted_key,
+                encryptedKey: result.k1 || result.encrypted_key, // 优先使用k1，兼容旧格式
                 slip44Id: 714,
                 address: this.userAddress,
                 defaultSignatureType: 'eip191'
@@ -213,8 +213,7 @@ class KMSFullFlowExample {
             const depositResult = await this.client.deposit(chainId, tokenAddress, amount, treasuryAddress);
 
             this.logger.info('✅ 存款交易成功:', {
-                txHash: depositResult.deposit.txHash,
-                depositId: depositResult.deposit.depositEvent?.depositId
+                txHash: depositResult.deposit.txHash
             });
 
             // 获取正确的交易哈希
