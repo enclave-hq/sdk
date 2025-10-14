@@ -55,7 +55,7 @@ const saasSigner = new SaasKMSSigner(saasKmsConfig);
 await client.loginWithSigner(saasSigner, saasKmsConfig.userAddress);
 ```
 
-## API 接口
+## API Reference
 
 ### 1. Initialization and Authentication
 
@@ -73,7 +73,7 @@ Login to backend using private key
 
 ```javascript
 const result = await client.login("0x...", "user1");
-// 返回: { success: true, address: '0x...', userName: 'user1', token: '...' }
+// Returns: { success: true, address: '0x...', userName: 'user1', token: '...' }
 ```
 
 #### `loginWithSigner(signer, userAddress)`
@@ -81,14 +81,14 @@ const result = await client.login("0x...", "user1");
 Login to backend using KMS signer
 
 ```javascript
-// 基础KMS签名器
+// Basic KMS signer
 const kmsSigner = new ZKPayKMSSigner(kmsConfig);
 const result = await client.loginWithSigner(kmsSigner, userAddress);
 
-// SAAS KMS签名器
+// SAAS KMS signer
 const saasSigner = new SaasKMSSigner(saasKmsConfig);
 const result = await client.loginWithSigner(saasSigner, userAddress);
-// 返回: { success: true, address: '0x...', userName: 'auto', token: '...' }
+// Returns: { success: true, address: '0x...', userName: 'auto', token: '...' }
 ```
 
 #### `isLoggedIn()`
@@ -116,80 +116,80 @@ Logout
 client.logout();
 ```
 
-### 2. Token 操作
+### 2. Token Operations
 
 #### `checkTokenBalance(chainId, tokenSymbol)`
 
-检查 Token 余额
+Check token balance
 
 ```javascript
 const balance = await client.checkTokenBalance(56, "test_usdt");
-// 返回: { balance: BigInt, decimals: 18, symbol: 'TUSDT', formatted: '100.0' }
+// Returns: { balance: BigInt, decimals: 18, symbol: 'TUSDT', formatted: '100.0' }
 ```
 
 #### `checkTokenAllowance(chainId, tokenSymbol)`
 
-检查 Token 授权额度
+Check token allowance
 
 ```javascript
 const allowance = await client.checkTokenAllowance(56, "test_usdt");
-// 返回: { allowance: BigInt, decimals: 18, formatted: '50.0' }
+// Returns: { allowance: BigInt, decimals: 18, formatted: '50.0' }
 ```
 
 #### `approveToken(chainId, tokenSymbol, amount)`
 
-授权 Token
+Approve token
 
 ```javascript
 const result = await client.approveToken(56, "test_usdt", "100.0");
-// 返回: { txHash: '0x...', receipt: {...}, allowance: BigInt, gasUsed: BigInt }
+// Returns: { txHash: '0x...', receipt: {...}, allowance: BigInt, gasUsed: BigInt }
 ```
 
-### 3. 存款操作
+### 3. Deposit Operations
 
 #### `deposit(chainId, tokenSymbol, amount)`
 
-执行存款（包含自动授权）
+Execute deposit (includes automatic approval)
 
 ```javascript
 const result = await client.deposit(56, "test_usdt", "10.0");
-// 返回: { approve: {...}, deposit: {...}, chainId: 56, tokenSymbol: 'test_usdt', amount: '10.0' }
+// Returns: { approve: {...}, deposit: {...}, chainId: 56, tokenSymbol: 'test_usdt', amount: '10.0' }
 ```
 
 #### `waitForDepositDetection(txHash, chainId, maxWaitTime?)`
 
-等待后端检测存款
+Wait for backend to detect deposit
 
 ```javascript
 const deposit = await client.waitForDepositDetection("0x...", 56, 60);
-// 返回: 存款记录对象
+// Returns: deposit record object
 ```
 
-### 4. CheckBook 操作
+### 4. CheckBook Operations
 
 #### `getUserDeposits(userAddress?, chainId?)`
 
-获取用户的存款记录（CheckBook）
+Get user's deposit records (CheckBook)
 
 ```javascript
 const deposits = await client.getUserDeposits();
-// 返回: [{ id, checkbookId, localDepositId, status, chainId, tokenId, ... }]
+// Returns: [{ id, checkbookId, localDepositId, status, chainId, tokenId, ... }]
 ```
 
 #### `getCheckbookDetails(checkbookId)`
 
-获取特定 CheckBook 详情
+Get specific CheckBook details
 
 ```javascript
 const checkbook = await client.getCheckbookDetails("checkbook_123");
-// 返回: CheckBook详细信息
+// Returns: CheckBook detailed information
 ```
 
-### 5. 分配和签名
+### 5. Allocation and Signing
 
 #### `createAllocationAndSign(checkbookId, allocations, options?)`
 
-创建分配方案并签名
+Create allocation plan and sign
 
 ```javascript
 const allocations = [
@@ -204,14 +204,14 @@ const result = await client.createAllocationAndSign(
   "checkbook_123",
   allocations
 );
-// 返回: { checkbookId, allocations, signature, signatureMessage, deposit }
+// Returns: { checkbookId, allocations, signature, signatureMessage, deposit }
 ```
 
-### 6. Commitment 操作
+### 6. Commitment Operations
 
 #### `executeCommitmentSync(checkbookId, allocations, waitForWithCheck?)`
 
-执行 Commitment（同步方式，等待完成）
+Execute Commitment (synchronous mode, wait for completion)
 
 ```javascript
 const result = await client.executeCommitmentSync(
@@ -219,31 +219,31 @@ const result = await client.executeCommitmentSync(
   allocations,
   true
 );
-// 返回: { status: 'with_checkbook', finalStatus: 'with_checkbook', ... }
+// Returns: { status: 'with_checkbook', finalStatus: 'with_checkbook', ... }
 ```
 
 #### `executeCommitmentAsync(checkbookId, allocations)`
 
-执行 Commitment（异步方式，立即返回）
+Execute Commitment (asynchronous mode, return immediately)
 
 ```javascript
 const result = await client.executeCommitmentAsync(
   "checkbook_123",
   allocations
 );
-// 返回: {
+// Returns: {
 //   status: 'submitted',
 //   waitForCompletion: (targetStatuses, maxWaitTime) => Promise,
 //   checkStatus: () => Promise
 // }
 
-// 可选：等待完成
+// Optional: wait for completion
 const finalResult = await result.waitForCompletion(["with_checkbook"], 300);
 ```
 
 #### `waitForCommitmentStatus(checkbookId, targetStatuses, maxWaitTime?)`
 
-等待 Commitment 状态变化
+Wait for Commitment status change
 
 ```javascript
 const result = await client.waitForCommitmentStatus(
@@ -253,11 +253,11 @@ const result = await client.waitForCommitmentStatus(
 );
 ```
 
-### 7. 提现证明操作
+### 7. Withdrawal Proof Operations
 
 #### `generateProofSync(checkbookId, recipientInfo, waitForCompleted?)`
 
-生成提现证明（同步方式，等待完成）
+Generate withdrawal proof (synchronous mode, wait for completion)
 
 ```javascript
 const recipientInfo = {
@@ -272,30 +272,30 @@ const result = await client.generateProofSync(
   recipientInfo,
   true
 );
-// 返回: { checkId, completionResult, finalStatus: 'completed', ... }
+// Returns: { checkId, completionResult, finalStatus: 'completed', ... }
 ```
 
 #### `generateProofAsync(checkbookId, recipientInfo)`
 
-生成提现证明（异步方式，立即返回）
+Generate withdrawal proof (asynchronous mode, return immediately)
 
 ```javascript
 const result = await client.generateProofAsync("checkbook_123", recipientInfo);
-// 返回: {
+// Returns: {
 //   checkId: 'check_456',
 //   waitForCompletion: (maxWaitTime) => Promise,
 //   checkStatus: () => Promise
 // }
 
-// 可选：等待完成
+// Optional: wait for completion
 const completionResult = await result.waitForCompletion(300);
 ```
 
-### 8. 高级操作
+### 8. Advanced Operations
 
 #### `performFullDepositToCommitment(chainId, tokenSymbol, amount, allocations, options?)`
 
-完整的存款到 Commitment 流程
+Complete flow from deposit to Commitment
 
 ```javascript
 const allocations = [
@@ -313,12 +313,12 @@ const result = await client.performFullDepositToCommitment(
   allocations,
   { waitForCommitment: true, maxWaitTime: 300 }
 );
-// 返回: { deposit: {...}, depositRecord: {...}, commitment: {...}, success: true }
+// Returns: { deposit: {...}, depositRecord: {...}, commitment: {...}, success: true }
 ```
 
 #### `performFullCommitmentToWithdraw(checkbookId, recipientInfo, options?)`
 
-完整的 Commitment 到提现流程
+Complete flow from Commitment to withdrawal
 
 ```javascript
 const recipientInfo = {
@@ -333,43 +333,43 @@ const result = await client.performFullCommitmentToWithdraw(
   recipientInfo,
   { waitForProof: true, maxWaitTime: 300 }
 );
-// 返回: { checkbook: {...}, proof: {...}, success: true }
+// Returns: { checkbook: {...}, proof: {...}, success: true }
 ```
 
-### 9. 工具方法
+### 9. Utility Methods
 
 #### `getSupportedChains()`
 
-获取支持的链列表
+Get list of supported chains
 
 ```javascript
 const chains = client.getSupportedChains();
-// 返回: [{ chain_id: 56, name: 'BSC', ... }, ...]
+// Returns: [{ chain_id: 56, name: 'BSC', ... }, ...]
 ```
 
 #### `getSupportedTokens(chainId)`
 
-获取指定链支持的 Token 列表
+Get list of supported tokens for specified chain
 
 ```javascript
 const tokens = client.getSupportedTokens(56);
-// 返回: { 'test_usdt': { address: '0x...', decimals: 18 }, ... }
+// Returns: { 'test_usdt': { address: '0x...', decimals: 18 }, ... }
 ```
 
 #### `cleanup()`
 
-清理资源
+Clean up resources
 
 ```javascript
 await client.cleanup();
 ```
 
-## 📊 API 调用流程
+## 📊 API Call Flow
 
-### 完整 API 调用流程图
+### Complete API Call Flow Diagram
 
 ```
-阶段1: 初始化认证    阶段2: 存款操作      阶段3: 承诺分配      阶段4: 证明生成      阶段5: 状态监控
+Stage 1: Init/Auth    Stage 2: Deposit      Stage 3: Commitment   Stage 4: Proof Gen    Stage 5: Monitoring
       ↓                    ↓                    ↓                    ↓                    ↓
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 │ initialize  │    │checkBalance │    │createAlloc  │    │generateProof│    │waitForStatus│
@@ -385,46 +385,46 @@ await client.cleanup();
 └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
-### 阶段详细说明
+### Stage Details
 
-#### 阶段 1: 初始化和认证
+#### Stage 1: Initialization and Authentication
 
-1. **客户端初始化**: `await client.initialize()`
-2. **用户认证** (三种方式)：
-   - 直接私钥: `await client.login(privateKey)`
-   - 基础 KMS: `await client.loginWithSigner(kmsSigner, userAddress)`
+1. **Client Initialization**: `await client.initialize()`
+2. **User Authentication** (3 methods):
+   - Direct private key: `await client.login(privateKey)`
+   - Basic KMS: `await client.loginWithSigner(kmsSigner, userAddress)`
    - SAAS KMS: `await client.loginWithSigner(saasSigner, userAddress)`
 
-#### 阶段 2: 存款操作
+#### Stage 2: Deposit Operations
 
-1. **检查 Token 余额**: `await client.checkTokenBalance(chainId, tokenAddress)`
-2. **检查 Token 授权**: `await client.checkTokenAllowance(chainId, tokenAddress, treasuryAddress)`
-3. **授权 Token** (如需要): `await client.approveToken(chainId, tokenAddress, amount, treasuryAddress)`
-4. **执行存款**: `await client.deposit(chainId, tokenAddress, amount, treasuryAddress)`
-5. **等待后端检测**: `await client.waitForDepositDetection(txHash, chainId, maxWaitTime)`
+1. **Check Token Balance**: `await client.checkTokenBalance(chainId, tokenAddress)`
+2. **Check Token Allowance**: `await client.checkTokenAllowance(chainId, tokenAddress, treasuryAddress)`
+3. **Approve Token** (if needed): `await client.approveToken(chainId, tokenAddress, amount, treasuryAddress)`
+4. **Execute Deposit**: `await client.deposit(chainId, tokenAddress, amount, treasuryAddress)`
+5. **Wait for Backend Detection**: `await client.waitForDepositDetection(txHash, chainId, maxWaitTime)`
 
-#### 阶段 3: 承诺分配
+#### Stage 3: Commitment Allocation
 
-1. **创建分配方案**: 定义 allocations 数组
-2. **创建分配并签名**: `await client.createAllocationAndSign(checkbookId, allocations)`
-3. **执行承诺** (二选一):
-   - 同步方式: `await client.executeCommitmentSync(checkbookId, allocations, waitForWithCheck)`
-   - 异步方式: `await client.executeCommitmentAsync(checkbookId, allocations)`
+1. **Create Allocation Plan**: Define allocations array
+2. **Create Allocation and Sign**: `await client.createAllocationAndSign(checkbookId, allocations)`
+3. **Execute Commitment** (choose one):
+   - Synchronous: `await client.executeCommitmentSync(checkbookId, allocations, waitForWithCheck)`
+   - Asynchronous: `await client.executeCommitmentAsync(checkbookId, allocations)`
 
-#### 阶段 4: 证明生成
+#### Stage 4: Proof Generation
 
-1. **准备接收信息**: 定义 recipientInfo 对象
-2. **生成提现证明** (二选一):
-   - 同步方式: `await client.generateProofSync(checkbookId, recipientInfo, waitForCompleted)`
-   - 异步方式: `await client.generateProofAsync(checkbookId, recipientInfo)`
+1. **Prepare Recipient Info**: Define recipientInfo object
+2. **Generate Withdrawal Proof** (choose one):
+   - Synchronous: `await client.generateProofSync(checkbookId, recipientInfo, waitForCompleted)`
+   - Asynchronous: `await client.generateProofAsync(checkbookId, recipientInfo)`
 
-#### 阶段 5: 状态监控
+#### Stage 5: Status Monitoring
 
-1. **监控承诺状态**: `await client.waitForCommitmentStatus(checkbookId, targetStatuses, maxWaitTime)`
-2. **监控证明状态**: `await client.waitForProofStatus(checkId, targetStatuses, maxWaitTime)`
-3. **检查当前状态**: `await client.checkStatus()`
+1. **Monitor Commitment Status**: `await client.waitForCommitmentStatus(checkbookId, targetStatuses, maxWaitTime)`
+2. **Monitor Proof Status**: `await client.waitForProofStatus(checkId, targetStatuses, maxWaitTime)`
+3. **Check Current Status**: `await client.checkStatus()`
 
-### API 调用时序图
+### API Call Sequence Diagram
 
 ```
 Client          WalletManager    DepositManager   CommitmentManager   WithdrawManager
@@ -445,7 +445,7 @@ Client          WalletManager    DepositManager   CommitmentManager   WithdrawMa
 
 ## Usage Examples
 
-### 完整流程示例
+### Complete Flow Example
 
 ```javascript
 const { ZKPayClient } = require("./zkpay-client-library");
@@ -454,28 +454,28 @@ async function fullExample() {
   const client = new ZKPayClient(config);
 
   try {
-    // 1. 初始化
+    // 1. Initialize
     await client.initialize();
 
-    // 2. 登录
+    // 2. Login
     await client.login("0x...", "user1");
 
-    // 3. 检查余额
+    // 3. Check balance
     const balance = await client.checkTokenBalance(56, "test_usdt");
-    console.log("余额:", balance.formatted);
+    console.log("Balance:", balance.formatted);
 
-    // 4. 执行存款
+    // 4. Execute deposit
     const depositResult = await client.deposit(56, "test_usdt", "10.0");
-    console.log("存款成功:", depositResult.deposit.txHash);
+    console.log("Deposit successful:", depositResult.deposit.txHash);
 
-    // 5. 等待检测
+    // 5. Wait for detection
     const depositRecord = await client.waitForDepositDetection(
       depositResult.deposit.txHash,
       56,
       60
     );
 
-    // 6. 创建分配并执行Commitment
+    // 6. Create allocation and execute Commitment
     const allocations = [
       {
         recipient_chain_id: 714,
@@ -489,9 +489,9 @@ async function fullExample() {
       allocations,
       true
     );
-    console.log("Commitment成功:", commitmentResult.status);
+    console.log("Commitment successful:", commitmentResult.status);
 
-    // 7. 生成提现证明
+    // 7. Generate withdrawal proof
     const recipientInfo = {
       chain_id: 714,
       address: client.getCurrentUser().address,
@@ -504,14 +504,14 @@ async function fullExample() {
       recipientInfo,
       true
     );
-    console.log("提现成功:", proofResult.completionResult.transaction_hash);
+    console.log("Withdrawal successful:", proofResult.completionResult.transaction_hash);
   } finally {
     await client.cleanup();
   }
 }
 ```
 
-### 异步操作示例
+### Asynchronous Operation Example
 
 ```javascript
 async function asyncExample() {
@@ -527,61 +527,61 @@ async function asyncExample() {
       allocations
     );
 
-    console.log("Commitment已提交:", commitmentResult.status);
+    console.log("Commitment submitted:", commitmentResult.status);
 
-    // 在后台等待完成
+    // Wait for completion in background
     commitmentResult
       .waitForCompletion(["with_checkbook"], 300)
       .then((result) => {
-        console.log("Commitment完成:", result.status);
+        console.log("Commitment completed:", result.status);
 
-        // 继续执行提现
+        // Continue to withdrawal
         return client.generateProofAsync("checkbook_123", recipientInfo);
       })
       .then((proofResult) => {
-        console.log("提现证明已提交:", proofResult.checkId);
+        console.log("Withdrawal proof submitted:", proofResult.checkId);
 
         return proofResult.waitForCompletion(300);
       })
       .then((completionResult) => {
-        console.log("提现完成:", completionResult.transaction_hash);
+        console.log("Withdrawal completed:", completionResult.transaction_hash);
       })
       .catch((error) => {
-        console.error("异步操作失败:", error.message);
+        console.error("Async operation failed:", error.message);
       });
 
-    // 主线程可以继续其他操作...
+    // Main thread can continue other operations...
   } finally {
     await client.cleanup();
   }
 }
 ```
 
-## 错误处理
+## Error Handling
 
 All methods may throw exceptions, it is recommended to use try-catch for error handling:
 
 ```javascript
 try {
   const result = await client.deposit(56, "test_usdt", "10.0");
-  console.log("操作成功:", result);
+  console.log("Operation successful:", result);
 } catch (error) {
-  console.error("操作失败:", error.message);
+  console.error("Operation failed:", error.message);
 
-  // 检查特定错误类型
-  if (error.message.includes("余额不足")) {
-    console.log("请先充值Token");
-  } else if (error.message.includes("未登录")) {
-    console.log("请先登录");
+  // Check specific error types
+  if (error.message.includes("Insufficient balance")) {
+    console.log("Please deposit tokens first");
+  } else if (error.message.includes("Not logged in")) {
+    console.log("Please login first");
   }
 }
 ```
 
-## 配置要求
+## Configuration Requirements
 
-### 基础配置
+### Basic Configuration
 
-客户端库需要以下基础配置结构：
+The client library requires the following basic configuration structure:
 
 ```yaml
 environment:
@@ -631,9 +631,9 @@ logging:
   level: "info"
 ```
 
-### KMS 配置
+### KMS Configuration
 
-#### 基础 KMS 配置
+#### Basic KMS Configuration
 
 ```json
 {
@@ -651,7 +651,7 @@ logging:
 }
 ```
 
-#### SAAS KMS 配置
+#### SAAS KMS Configuration
 
 ```json
 {
@@ -669,7 +669,7 @@ logging:
 }
 ```
 
-#### 多链 KMS 配置
+#### Multi-chain KMS Configuration
 
 ```json
 {
@@ -699,39 +699,39 @@ logging:
 }
 ```
 
-### 支持的 KMS 签名类型
+### Supported KMS Signature Types
 
-| 网络     | SLIP44 ID | 签名类型 | 说明                    |
+| Network  | SLIP44 ID | Signature Type | Description             |
 | -------- | --------- | -------- | ----------------------- |
-| Ethereum | 60        | eip191   | 以太坊 EIP-191 标准签名 |
-| BSC      | 714       | eip191   | 币安智能链 EIP-191 签名 |
-| Tron     | 195       | tip191t  | 波场 TIP-191T 签名      |
+| Ethereum | 60        | eip191   | Ethereum EIP-191 standard signature |
+| BSC      | 714       | eip191   | Binance Smart Chain EIP-191 signature |
+| Tron     | 195       | tip191t  | Tron TIP-191T signature      |
 | Polygon  | 966       | eip191   | Polygon EIP-191 签名    |
 | Arbitrum | 42161     | eip191   | Arbitrum EIP-191 签名   |
 | Optimism | 10        | eip191   | Optimism EIP-191 签名   |
 
-## 注意事项
+## Important Notes
 
 ### Basic Usage Notes
 
-1. **登录状态**: 大部分操作需要先调用 `login()` 或 `loginWithSigner()` 方法
-2. **异步操作**: 同步和异步方法的区别在于是否等待操作完成
-3. **错误处理**: 所有方法都可能抛出异常，需要适当的错误处理
+1. **Login Status**: Most operations require calling `login()` 或 `loginWithSigner()` 方法
+2. **Async Operations**: The difference between sync and async methods is whether to wait for operation completion
+3. **Error Handling**: All methods may throw exceptions, proper error handling is required
 4. **Resource Cleanup**: Call `cleanup()` method to clean up resources after use
-5. **金额精度**: Token 金额需要考虑精度，通常为 18 位小数
+5. **Amount Precision**: Token amounts need to consider precision, typically 18 decimals
 6. **Chain ID**: Use SLIP-44 standard chain ID (e.g., BSC is 714)
 
-### KMS 集成注意事项
+### KMS Integration Notes
 
-7. **KMS 连接**: 确保 KMS 服务可访问，网络连接稳定
+7. **KMS Connection**: Ensure KMS service is accessible with stable network connection
 8. **Signature Type**: Different blockchain networks require corresponding signature types (eip191/tip191t)
-9. **密钥管理**: KMS 中的密钥别名(keyAlias)必须唯一且正确配置
-10. **企业认证**: SAAS KMS 需要有效的企业 ID 和 K1 密钥进行认证
+9. **Key Management**: Key alias (keyAlias) in KMS must be unique and correctly configured
+10. **Enterprise Authentication**: SAAS KMS requires valid enterprise ID and K1 key for authentication
 11. **Multi-chain Support**: When using multi-chain KMS, ensure each chain is configured correctly
-12. **安全性**: KMS 签名器会自动处理私钥安全，无需手动管理私钥
-13. **错误重试**: KMS 服务可能因网络问题失败，建议实现重试机制
-14. **日志记录**: KMS 操作会产生详细日志，便于调试和审计
+12. **Security**: KMS signer automatically handles private key security, no need to manually manage private keys
+13. **Error Retry**: KMS service may fail due to network issues, implement retry mechanism is recommended
+14. **Logging**: KMS operations generate detailed logs for debugging and auditing
 
-## 更多示例
+## More Examples
 
-查看 `zkpay-client-example.js` 文件获取更多详细的使用示例。
+See `zkpay-client-example.js` file for more detailed usage examples.
