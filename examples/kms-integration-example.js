@@ -1,6 +1,6 @@
 /**
- * ZKSDK KMS集成示例
- * 展示如何使用KMS签名器替代直接私钥登录
+ * ZKSDK KMS集成Example
+ * 展示如何UseKMSSignature器替代直接Private KeyLogin
  */
 const { ZKPayClientLibrary } = require('../core/zkpay-client-library');
 const { KMSSignerFactory } = require('../utils/saas-kms-signer');
@@ -9,7 +9,7 @@ const { createLogger } = require('../utils/logger');
 const logger = createLogger('KMSIntegrationExample');
 
 /**
- * KMS集成示例类
+ * KMS集成Example类
  */
 class KMSIntegrationExample {
     constructor() {
@@ -19,35 +19,35 @@ class KMSIntegrationExample {
     }
 
     /**
-     * 加载配置
+     * 加载Configuration
      */
     loadConfig() {
         return {
-            // SAAS系统配置
+            // SAASSystemConfiguration
             saasApiUrl: process.env.SAAS_API_URL || 'http://localhost:3000/api',
             enterpriseApiKey: process.env.ENTERPRISE_API_KEY || 'your_enterprise_api_key',
             enterpriseId: process.env.ENTERPRISE_ID || 'your_enterprise_id',
             
-            // KMS配置
+            // KMSConfiguration
             kmsUrl: process.env.KMS_SERVICE_URL || 'http://localhost:18082',
             chainId: process.env.CHAIN_ID || '714', // BSC
             
-            // 用户配置
+            // UserConfiguration
             userAddress: process.env.USER_ADDRESS || '0xYourUserAddress',
             
-            // ZKPay后台配置
+            // ZKPay后台Configuration
             zkpayApiUrl: process.env.ZKPAY_API_URL || 'http://localhost:3001',
         };
     }
 
     /**
-     * 示例1: 使用从SAAS系统获取的KMS配置
+     * Example1: UseFromSAASSystemGet的KMSConfiguration
      */
     async exampleWithSaasKMSConfig() {
         try {
-            logger.info('🚀 示例1: 使用SAAS系统KMS配置');
+            logger.info('🚀 Example1: UseSAASSystemKMSConfiguration');
 
-            // 1. 从SAAS系统获取KMS签名器
+            // 1. FromSAASSystemGetKMSSignature器
             this.kmsSigner = await KMSSignerFactory.createSignerFromSaasApi({
                 saasApiUrl: this.config.saasApiUrl,
                 enterpriseApiKey: this.config.enterpriseApiKey,
@@ -56,83 +56,83 @@ class KMSIntegrationExample {
                 chainId: this.config.chainId,
             });
 
-            logger.info('✅ KMS签名器创建成功');
+            logger.info('✅ KMSSignature器Createsuccessful');
 
-            // 2. 初始化ZKPay客户端
+            // 2. InitializeZKPayClient
             this.zkpayClient = new ZKPayClientLibrary({
                 backendUrl: this.config.zkpayApiUrl,
                 logger: logger,
             });
 
-            // 3. 使用KMS签名器登录（而不是私钥）
+            // 3. UseKMSSignature器Login（Instead ofPrivate Key）
             await this.zkpayClient.loginWithSigner(
                 this.kmsSigner,
                 this.config.userAddress,
                 'kms_user'
             );
 
-            logger.info('✅ 使用KMS签名器登录成功');
+            logger.info('✅ UseKMSSignature器Loginsuccessful');
 
-            // 4. 执行业务操作示例
+            // 4. Execute业务OperationExample
             await this.performBusinessOperations();
 
         } catch (error) {
-            logger.error('❌ SAAS KMS配置示例失败:', error.message);
+            logger.error('❌ SAAS KMSConfigurationExamplefailed:', error.message);
             throw error;
         }
     }
 
     /**
-     * 示例2: 使用手动KMS配置
+     * Example2: Use手动KMSConfiguration
      */
     async exampleWithManualKMSConfig() {
         try {
-            logger.info('🚀 示例2: 使用手动KMS配置');
+            logger.info('🚀 Example2: Use手动KMSConfiguration');
 
-            // 1. 手动创建KMS签名器
+            // 1. 手动CreateKMSSignature器
             this.kmsSigner = KMSSignerFactory.createSigner({
                 signerType: 'enterprise-user',
                 kmsUrl: this.config.kmsUrl,
                 enterpriseId: this.config.enterpriseId,
                 chainId: this.config.chainId,
                 userAddress: this.config.userAddress,
-                k1Key: process.env.USER_K1_KEY, // 从环境变量获取K1密钥
+                k1Key: process.env.USER_K1_KEY, // FromEnvironment变量GetK1Key
             });
 
-            logger.info('✅ 手动KMS签名器创建成功');
+            logger.info('✅ 手动KMSSignature器Createsuccessful');
 
-            // 2. 初始化ZKPay客户端
+            // 2. InitializeZKPayClient
             this.zkpayClient = new ZKPayClientLibrary({
                 backendUrl: this.config.zkpayApiUrl,
                 logger: logger,
             });
 
-            // 3. 使用KMS签名器登录
+            // 3. UseKMSSignature器Login
             await this.zkpayClient.loginWithSigner(
                 this.kmsSigner,
                 this.config.userAddress,
                 'manual_kms_user'
             );
 
-            logger.info('✅ 使用手动KMS配置登录成功');
+            logger.info('✅ Use手动KMSConfigurationLoginsuccessful');
 
-            // 4. 执行业务操作示例
+            // 4. Execute业务OperationExample
             await this.performBusinessOperations();
 
         } catch (error) {
-            logger.error('❌ 手动KMS配置示例失败:', error.message);
+            logger.error('❌ 手动KMSConfigurationExamplefailed:', error.message);
             throw error;
         }
     }
 
     /**
-     * 示例3: 企业操作员KMS签名器
+     * Example3: 企业Operation员KMSSignature器
      */
     async exampleWithEnterpriseOperatorKMS() {
         try {
-            logger.info('🚀 示例3: 企业操作员KMS签名器');
+            logger.info('🚀 Example3: 企业Operation员KMSSignature器');
 
-            // 1. 创建企业操作员KMS签名器
+            // 1. Create企业Operation员KMSSignature器
             this.kmsSigner = KMSSignerFactory.createSigner({
                 signerType: 'enterprise-operator',
                 kmsUrl: this.config.kmsUrl,
@@ -142,81 +142,81 @@ class KMSIntegrationExample {
                 k1Key: process.env.OPERATOR_K1_KEY,
             });
 
-            logger.info('✅ 企业操作员KMS签名器创建成功');
+            logger.info('✅ 企业Operation员KMSSignature器Createsuccessful');
 
-            // 2. 初始化ZKPay客户端
+            // 2. InitializeZKPayClient
             this.zkpayClient = new ZKPayClientLibrary({
                 backendUrl: this.config.zkpayApiUrl,
                 logger: logger,
             });
 
-            // 3. 使用企业操作员身份登录
+            // 3. Use企业Operation员身份Login
             await this.zkpayClient.loginWithSigner(
                 this.kmsSigner,
                 process.env.OPERATOR_ADDRESS,
                 'enterprise_operator'
             );
 
-            logger.info('✅ 企业操作员登录成功');
+            logger.info('✅ 企业Operation员Loginsuccessful');
 
-            // 4. 执行管理操作示例
+            // 4. ExecuteManagementOperationExample
             await this.performManagementOperations();
 
         } catch (error) {
-            logger.error('❌ 企业操作员KMS示例失败:', error.message);
+            logger.error('❌ 企业Operation员KMSExamplefailed:', error.message);
             throw error;
         }
     }
 
     /**
-     * 执行业务操作示例
+     * Execute业务OperationExample
      */
     async performBusinessOperations() {
         try {
-            logger.info('📊 开始执行业务操作...');
+            logger.info('📊 StartingExecute业务Operation...');
 
-            // 1. 获取用户余额
+            // 1. GetUserBalance
             const balanceResult = await this.zkpayClient.getUserBalance();
-            logger.info('💰 用户余额查询成功:', balanceResult);
+            logger.info('💰 UserBalanceQuerysuccessful:', balanceResult);
 
-            // 2. 查询可用的CheckBook
+            // 2. Query可用的CheckBook
             const availableCheckbooks = await this.zkpayClient.getAvailableCheckbooks();
             logger.info('📋 可用CheckBook:', availableCheckbooks.length);
 
-            // 3. 模拟充值操作
+            // 3. Mock充值Operation
             if (availableCheckbooks.length > 0) {
                 const depositResult = await this.zkpayClient.processDeposit({
                     checkbookId: availableCheckbooks[0].checkbook_id,
                     amount: '1000000000000000000', // 1 USDT (18 decimals)
                     tokenId: '1',
                 });
-                logger.info('💸 模拟充值操作完成:', depositResult.success);
+                logger.info('💸 Mock充值Operationcompleted:', depositResult.success);
             }
 
-            // 4. 查询交易历史
+            // 4. QueryTransaction历史
             const transactionHistory = await this.zkpayClient.getTransactionHistory();
-            logger.info('📜 交易历史查询成功:', transactionHistory.length);
+            logger.info('📜 Transaction历史Querysuccessful:', transactionHistory.length);
 
-            logger.info('✅ 业务操作示例完成');
+            logger.info('✅ 业务OperationExamplecompleted');
 
         } catch (error) {
-            logger.error('❌ 业务操作失败:', error.message);
+            logger.error('❌ 业务Operationfailed:', error.message);
             throw error;
         }
     }
 
     /**
-     * 执行管理操作示例
+     * ExecuteManagementOperationExample
      */
     async performManagementOperations() {
         try {
-            logger.info('🔧 开始执行管理操作...');
+            logger.info('🔧 StartingExecuteManagementOperation...');
 
-            // 1. 查询企业CheckBook状态
+            // 1. Query企业CheckBookStatus
             const checkbookStatus = await this.zkpayClient.getEnterpriseCheckbookStatus();
-            logger.info('📊 企业CheckBook状态:', checkbookStatus);
+            logger.info('📊 企业CheckBookStatus:', checkbookStatus);
 
-            // 2. 执行批量提现操作
+            // 2. Execute批量WithdrawOperation
             const withdrawalResult = await this.zkpayClient.processBatchWithdrawal({
                 withdrawals: [
                     {
@@ -231,45 +231,45 @@ class KMSIntegrationExample {
                     },
                 ],
             });
-            logger.info('💼 批量提现操作结果:', withdrawalResult.success);
+            logger.info('💼 批量WithdrawOperationResult:', withdrawalResult.success);
 
-            // 3. 查询企业统计数据
+            // 3. Query企业统计Data
             const enterpriseStats = await this.zkpayClient.getEnterpriseStatistics();
-            logger.info('📈 企业统计数据:', enterpriseStats);
+            logger.info('📈 企业统计Data:', enterpriseStats);
 
-            logger.info('✅ 管理操作示例完成');
+            logger.info('✅ ManagementOperationExamplecompleted');
 
         } catch (error) {
-            logger.error('❌ 管理操作失败:', error.message);
+            logger.error('❌ ManagementOperationfailed:', error.message);
             throw error;
         }
     }
 
     /**
-     * 测试KMS签名器功能
+     * TestKMSSignature器Function
      */
     async testKMSSignerFunctionality() {
         try {
-            logger.info('🧪 测试KMS签名器功能...');
+            logger.info('🧪 TestKMSSignature器Function...');
 
             if (!this.kmsSigner) {
-                throw new Error('KMS签名器未初始化');
+                throw new Error('KMSSignature器未Initialize');
             }
 
-            // 1. 测试签名器可用性
+            // 1. TestSignature器可用性
             const isAvailable = await this.kmsSigner.isAvailable();
-            logger.info(`🔍 KMS签名器可用性: ${isAvailable}`);
+            logger.info(`🔍 KMSSignature器可用性: ${isAvailable}`);
 
-            // 2. 获取签名器地址
+            // 2. GetSignature器Address
             const signerAddress = await this.kmsSigner.getAddress();
-            logger.info(`📍 签名器地址: ${signerAddress}`);
+            logger.info(`📍 Signature器Address: ${signerAddress}`);
 
-            // 3. 测试消息签名
+            // 3. TestMessageSignature
             const testMessage = 'Hello ZKPay KMS Integration!';
             const signature = await this.kmsSigner.signMessage(testMessage, 'eip191');
-            logger.info(`✍️ 消息签名成功: ${signature.substring(0, 20)}...`);
+            logger.info(`✍️ MessageSignaturesuccessful: ${signature.substring(0, 20)}...`);
 
-            // 4. 测试交易签名
+            // 4. TestTransactionSignature
             const testTransaction = {
                 to: '0x742d35Cc6634C0532925a3b8D8d7d4C8d1B2C3D4',
                 value: '1000000000000000000',
@@ -280,30 +280,30 @@ class KMSIntegrationExample {
             };
 
             const txSignature = await this.kmsSigner.signTransaction(testTransaction);
-            logger.info(`🔏 交易签名成功: ${txSignature.substring(0, 20)}...`);
+            logger.info(`🔏 TransactionSignaturesuccessful: ${txSignature.substring(0, 20)}...`);
 
-            logger.info('✅ KMS签名器功能测试完成');
+            logger.info('✅ KMSSignature器FunctionTestcompleted');
 
         } catch (error) {
-            logger.error('❌ KMS签名器功能测试失败:', error.message);
+            logger.error('❌ KMSSignature器FunctionTestfailed:', error.message);
             throw error;
         }
     }
 
     /**
-     * 清理资源
+     * CleanupResource
      */
     async cleanup() {
         try {
             if (this.zkpayClient) {
-                // 如果有清理方法，调用它
+                // If有CleanupMethod，Call它
                 if (typeof this.zkpayClient.cleanup === 'function') {
                     await this.zkpayClient.cleanup();
                 }
             }
-            logger.info('🧹 资源清理完成');
+            logger.info('🧹 ResourceCleanupcompleted');
         } catch (error) {
-            logger.error('❌ 资源清理失败:', error.message);
+            logger.error('❌ ResourceCleanupfailed:', error.message);
         }
     }
 }
@@ -315,9 +315,9 @@ async function main() {
     const example = new KMSIntegrationExample();
 
     try {
-        logger.info('🎯 ZKPay KMS集成示例开始');
+        logger.info('🎯 ZKPay KMS集成ExampleStarting');
 
-        // 选择运行的示例
+        // SelectRun的Example
         const exampleType = process.env.EXAMPLE_TYPE || 'saas';
 
         switch (exampleType) {
@@ -334,42 +334,42 @@ async function main() {
                 break;
             
             case 'test':
-                // 先创建签名器再测试
+                // 先CreateSignature器再Test
                 await example.exampleWithSaasKMSConfig();
                 await example.testKMSSignerFunctionality();
                 break;
             
             default:
-                logger.error('❌ 未知的示例类型:', exampleType);
-                logger.info('💡 支持的示例类型: saas, manual, operator, test');
+                logger.error('❌ 未知的Example类型:', exampleType);
+                logger.info('💡 支持的Example类型: saas, manual, operator, test');
                 return;
         }
 
-        logger.info('🎉 ZKPay KMS集成示例完成');
+        logger.info('🎉 ZKPay KMS集成Examplecompleted');
 
     } catch (error) {
-        logger.error('💥 ZKPay KMS集成示例失败:', error.message);
+        logger.error('💥 ZKPay KMS集成Examplefailed:', error.message);
         process.exit(1);
     } finally {
         await example.cleanup();
     }
 }
 
-// 处理进程退出
+// Process进程退出
 process.on('SIGINT', async () => {
-    logger.info('📡 收到退出信号，正在清理...');
+    logger.info('📡 收To退出信号，正在Cleanup...');
     process.exit(0);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    logger.error('💥 未处理的Promise拒绝:', reason);
+    logger.error('💥 未Process的Promise拒绝:', reason);
     process.exit(1);
 });
 
-// 运行主函数
+// Run主函数
 if (require.main === module) {
     main().catch((error) => {
-        logger.error('💥 主函数执行失败:', error);
+        logger.error('💥 主函数Executefailed:', error);
         process.exit(1);
     });
 }

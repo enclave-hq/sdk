@@ -1,31 +1,31 @@
-# ZKPay 客户端操作库
+# ZKPay Client Operation Library
 
-这是一个与 ZKPay 后台交互的完整客户端库，提供了登录、存款、Commitment、提现等功能的统一接口。
+This is a complete client library for interacting with ZKPay backend, providing unified interfaces for login, deposit, commitment, withdrawal and other functions.
 
-## 功能特性
+## Features
 
-✅ **完整的操作流程支持**
+✅ **Complete Operation Flow Support**
 
-- 用户登录和认证
-- Token 授权和存款
-- 读取用户 CheckBook 记录
-- 创建分配方案和签名
-- 执行 Commitment（同步/异步）
-- 生成提现证明（同步/异步）
+- User login and authentication
+- Token authorization and deposit
+- Read user CheckBook records
+- Create allocation plans and signatures
+- Execute Commitment (synchronous/asynchronous)
+- Generate withdrawal proofs (synchronous/asynchronous)
 
-✅ **易于使用的 API**
+✅ **Easy-to-Use API**
 
-- 统一的错误处理
-- 详细的日志记录
-- 灵活的配置选项
-- 完善的文档和示例
+- Unified error handling
+- Detailed logging
+- Flexible configuration options
+- Comprehensive documentation and examples
 
-✅ **高级功能**
+✅ **Advanced Features**
 
-- 完整流程封装
-- 状态监控和等待
-- 资源自动清理
-- 并发操作支持
+- Complete flow encapsulation
+- Status monitoring and waiting
+- Automatic resource cleanup
+- Concurrent operation support
 
 ## 快速开始
 

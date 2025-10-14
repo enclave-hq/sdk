@@ -1,5 +1,5 @@
 /**
- * 测试Commitment签名消息生成和KMS签名
+ * TestCommitmentSignatureMessageGenerate和KMSSignature
  */
 
 const { ZKPayCommitmentManager } = require('../managers/zkpay-commitment-manager');
@@ -9,14 +9,14 @@ const ZKPayKMSAdapter = require('../utils/zkpay-kms-adapter');
 async function testCommitmentSignature() {
     const logger = createLogger('TestCommitmentSignature');
     
-    // 1. 创建Commitment管理器（模拟）
+    // 1. CreateCommitmentManagement器（Mock）
     const mockWalletManager = {
         getUserAddress: () => '0xaAf9CB43102654126aEff96a4AD25F23E7C969A2'
     };
     
     const commitmentManager = new ZKPayCommitmentManager(mockWalletManager, logger);
     
-    // 2. 根据提供的commitment信息构造签名消息
+    // 2. 根据Provide的commitmentInformation构造SignatureMessage
     const commitmentData = {
         "allocations": [
             {
@@ -41,8 +41,8 @@ async function testCommitmentSignature() {
         "lang": 2
     };
     
-    // 3. 生成签名消息
-    logger.info('🔍 生成Commitment签名消息...');
+    // 3. GenerateSignatureMessage
+    logger.info('🔍 GenerateCommitmentSignatureMessage...');
     
     const signatureMessage = commitmentManager.generateFullSignMessage(
         commitmentData.allocations,
@@ -53,19 +53,19 @@ async function testCommitmentSignature() {
         commitmentData.lang
     );
     
-    console.log('\n🔍 生成的签名消息:');
+    console.log('\n🔍 Generate的SignatureMessage:');
     console.log('=====================================');
     console.log(signatureMessage);
     console.log('=====================================');
-    console.log(`消息长度: ${signatureMessage.length} 字符`);
-    console.log(`消息十六进制: 0x${Buffer.from(signatureMessage, 'utf8').toString('hex')}`);
+    console.log(`MessageLength: ${signatureMessage.length} Characters`);
+    console.log(`MessageHexadecimal: 0x${Buffer.from(signatureMessage, 'utf8').toString('hex')}`);
     
-    // 4. 如果有KMS配置，测试KMS签名
+    // 4. 如果有KMSConfiguration，TestKMSSignature
     if (process.env.KMS_BASE_URL) {
         try {
-            logger.info('🔐 使用KMS测试签名...');
+            logger.info('🔐 UseKMSTestSignature...');
             
-            // 使用测试密钥配置
+            // UseTestKeyConfiguration
             const kmsConfig = {
                 baseURL: process.env.KMS_BASE_URL || 'http://localhost:18082',
                 keyAlias: 'test_commitment_signature',
@@ -77,28 +77,28 @@ async function testCommitmentSignature() {
             
             const kmsAdapter = new ZKPayKMSAdapter(kmsConfig, logger);
             
-            // 注意：这需要实际的KMS服务和有效的加密密钥
+            // 注意：这需要实际的KMSService和有效的EncryptionKey
             // const signature = await kmsAdapter.signMessage(signatureMessage, kmsConfig.address);
-            // logger.info(`✅ KMS签名结果: ${signature}`);
+            // logger.info(`✅ KMSSignatureResult: ${signature}`);
             
-            logger.warn('⚠️ KMS签名测试需要有效的加密密钥，跳过实际签名');
+            logger.warn('⚠️ KMSSignatureTest需要有效的EncryptionKey，跳过实际Signature');
             
         } catch (error) {
-            logger.error('❌ KMS签名测试失败:', error.message);
+            logger.error('❌ KMSSignatureTestfailed:', error.message);
         }
     } else {
-        logger.info('ℹ️ 未配置KMS_BASE_URL，跳过KMS签名测试');
+        logger.info('ℹ️ 未ConfigurationKMS_BASE_URL，跳过KMSSignatureTest');
     }
     
-    // 5. 对比已知签名
+    // 5. Compare已知Signature
     const expectedSignature = commitmentData.signature.signature_data;
-    logger.info(`🎯 期望的签名: ${expectedSignature}`);
+    logger.info(`🎯 期望的Signature: ${expectedSignature}`);
     
-    // 6. 计算消息哈希（用于验证）
+    // 6. CalculateMessageHash（用于Verify）
     const crypto = require('crypto');
     const messageBuffer = Buffer.from(signatureMessage, 'utf8');
     const messageHash = crypto.createHash('sha256').update(messageBuffer).digest('hex');
-    logger.info(`📝 消息SHA256哈希: ${messageHash}`);
+    logger.info(`📝 MessageSHA256Hash: ${messageHash}`);
     
     return {
         message: signatureMessage,
@@ -109,18 +109,18 @@ async function testCommitmentSignature() {
     };
 }
 
-// 运行测试
+// 运行Test
 if (require.main === module) {
     testCommitmentSignature()
         .then(result => {
-            console.log('\n✅ 测试完成');
-            console.log('📊 结果摘要:');
-            console.log(`  消息长度: ${result.messageLength}`);
-            console.log(`  消息哈希: ${result.messageHash}`);
-            console.log(`  期望签名: ${result.expectedSignature}`);
+            console.log('\n✅ Testcompleted');
+            console.log('📊 ResultSummary:');
+            console.log(`  MessageLength: ${result.messageLength}`);
+            console.log(`  MessageHash: ${result.messageHash}`);
+            console.log(`  期望Signature: ${result.expectedSignature}`);
         })
         .catch(error => {
-            console.error('❌ 测试失败:', error);
+            console.error('❌ Testfailed:', error);
             process.exit(1);
         });
 }

@@ -1,30 +1,30 @@
-# ZKPay SDK 文档中心
+# ZKPay SDK Documentation Center
 
-## 🎯 功能概述
+## 🎯 Feature Overview
 
-ZKPay SDK 是一个完整的隐私支付解决方案，提供从私钥管理到跨链隐私转账的全套工具和服务。支持多种认证方式，包括直接私钥登录和企业级KMS集成。
+ZKPay SDK is a complete privacy payment solution that provides a full suite of tools and services from private key management to cross-chain privacy transfers. Supports multiple authentication methods, including direct private key login and enterprise-level KMS integration.
 
-### 核心功能
+### Core Features
 
-1. **钱包管理** - 支持直接私钥和KMS签名器的多种认证方式
-2. **存款流程** - 自动执行 Token 授权和存款操作
-3. **Commitment 流程** - 自动生成隐私证明和提交承诺
-4. **提现流程** - 自动生成提现证明和执行跨链提现
-5. **端到端测试** - 完整的工作流程自动化测试
-6. **压力测试** - 多用户并发测试支持
-7. **结果验证** - 自动验证交易结果和余额变化
-8. **KMS集成** - 企业级密钥管理系统支持
-9. **多链支持** - 支持多个区块链网络的统一管理
+1. **Wallet Management** - Supports multiple authentication methods including direct private key and KMS signers
+2. **Deposit Process** - Automatically executes Token authorization and deposit operations
+3. **Commitment Process** - Automatically generates privacy proofs and submits commitments
+4. **Withdrawal Process** - Automatically generates withdrawal proofs and executes cross-chain withdrawals
+5. **End-to-End Testing** - Complete workflow automation testing
+6. **Stress Testing** - Multi-user concurrent testing support
+7. **Result Verification** - Automatically verifies transaction results and balance changes
+8. **KMS Integration** - Enterprise-level key management system support
+9. **Multi-Chain Support** - Unified management supporting multiple blockchain networks
 
-## 🏗️ 系统架构
+## 🏗️ System Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │  Wallet Manager │    │ Deposit Manager │    │Commitment Mgr   │
 │                 │    │                 │    │                 │
-│ • 私钥管理       │    │ • Token授权      │    │ • 证明生成       │
-│ • 多链连接       │    │ • 存款执行       │    │ • 承诺提交       │
-│ • 余额检查       │    │ • 事件监听       │    │ • 状态监控       │
+│ • Private Key Mgmt│   │ • Token Approval │   │ • Proof Generation│
+│ • Multi-chain Conn│   │ • Deposit Exec   │   │ • Commitment Sub │
+│ • Balance Check   │   │ • Event Listen   │   │ • Status Monitor │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          └───────────────────────┼───────────────────────┘
@@ -32,10 +32,10 @@ ZKPay SDK 是一个完整的隐私支付解决方案，提供从私钥管理到�
               ┌─────────────────────────────────────┐
               │           E2E Test Engine          │
               │                                     │
-              │ • 测试编排                           │
-              │ • 结果记录                           │
-              │ • 错误处理                           │
-              │ • 报告生成                           │
+              │ • Test Orchestration                │
+              │ • Result Recording                  │
+              │ • Error Handling                    │
+              │ • Report Generation                 │
               └─────────────────────────────────────┘
                                  │
          ┌───────────────────────┼───────────────────────┐
@@ -43,30 +43,31 @@ ZKPay SDK 是一个完整的隐私支付解决方案，提供从私钥管理到�
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │ Withdraw Manager│    │   Logger System │    │Environment Check│
 │                 │    │                 │    │                 │
-│ • 提现证明       │    │ • 结构化日志     │    │ • 配置验证       │
-│ • 跨链执行       │    │ • 测试结果       │    │ • 网络检查       │
-│ • 交易验证       │    │ • 错误追踪       │    │ • 服务检查       │
+│ • Withdraw Proof │    │ • Structured Log │    │ • Config Verify │
+│ • Cross-chain Exec│   │ • Test Results   │    │ • Network Check │
+│ • Transaction Ver │    │ • Error Tracking │    │ • Service Check │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 1. 环境准备
+### 1. Environment Setup
 
 ```bash
-# 进入zksdk目录
+# Enter zksdk directory
 cd zksdk
 
-# 安装依赖
+# Install dependencies
 npm install
 
-# 检查环境
+# Check environment
 npm run check-env
 ```
 
-### 2. 配置设置
+### 2. Configuration Setup
 
 #### 基础配置
+
 复制并编辑环境变量配置：
 
 ```bash
@@ -76,10 +77,12 @@ cp env.example .env
 
 编辑 `config.yaml` 文件，根据你的测试环境调整配置。
 
-#### KMS配置
-对于企业用户，可以配置KMS服务：
+#### KMS 配置
+
+对于企业用户，可以配置 KMS 服务：
 
 **环境变量方式：**
+
 ```bash
 # SAAS KMS配置
 export SAAS_KMS_URL="https://kms.your-saas.com"
@@ -91,6 +94,7 @@ export SAAS_KEY_ALIAS="enterprise_key"
 
 **配置文件方式：**
 创建 `kms-config.json` 文件：
+
 ```json
 {
   "kms": {
@@ -107,7 +111,7 @@ export SAAS_KEY_ALIAS="enterprise_key"
 }
 ```
 
-### 3. 运行测试
+### 3. Run Tests
 
 #### 基础端到端测试
 

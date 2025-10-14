@@ -1,21 +1,21 @@
 /**
- * 对比webserver/lib和zkvm/lib.rs的实现差异
+ * Compare webserver/lib and zkvm/lib.rs implementation differences
  */
 
 const crypto = require('crypto');
 
-// 检查是否有ethers可用
+// Check if ethers is available
 let ethers;
 try {
     ethers = require('ethers');
 } catch (error) {
-    console.log('⚠️ ethers包未找到，将跳过KMS签名测试');
+    console.log('⚠️ ethers package not found, will skip KMS Signature Test');
 }
 
-console.log('🔍 对比三种签名消息生成实现');
+console.log('🔍 Compare three Signature Message Generate implementations');
 console.log('==========================================\n');
 
-// 测试数据
+// TestData
 const testData = {
     allocations: [{
         recipient_chain_id: 714,
@@ -33,161 +33,161 @@ const testData = {
     lang: 2
 };
 
-console.log('📋 测试数据:');
-console.log('  金额: 15000000000000000000 (应该是15.00代币)');
-console.log('  存款ID: 000000000000000000000000000000000000000000000000000000000117987c');
-console.log('  接收地址: Universal Address格式');
-console.log('  所有者: Universal Address格式\n');
+console.log('📋 TestData:');
+console.log('  Amount: 15000000000000000000 (Should是15.00Token)');
+console.log('  DepositID: 000000000000000000000000000000000000000000000000000000000117987c');
+console.log('  ReceiveAddress: Universal AddressFormat');
+console.log('  Owner: Universal AddressFormat\n');
 
-// ============ 方法1: webserver/lib/signature-message.ts (有bug) ============
-console.log('📝 方法1: webserver/lib/signature-message.ts');
+// ============ Method1: webserver/lib/signature-message.ts (有bug) ============
+console.log('📝 Method1: webserver/lib/signature-message.ts');
 console.log('-----------------------------------------------');
-console.log('问题: stringToU256Bytes函数有bug');
-console.log('表现: 长十进制数字被错误识别为十六进制');
-console.log('金额显示: 99169.69 TUSDT (错误)');
-console.log('存款ID: 18323580 (正确)');
-console.log('消息特点: 使用formatAddress(lang)方法格式化地址');
-console.log('地址格式: "Binance Smart Chain链上0x...地址"');
+console.log('Issue: stringToU256Bytes函数有bug');
+console.log('Performance: 长十进制数字被Error识别为Hexadecimal');
+console.log('AmountDisplay: 99169.69 TUSDT (Error)');
+console.log('DepositID: 18323580 (Correct)');
+console.log('MessageFeatures: UseformatAddress(lang)MethodFormattedAddress');
+console.log('AddressFormat: "Binance Smart ChainOn-chain0x...Address"');
 console.log('');
 
-// ============ 方法2: zksdk/generateCommitmentSignatureMessage (修复版) ============
-console.log('📝 方法2: zksdk/generateCommitmentSignatureMessage');
+// ============ Method2: zksdk/generateCommitmentSignatureMessage (Fix版) ============
+console.log('📝 Method2: zksdk/generateCommitmentSignatureMessage');
 console.log('------------------------------------------------');
-console.log('状态: 修复了stringToU256Bytes的bug');
-console.log('表现: 正确处理十进制金额');
-console.log('金额显示: 15.00 TUSDT (正确)');
-console.log('存款ID: 18323580 (正确)');
-console.log('消息特点: 使用AddressFormatter.toUniversalAddress');
-console.log('地址格式: "Binance Smart Chain链上0x...地址"');
+console.log('Status: Fix了stringToU256Bytes的bug');
+console.log('Performance: CorrectProcess十进制Amount');
+console.log('AmountDisplay: 15.00 TUSDT (Correct)');
+console.log('DepositID: 18323580 (Correct)');
+console.log('MessageFeatures: UseAddressFormatter.toUniversalAddress');
+console.log('AddressFormat: "Binance Smart ChainOn-chain0x...Address"');
 console.log('');
 
-// ============ 方法3: zkvm/lib.rs/get_data_to_sign ============
-console.log('📝 方法3: zkvm/lib.rs的get_data_to_sign函数');
+// ============ Method3: zkvm/lib.rs/get_data_to_sign ============
+console.log('📝 Method3: zkvm/lib.rs的get_data_to_sign函数');
 console.log('--------------------------------------------');
-console.log('特点: Rust实现，是权威标准');
-console.log('金额处理: 直接使用U256，不会有字符串解析bug');
-console.log('地址处理: 使用UniversalAddress.format_address(lang)');
-console.log('存款ID: 使用format_deposit_id将字节数组转为U256显示');
-console.log('排序: 严格按chain_id、地址数据、金额排序');
+console.log('Features: RustImplementation，是AuthoritativeStandard');
+console.log('AmountProcess: DirectUseU256，不会有Characters串Parsebug');
+console.log('AddressProcess: UseUniversalAddress.format_address(lang)');
+console.log('DepositID: Useformat_deposit_id将字节数组转为U256Display');
+console.log('Sort: Strict按chain_id、AddressData、AmountSort');
 console.log('');
 
-console.log('🔍 关键实现差异分析:');
+console.log('🔍 KeyImplementationDifferencesAnalysis:');
 console.log('═══════════════════════════════════════════════════════════════');
 
-console.log('\n1. 金额处理差异:');
+console.log('\n1. AmountProcessDifferences:');
 console.log('   webserver/lib: 有stringToU256Bytes bug');
-console.log('   zksdk: 修复了字符串解析bug');
-console.log('   zkvm/lib.rs: 直接使用U256，无字符串解析问题');
+console.log('   zksdk: Fix了Characters串Parsebug');
+console.log('   zkvm/lib.rs: DirectUseU256，无Characters串ParseIssue');
 
-console.log('\n2. 存款ID格式化:');
-console.log('   所有实现: 都将字节数组转为BigInt/U256显示');
-console.log('   结果: 都正确显示18323580');
+console.log('\n2. DepositIDFormatted:');
+console.log('   所有Implementation: 都将字节数组转为BigInt/U256Display');
+console.log('   Result: 都CorrectDisplay18323580');
 
-console.log('\n3. 地址格式化:');
-console.log('   webserver/lib: formatAddress(lang) → "Binance Smart Chain链上0x...地址"');
+console.log('\n3. AddressFormatted:');
+console.log('   webserver/lib: formatAddress(lang) → "Binance Smart ChainOn-chain0x...Address"');
 console.log('   zksdk: AddressFormatter + formatUniversalAddress');
 console.log('   zkvm/lib.rs: UniversalAddress.format_address(lang)');
 
-console.log('\n4. 排序逻辑:');
-console.log('   webserver/lib: 按chain_id → 地址数据 → 金额排序');
-console.log('   zksdk: 简化版排序');
-console.log('   zkvm/lib.rs: 严格标准排序 (权威实现)');
+console.log('\n4. SortLogic:');
+console.log('   webserver/lib: 按chain_id → AddressData → AmountSort');
+console.log('   zksdk: 简化版Sort');
+console.log('   zkvm/lib.rs: StrictStandardSort (AuthoritativeImplementation)');
 
-console.log('\n5. 多语言支持:');
-console.log('   webserver/lib: 支持多语言');
-console.log('   zksdk: 主要支持中文');
-console.log('   zkvm/lib.rs: 完整的10种语言支持');
+console.log('\n5. Multi-languageSupport:');
+console.log('   webserver/lib: SupportMulti-language');
+console.log('   zksdk: MainSupportChinese');
+console.log('   zkvm/lib.rs: Complete的10LanguagesSupport');
 
-console.log('\n🎯 问题分析:');
+console.log('\n🎯 IssueAnalysis:');
 console.log('═══════════════════════════════════════════════════════════════');
-console.log('webserver/lib/signature-message.ts的问题:');
+console.log('webserver/lib/signature-message.ts的Issue:');
 console.log('1. ❌ stringToU256Bytes函数有严重bug');
-console.log('2. ❌ 将"15000000000000000000"误判为十六进制');
-console.log('3. ❌ 导致15.00变成99169.69的错误显示');
+console.log('2. ❌ 将"15000000000000000000"误判为Hexadecimal');
+console.log('3. ❌ 导致15.00变成99169.69的ErrorDisplay');
 console.log('4. ⚠️  这是一个灾难性的金融应用bug');
 
-console.log('\nzkvm/lib.rs的优势:');
-console.log('1. ✅ Rust实现，类型安全');
-console.log('2. ✅ 直接使用U256，无字符串解析问题');
-console.log('3. ✅ 严格的排序和格式化逻辑');
-console.log('4. ✅ 完整的多语言支持');
-console.log('5. ✅ 这是权威的标准实现');
+console.log('\nzkvm/lib.rs的Advantages:');
+console.log('1. ✅ RustImplementation，TypeSecurity');
+console.log('2. ✅ DirectUseU256，无Characters串ParseIssue');
+console.log('3. ✅ Strict的Sort和FormattedLogic');
+console.log('4. ✅ Complete的Multi-languageSupport');
+console.log('5. ✅ 这是Authoritative的StandardImplementation');
 
-console.log('\n📊 结论:');
+console.log('\n📊 Conclusion:');
 console.log('═══════════════════════════════════════════════════════════════');
-console.log('1. webserver/lib有严重bug，不应该使用');
-console.log('2. zksdk的修复版本是临时解决方案');
-console.log('3. zkvm/lib.rs是权威标准，应该以此为准');
-console.log('4. 所有前端实现都应该与zkvm/lib.rs保持一致');
+console.log('1. webserver/lib有严重bug，不ShouldUse');
+console.log('2. zksdk的FixVersion是TemporarySolutionPlan');
+console.log('3. zkvm/lib.rs是AuthoritativeStandard，Should以此为准');
+console.log('4. 所有FrontendImplementation都Should与zkvm/lib.rsKeepConsistent');
 
-// ============ KMS签名测试部分 ============
-console.log('\n\n🔐 KMS签名测试部分');
+// ============ KMSSignatureTestPart ============
+console.log('\n\n🔐 KMSSignatureTestPart');
 console.log('═══════════════════════════════════════════════════════════════');
 
-// 立即执行异步函数
+// ImmediateExecute异步函数
 (async () => {
     await testKMSSignature();
 })().catch(error => {
-    console.error('❌ KMS测试失败:', error);
+    console.error('❌ KMSTestfailed:', error);
 });
 
 /**
- * KMS签名测试函数
+ * KMSSignatureTest函数
  */
 async function testKMSSignature() {
-    console.log('🔐 使用指定私钥进行签名测试');
+    console.log('🔐 Use指定Private Key进行SignatureTest');
     console.log('-----------------------------------------------');
     
     if (!ethers) {
-        console.log('⚠️ ethers包不可用，无法进行签名测试');
-        console.log('请运行: npm install ethers');
+        console.log('⚠️ ethers包不可用，Cannot进行SignatureTest');
+        console.log('Please运行: npm install ethers');
         return;
     }
     
-    // 使用提供的私钥
+    // UseProvide的Private Key
     const privateKey = '0xc2199224a999bc8e67d8a6517d0c7260f0d6cd868315e5131a654191712c6bb1';
     const wallet = new ethers.Wallet(privateKey);
     
-    console.log(`🔑 测试私钥: ${privateKey}`);
-    console.log(`📍 对应地址: ${wallet.address}`);
+    console.log(`🔑 TestPrivate Key: ${privateKey}`);
+    console.log(`📍 对应Address: ${wallet.address}`);
     console.log('');
     
-    // 生成测试消息 - 使用与其他测试相同的数据
+    // GenerateTestMessage - Use与其他Test相同的Data
     const testMessage = generateTestSignatureMessage();
-    console.log('📝 测试消息:');
+    console.log('📝 TestMessage:');
     console.log('-----------------------------------------------');
     console.log(testMessage);
     console.log('-----------------------------------------------');
-    console.log(`消息长度: ${testMessage.length} 字符`);
+    console.log(`MessageLength: ${testMessage.length} Characters`);
     
-    // 计算消息哈希
+    // CalculateMessageHash
     const messageBuffer = Buffer.from(testMessage, 'utf8');
     const messageHash = crypto.createHash('sha256').update(messageBuffer).digest('hex');
-    console.log(`📋 消息SHA256: ${messageHash}`);
+    console.log(`📋 MessageSHA256: ${messageHash}`);
     
     let signature;
     try {
-        // EIP-191签名 (以太坊消息签名标准)
-        console.log('\n🔐 执行EIP-191签名...');
+        // EIP-191Signature (以太坊MessageSignatureStandard)
+        console.log('\n🔐 ExecuteEIP-191Signature...');
         signature = await wallet.signMessage(testMessage);
-        console.log(`✅ EIP-191签名结果: ${signature}`);
+        console.log(`✅ EIP-191SignatureResult: ${signature}`);
         
         try {
-            // 验证签名 - 尝试不同的API
+            // VerifySignature - 尝试不同的API
             let recoveredAddress;
             if (ethers.utils && ethers.utils.verifyMessage) {
                 recoveredAddress = ethers.utils.verifyMessage(testMessage, signature);
             } else if (ethers.verifyMessage) {
                 recoveredAddress = ethers.verifyMessage(testMessage, signature);
             } else {
-                console.log('⚠️ 无法找到verifyMessage方法，跳过验证');
+                console.log('⚠️ Cannot找到verifyMessageMethod，跳过Verify');
                 recoveredAddress = '未知';
             }
             
-            console.log(`🔍 签名验证结果: ${recoveredAddress}`);
-            console.log(`✅ 签名验证: ${recoveredAddress.toLowerCase() === wallet.address.toLowerCase() ? '通过' : '失败'}`);
+            console.log(`🔍 SignatureVerifyResult: ${recoveredAddress}`);
+            console.log(`✅ SignatureVerify: ${recoveredAddress.toLowerCase() === wallet.address.toLowerCase() ? 'Pass' : 'failed'}`);
             
-            // 分解签名
+            // 分解Signature
             try {
                 let sig;
                 if (ethers.utils && ethers.utils.splitSignature) {
@@ -195,19 +195,19 @@ async function testKMSSignature() {
                 } else if (ethers.Signature && ethers.Signature.from) {
                     sig = ethers.Signature.from(signature);
                 } else {
-                    throw new Error('无法找到splitSignature方法');
+                    throw new Error('Cannot找到splitSignatureMethod');
                 }
                 
-                console.log('\n📊 签名组成部分:');
+                console.log('\n📊 SignatureCompositionPart:');
                 console.log(`  r: ${sig.r}`);
                 console.log(`  s: ${sig.s}`);
                 console.log(`  v: ${sig.v || sig.yParity}`);
                 console.log(`  recovery: ${sig.recoveryParam || sig.yParity}`);
             } catch (sigError) {
-                console.log('⚠️ 无法分解签名:', sigError.message);
+                console.log('⚠️ Cannot分解Signature:', sigError.message);
             }
             
-            // 计算EIP-191消息哈希
+            // CalculateEIP-191MessageHash
             try {
                 let messageHashBytes;
                 if (ethers.utils && ethers.utils.hashMessage) {
@@ -215,49 +215,49 @@ async function testKMSSignature() {
                 } else if (ethers.hashMessage) {
                     messageHashBytes = ethers.hashMessage(testMessage);
                 } else {
-                    throw new Error('无法找到hashMessage方法');
+                    throw new Error('Cannot找到hashMessageMethod');
                 }
-                console.log(`📋 EIP-191消息哈希: ${messageHashBytes}`);
+                console.log(`📋 EIP-191MessageHash: ${messageHashBytes}`);
             } catch (hashError) {
-                console.log('⚠️ 无法计算消息哈希:', hashError.message);
+                console.log('⚠️ CannotCalculateMessageHash:', hashError.message);
             }
             
         } catch (verifyError) {
-            console.log('⚠️ 签名验证失败:', verifyError.message);
+            console.log('⚠️ SignatureVerifyfailed:', verifyError.message);
         }
         
     } catch (error) {
-        console.error('❌ 签名失败:', error.message);
+        console.error('❌ Signaturefailed:', error.message);
     }
     
-    console.log('\n🎯 KMS签名测试总结:');
+    console.log('\n🎯 KMSSignatureTestSummary:');
     console.log('-----------------------------------------------');
-    console.log('1. ✅ 成功使用指定私钥创建钱包');
-    console.log('2. ✅ 生成了标准的EIP-191签名');
-    console.log('3. ✅ 签名验证通过，确认私钥和地址匹配');
-    console.log('4. 📝 这个签名可以与KMS系统的签名结果进行对比');
-    console.log('5. 🔍 如果KMS使用相同私钥和相同消息，应该产生相同签名');
+    console.log('1. ✅ successfulUse指定Private KeyCreate钱包');
+    console.log('2. ✅ Generate了Standard的EIP-191Signature');
+    console.log('3. ✅ SignatureVerifyPass，确认Private Key和Address匹配');
+    console.log('4. 📝 这个Signature可以与KMSSystem的SignatureResult进行Compare');
+    console.log('5. 🔍 如果KMSUse相同Private Key和相同Message，Should产生相同Signature');
     
-    console.log('\n📋 KMS对比要点:');
+    console.log('\n📋 KMSCompare要点:');
     console.log('-----------------------------------------------');
-    console.log(`🔑 测试私钥: ${privateKey}`);
-    console.log(`📍 钱包地址: ${wallet.address}`);
-    console.log(`📝 签名结果: ${signature}`);
-    console.log(`🔍 消息哈希: ${messageHash} (SHA256)`);
+    console.log(`🔑 TestPrivate Key: ${privateKey}`);
+    console.log(`📍 钱包Address: ${wallet.address}`);
+    console.log(`📝 SignatureResult: ${signature}`);
+    console.log(`🔍 MessageHash: ${messageHash} (SHA256)`);
     console.log('');
-    console.log('💡 KMS系统签名对比要点:');
-    console.log('  • 使用相同的私钥和消息内容');
-    console.log('  • 应该产生完全相同的EIP-191签名');
-    console.log('  • 签名格式: 0x + 130个十六进制字符');
-    console.log('  • 如果签名不同，检查消息格式或私钥处理');
-    console.log('  • KMS的signMessage应该使用EIP-191标准');
+    console.log('💡 KMSSystemSignatureCompare要点:');
+    console.log('  • Use相同的Private Key和Message内容');
+    console.log('  • Should产生完全相同的EIP-191Signature');
+    console.log('  • SignatureFormat: 0x + 130个HexadecimalCharacters');
+    console.log('  • 如果Signature不同，CheckMessageFormat或Private KeyProcess');
+    console.log('  • KMS的signMessageShouldUseEIP-191Standard');
 }
 
 /**
- * 生成测试签名消息
+ * GenerateTestSignatureMessage
  */
 function generateTestSignatureMessage() {
-    // 使用与上面测试数据相同的内容生成消息
+    // Use与上面TestData相同的内容GenerateMessage
     const allocations = testData.allocations;
     const depositId = testData.deposit_id;
     const tokenSymbol = testData.token_symbol;
@@ -265,14 +265,14 @@ function generateTestSignatureMessage() {
     const ownerAddress = testData.owner_address;
     const lang = testData.lang;
     
-    // 简化的消息生成（模拟zksdk的实现）
+    // 简化的MessageGenerate（Mockzksdk的Implementation）
     const amount = (BigInt(allocations[0].amount) / BigInt(10 ** tokenDecimals)).toString() + '.00';
     const depositIdBigInt = BigInt('0x' + depositId);
     
     const message = `您正在授权一笔提现交易：
-从存款 ${depositIdBigInt.toString()} 中
+从Deposit ${depositIdBigInt.toString()} 中
 提取 ${amount} ${tokenSymbol}
-发送到 Binance Smart Chain链上0x0848d929b9d35bfb7aa50641d392a4ad83e145ce地址`;
+发送到 Binance Smart ChainOn-chain0x0848d929b9d35bfb7aa50641d392a4ad83e145ceAddress`;
 
     return message;
 }

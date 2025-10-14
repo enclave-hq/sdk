@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-// KMS密钥初始化完整示例
-// 演示如何从零开始在KMS中创建和管理密钥
+// KMSKeyInitialize完整Example
+// Demo如何From零Starting在KMS中Create和ManagementKey
 
 const {
   ZKPayKMSSigner,
@@ -13,47 +13,47 @@ const crypto = require("crypto");
 const axios = require("axios");
 
 /**
- * 示例1: 生成新私钥并在KMS中初始化
+ * Example1: Generate新Private Key并在KMS中Initialize
  */
 async function initializeNewKeyInKMS() {
   const logger = createLogger("KMSKeyInit");
-  logger.info("🚀 示例1: 生成新私钥并在KMS中初始化");
+  logger.info("🚀 Example1: Generate新Private Key并在KMS中Initialize");
 
   try {
-    // 1. 生成新的私钥
+    // 1. GenerateNewPrivate Key
     const privateKey = "0x" + crypto.randomBytes(32).toString("hex");
-    logger.info(`🔑 生成新私钥: ${privateKey.slice(0, 10)}...`);
+    logger.info(`🔑 Generate新Private Key: ${privateKey.slice(0, 10)}...`);
 
-    // 2. 配置KMS初始化参数
+    // 2. ConfigurationKMSInitializeParameter
     const initConfig = {
       baseURL: "http://localhost:18082",
       privateKey: privateKey,
-      keyAlias: `zksdk_${Date.now()}`, // 使用时间戳确保唯一性
+      keyAlias: `zksdk_${Date.now()}`, // UseTimestamp确保唯一性
       slip44Id: 714, // BSC网络
       timeout: 30000,
-      // 可选的认证配置
+      // 可选的认证Configuration
       bearerToken: process.env.KMS_BEARER_TOKEN,
       serviceKey: process.env.KMS_SERVICE_KEY,
     };
 
-    logger.info(`📝 KMS配置:`, {
+    logger.info(`📝 KMSConfiguration:`, {
       keyAlias: initConfig.keyAlias,
       slip44Id: initConfig.slip44Id,
       baseURL: initConfig.baseURL,
     });
 
-    // 3. 调用KMS加密接口初始化密钥
-    logger.info("🔐 正在向KMS发送加密请求...");
+    // 3. CallKMSEncryptionInterfaceInitializeKey
+    logger.info("🔐 正在向KMSSendEncryptionRequest...");
 
     const kmsSigner = await ZKPayKMSSignerFactory.createWithNewKey(
       initConfig,
       logger
     );
 
-    logger.info("✅ 密钥已成功在KMS中初始化");
-    logger.info(`📍 生成的地址: ${kmsSigner.getAddress()}`);
-    logger.info(`🔗 链信息: ${JSON.stringify(kmsSigner.getChainInfo(714))}`);
-    logger.info(`📋 签名类型: ${kmsSigner.config.defaultSignatureType}`);
+    logger.info("✅ KeyAlreadysuccessful在KMS中Initialize");
+    logger.info(`📍 Generate的Address: ${kmsSigner.getAddress()}`);
+    logger.info(`🔗 链Information: ${JSON.stringify(kmsSigner.getChainInfo(714))}`);
+    logger.info(`📋 Signature类型: ${kmsSigner.config.defaultSignatureType}`);
 
     return {
       signer: kmsSigner,
@@ -62,15 +62,15 @@ async function initializeNewKeyInKMS() {
       encryptedKey: kmsSigner.config.encryptedKey,
     };
   } catch (error) {
-    logger.error("❌ KMS密钥初始化失败:", error.message);
+    logger.error("❌ KMSKeyInitializefailed:", error.message);
 
-    // 提供详细的错误诊断
+    // ProvideDetailed的Error诊断
     if (error.response) {
-      logger.error("🔍 KMS服务响应:", error.response.data);
-      logger.error("📡 HTTP状态码:", error.response.status);
+      logger.error("🔍 KMSServiceResponse:", error.response.data);
+      logger.error("📡 HTTPStatus码:", error.response.status);
     } else if (error.request) {
       logger.error(
-        "🔍 网络连接失败，请检查KMS服务是否运行在 http://localhost:18082"
+        "🔍 网络连接failed，PleaseCheckKMSServiceWhetherRun在 http://localhost:18082"
       );
     }
 
@@ -79,11 +79,11 @@ async function initializeNewKeyInKMS() {
 }
 
 /**
- * 示例2: 批量初始化多链密钥
+ * Example2: 批量Initialize多链Key
  */
 async function initializeMultiChainKeys() {
   const logger = createLogger("MultiChainInit");
-  logger.info("🚀 示例2: 批量初始化多链密钥");
+  logger.info("🚀 Example2: 批量Initialize多链Key");
 
   const chains = [
     { name: "Ethereum", slip44Id: 60, signatureType: "eip191" },
@@ -96,9 +96,9 @@ async function initializeMultiChainKeys() {
 
   for (const chain of chains) {
     try {
-      logger.info(`\n🔗 初始化 ${chain.name} 密钥 (SLIP44: ${chain.slip44Id})`);
+      logger.info(`\n🔗 Initialize ${chain.name} Key (SLIP44: ${chain.slip44Id})`);
 
-      // 为每条链生成独立的私钥
+      // 为每条链Generate独立的Private Key
       const privateKey = "0x" + crypto.randomBytes(32).toString("hex");
       const keyAlias = `${chain.name.toLowerCase()}_key_${Date.now()}`;
 
@@ -111,15 +111,15 @@ async function initializeMultiChainKeys() {
         timeout: 30000,
       };
 
-      // 调用KMS初始化
+      // CallKMSInitialize
       const kmsSigner = await ZKPayKMSSignerFactory.createWithNewKey(
         initConfig,
         logger
       );
 
-      logger.info(`  ✅ ${chain.name} 密钥初始化成功`);
-      logger.info(`  📍 地址: ${kmsSigner.getAddress()}`);
-      logger.info(`  🔐 密钥别名: ${keyAlias}`);
+      logger.info(`  ✅ ${chain.name} KeyInitializesuccessful`);
+      logger.info(`  📍 Address: ${kmsSigner.getAddress()}`);
+      logger.info(`  🔐 KeyAlias: ${keyAlias}`);
 
       results.push({
         chain: chain.name,
@@ -130,10 +130,10 @@ async function initializeMultiChainKeys() {
         status: "SUCCESS",
       });
 
-      // 添加延迟避免KMS服务过载
+      // 添加延迟避免KMSService过载
       await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
-      logger.error(`  ❌ ${chain.name} 密钥初始化失败: ${error.message}`);
+      logger.error(`  ❌ ${chain.name} KeyInitializefailed: ${error.message}`);
 
       results.push({
         chain: chain.name,
@@ -144,27 +144,27 @@ async function initializeMultiChainKeys() {
     }
   }
 
-  logger.info("\n📊 多链密钥初始化结果:");
+  logger.info("\n📊 多链KeyInitializeResult:");
   console.table(results);
 
   return results;
 }
 
 /**
- * 示例3: 从现有私钥在KMS中创建密钥
+ * Example3: FromExistingPrivate Key在KMS中CreateKey
  */
 async function initializeFromExistingPrivateKey() {
   const logger = createLogger("ExistingKeyInit");
-  logger.info("🚀 示例3: 从现有私钥在KMS中创建密钥");
+  logger.info("🚀 Example3: FromExistingPrivate Key在KMS中CreateKey");
 
   try {
-    // 使用现有的私钥（实际应用中从安全存储获取）
+    // UseExisting的Private Key（实际应用中FromSecurityStorageGet）
     const existingPrivateKey =
       process.env.EXISTING_PRIVATE_KEY || "your_private_key";
 
-    logger.info("🔑 使用现有私钥进行KMS初始化");
+    logger.info("🔑 UseExistingPrivate Key进行KMSInitialize");
 
-    // 支持多种网络的初始化
+    // 支持多种网络的Initialize
     const networkConfigs = [
       {
         name: "BSC主网",
@@ -181,7 +181,7 @@ async function initializeFromExistingPrivateKey() {
     const initializedKeys = [];
 
     for (const config of networkConfigs) {
-      logger.info(`\n🔗 在 ${config.name} 上初始化密钥`);
+      logger.info(`\n🔗 在 ${config.name} 上InitializeKey`);
 
       const initConfig = {
         baseURL: "http://localhost:18082",
@@ -197,9 +197,9 @@ async function initializeFromExistingPrivateKey() {
           logger
         );
 
-        logger.info(`  ✅ ${config.name} 密钥初始化成功`);
-        logger.info(`  📍 地址: ${kmsSigner.getAddress()}`);
-        logger.info(`  🔐 别名: ${config.keyAlias}`);
+        logger.info(`  ✅ ${config.name} KeyInitializesuccessful`);
+        logger.info(`  📍 Address: ${kmsSigner.getAddress()}`);
+        logger.info(`  🔐 Alias: ${config.keyAlias}`);
 
         initializedKeys.push({
           network: config.name,
@@ -207,26 +207,26 @@ async function initializeFromExistingPrivateKey() {
           keyAlias: config.keyAlias,
         });
       } catch (error) {
-        logger.warn(`  ⚠️ ${config.name} 初始化失败: ${error.message}`);
+        logger.warn(`  ⚠️ ${config.name} Initializefailed: ${error.message}`);
       }
     }
 
     return initializedKeys;
   } catch (error) {
-    logger.error("❌ 从现有私钥初始化失败:", error.message);
+    logger.error("❌ FromExistingPrivate KeyInitializefailed:", error.message);
     throw error;
   }
 }
 
 /**
- * 示例4: KMS密钥状态检查和验证
+ * Example4: KMSKeyStatusCheck和Verify
  */
 async function verifyKMSKeyStatus() {
   const logger = createLogger("KMSKeyVerify");
-  logger.info("🚀 示例4: KMS密钥状态检查和验证");
+  logger.info("🚀 Example4: KMSKeyStatusCheck和Verify");
 
   try {
-    // 测试密钥配置
+    // TestKeyConfiguration
     const testKeys = [
       {
         keyAlias: "test_bsc_key",
@@ -245,10 +245,10 @@ async function verifyKMSKeyStatus() {
     const verificationResults = [];
 
     for (const keyConfig of testKeys) {
-      logger.info(`\n🔍 验证密钥: ${keyConfig.keyAlias}`);
+      logger.info(`\n🔍 VerifyKey: ${keyConfig.keyAlias}`);
 
       try {
-        // 创建签名器实例
+        // CreateSignature器实例
         const kmsSigner = new ZKPayKMSSigner(
           {
             baseURL: "http://localhost:18082",
@@ -257,17 +257,17 @@ async function verifyKMSKeyStatus() {
           logger
         );
 
-        // 检查配置
+        // CheckConfiguration
         const chainInfo = kmsSigner.getChainInfo(keyConfig.slip44Id);
         const signatureType = kmsSigner.config.defaultSignatureType;
 
-        logger.info(`  ✅ 配置有效`);
+        logger.info(`  ✅ Configuration有效`);
         logger.info(`  🔗 链: ${chainInfo.name} (${chainInfo.nativeCoin})`);
-        logger.info(`  📋 签名类型: ${signatureType}`);
-        logger.info(`  📍 地址: ${keyConfig.address}`);
+        logger.info(`  📋 Signature类型: ${signatureType}`);
+        logger.info(`  📍 Address: ${keyConfig.address}`);
 
-        // 尝试测试签名（模拟）
-        logger.info(`  🧪 签名能力测试: 准备就绪`);
+        // 尝试TestSignature（Mock）
+        logger.info(`  🧪 Signature能力Test: Prepare就绪`);
 
         verificationResults.push({
           keyAlias: keyConfig.keyAlias,
@@ -277,7 +277,7 @@ async function verifyKMSKeyStatus() {
           status: "VERIFIED",
         });
       } catch (error) {
-        logger.error(`  ❌ 验证失败: ${error.message}`);
+        logger.error(`  ❌ Verifyfailed: ${error.message}`);
 
         verificationResults.push({
           keyAlias: keyConfig.keyAlias,
@@ -288,54 +288,54 @@ async function verifyKMSKeyStatus() {
       }
     }
 
-    logger.info("\n📊 密钥验证结果:");
+    logger.info("\n📊 KeyVerifyResult:");
     console.table(verificationResults);
 
     return verificationResults;
   } catch (error) {
-    logger.error("❌ KMS密钥验证失败:", error.message);
+    logger.error("❌ KMSKeyVerifyfailed:", error.message);
     throw error;
   }
 }
 
 /**
- * 示例5: KMS服务连接测试
+ * Example5: KMSService连接Test
  */
 async function testKMSServiceConnection() {
   const logger = createLogger("KMSConnection");
-  logger.info("🚀 示例5: KMS服务连接测试");
+  logger.info("🚀 Example5: KMSService连接Test");
 
   const kmsBaseURL = "http://localhost:18082";
 
   try {
-    // 1. 测试KMS服务是否运行
-    logger.info("🔍 检查KMS服务连接...");
+    // 1. TestKMSServiceWhetherRun
+    logger.info("🔍 CheckKMSService连接...");
 
     const client = axios.create({
       baseURL: kmsBaseURL,
       timeout: 5000,
     });
 
-    // 测试健康检查端点
+    // Test健康Check端点
     try {
       const healthResponse = await client.get("/health");
-      logger.info("✅ KMS服务健康检查通过:", healthResponse.data);
+      logger.info("✅ KMSService健康CheckPass:", healthResponse.data);
     } catch (error) {
-      logger.warn("⚠️ 健康检查端点不可用，尝试其他端点...");
+      logger.warn("⚠️ 健康Check端点不可用，尝试其他端点...");
     }
 
-    // 2. 测试API端点可用性
+    // 2. TestAPI端点可用性
     const endpoints = [
-      { path: "/api/v1/encrypt", method: "POST", name: "密钥加密" },
-      { path: "/api/v1/sign", method: "POST", name: "消息签名" },
-      { path: "/api/v1/sign-transaction", method: "POST", name: "交易签名" },
+      { path: "/api/v1/encrypt", method: "POST", name: "KeyEncryption" },
+      { path: "/api/v1/sign", method: "POST", name: "MessageSignature" },
+      { path: "/api/v1/sign-transaction", method: "POST", name: "TransactionSignature" },
     ];
 
     const endpointResults = [];
 
     for (const endpoint of endpoints) {
       try {
-        // 发送测试请求（预期会因参数不足而失败，但证明端点存在）
+        // SendTestRequest（预期会因ParameterInsufficient而failed，但Proof端点存在）
         await client[endpoint.method.toLowerCase()](endpoint.path, {});
 
         endpointResults.push({
@@ -345,12 +345,12 @@ async function testKMSServiceConnection() {
         });
       } catch (error) {
         if (error.response && error.response.status !== 404) {
-          // 非404错误说明端点存在但参数有问题，这是预期的
+          // 非404Error说明端点存在但Parameter有Issue，这是预期的
           endpointResults.push({
             endpoint: endpoint.path,
             name: endpoint.name,
             status: "AVAILABLE",
-            note: "端点可用（参数验证失败为正常现象）",
+            note: "端点可用（ParameterVerifyfailed为Normal现象）",
           });
         } else {
           endpointResults.push({
@@ -362,23 +362,23 @@ async function testKMSServiceConnection() {
       }
     }
 
-    logger.info("\n📊 KMS API端点检查结果:");
+    logger.info("\n📊 KMS API端点CheckResult:");
     console.table(endpointResults);
 
-    // 3. 连接总结
+    // 3. 连接Summary
     const availableEndpoints = endpointResults.filter(
       (r) => r.status === "AVAILABLE"
     ).length;
     const totalEndpoints = endpointResults.length;
 
-    logger.info(`\n📈 连接总结:`);
-    logger.info(`  KMS服务地址: ${kmsBaseURL}`);
+    logger.info(`\n📈 连接Summary:`);
+    logger.info(`  KMSServiceAddress: ${kmsBaseURL}`);
     logger.info(`  可用端点: ${availableEndpoints}/${totalEndpoints}`);
 
     if (availableEndpoints === totalEndpoints) {
-      logger.info(`  ✅ KMS服务完全可用，可以进行密钥初始化`);
+      logger.info(`  ✅ KMSService完全可用，Can进行KeyInitialize`);
     } else {
-      logger.warn(`  ⚠️ 部分端点不可用，请检查KMS服务版本`);
+      logger.warn(`  ⚠️ Part端点不可用，PleaseCheckKMSServiceVersion`);
     }
 
     return {
@@ -387,8 +387,8 @@ async function testKMSServiceConnection() {
       baseURL: kmsBaseURL,
     };
   } catch (error) {
-    logger.error("❌ KMS服务连接失败:", error.message);
-    logger.error("🔧 请确保KMS服务正在运行在:", kmsBaseURL);
+    logger.error("❌ KMSService连接failed:", error.message);
+    logger.error("🔧 Please确保KMSService正在Run在:", kmsBaseURL);
 
     return {
       serviceAvailable: false,
@@ -399,43 +399,43 @@ async function testKMSServiceConnection() {
 }
 
 /**
- * 主函数：运行所有KMS密钥初始化示例
+ * 主函数：Run所有KMSKeyInitializeExample
  */
 async function runAllKMSInitializationExamples() {
-  console.log("🌟 KMS密钥初始化完整示例");
+  console.log("🌟 KMSKeyInitialize完整Example");
   console.log("=====================================");
 
   try {
-    // 1. 首先测试KMS服务连接
+    // 1. 首先TestKMSService连接
     const connectionTest = await testKMSServiceConnection();
 
     if (!connectionTest.serviceAvailable) {
-      console.log("❌ KMS服务不可用，跳过密钥初始化示例");
-      console.log("💡 请先启动KMS服务，然后重新运行此示例");
+      console.log("❌ KMSService不可用，跳过KeyInitializeExample");
+      console.log("💡 Please先启动KMSService，然后重新Run此Example");
       return;
     }
 
-    // 2. 验证现有密钥状态
+    // 2. VerifyExistingKeyStatus
     await verifyKMSKeyStatus();
 
-    // 3. 生成新密钥并初始化（如果KMS服务可用）
+    // 3. Generate新Key并Initialize（IfKMSService可用）
     if (process.env.ENABLE_REAL_KMS_INIT === "true") {
       await initializeNewKeyInKMS();
       await initializeMultiChainKeys();
       await initializeFromExistingPrivateKey();
     } else {
-      console.log("\n💡 要启用真实的KMS初始化，请设置环境变量:");
+      console.log("\n💡 To启用真实的KMSInitialize，PleaseSetEnvironment变量:");
       console.log("   export ENABLE_REAL_KMS_INIT=true");
     }
 
-    console.log("\n✅ 所有KMS密钥初始化示例演示完成！");
+    console.log("\n✅ 所有KMSKeyInitializeExampleDemocompleted！");
   } catch (error) {
-    console.error("❌ KMS初始化示例运行失败:", error.message);
+    console.error("❌ KMSInitializeExampleRunfailed:", error.message);
     throw error;
   }
 }
 
-// 导出所有示例函数
+// 导出所有Example函数
 module.exports = {
   initializeNewKeyInKMS,
   initializeMultiChainKeys,
@@ -445,14 +445,14 @@ module.exports = {
   runAllKMSInitializationExamples,
 };
 
-// 如果直接运行此文件
+// If直接Run此File
 if (require.main === module) {
   runAllKMSInitializationExamples()
     .then(() => {
-      console.log("\n🎉 示例运行完成");
+      console.log("\n🎉 ExampleRuncompleted");
     })
     .catch((error) => {
-      console.error("💥 示例运行异常:", error);
+      console.error("💥 ExampleRun异常:", error);
       process.exit(1);
     });
 }

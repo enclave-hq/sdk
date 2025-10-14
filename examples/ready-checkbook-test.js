@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * 测试使用现有ready CheckBook执行完整的ZKSDK流程
+ * TestUseExistingready CheckBookExecute完整的ZKSDK流程
  */
 
 const { ZKPayClient } = require('./core/zkpay-client-library.js');
@@ -12,21 +12,21 @@ const logger = createLogger('ReadyCheckBookTest');
 
 async function testReadyCheckBook() {
     try {
-        logger.info('🚀 开始测试现有ready CheckBook的完整ZKSDK流程...');
+        logger.info('🚀 StartingTestExistingready CheckBook的完整ZKSDK流程...');
         
-        // 使用现有的ready CheckBook
+        // UseExisting的ready CheckBook
         const testCheckBookId = "e33ef2f5-42b5-4d46-9f0d-62d324552ab7";
         const recipientAddress = '0x742d35Cc6634C0532925a3b8D9C9C4F0e5b1D1F2';
         const transferAmount = '10000000000'; // 10000 USDT (6位小数)
         
-        logger.info(`📋 使用CheckBook: ${testCheckBookId}`);
-        logger.info(`🎯 接收地址: ${recipientAddress}`);
-        logger.info(`💸 转账金额: ${transferAmount} (10000 USDT)`);
+        logger.info(`📋 UseCheckBook: ${testCheckBookId}`);
+        logger.info(`🎯 ReceiveAddress: ${recipientAddress}`);
+        logger.info(`💸 转账Amount: ${transferAmount} (10000 USDT)`);
         
         // 1. 初始化ZKPayClient
         logger.info('🔧 初始化ZKPayClient...');
         
-        // 创建配置
+        // CreateConfiguration
         const config = {
             services: {
                 zkpay_backend: {
@@ -75,7 +75,7 @@ async function testReadyCheckBook() {
             }
         };
         
-        // 使用Master Operator私钥
+        // UseMaster OperatorPrivate Key
         const privateKey = process.env.MASTER_OPERATOR_BSC_PRIVATE_KEY?.startsWith('0x') 
             ? process.env.MASTER_OPERATOR_BSC_PRIVATE_KEY 
             : `0x${process.env.MASTER_OPERATOR_BSC_PRIVATE_KEY}`;
@@ -91,10 +91,10 @@ async function testReadyCheckBook() {
         await zkpayClient.initialize();
         await zkpayClient.login(privateKey);
         
-        logger.info('✅ ZKPayClient初始化完成');
+        logger.info('✅ ZKPayClient初始化completed');
         
-        // 2. 执行Commitment
-        logger.info('📋 步骤1: 执行Commitment...');
+        // 2. ExecuteCommitment
+        logger.info('📋 Step1: ExecuteCommitment...');
         
         const allocations = [{
             recipient_chain_id: 714,
@@ -105,18 +105,18 @@ async function testReadyCheckBook() {
         const commitmentResult = await zkpayClient.executeCommitmentSync(
             testCheckBookId,
             allocations,
-            true // 等待with_checkbook状态
+            true // Waitwith_checkbookStatus
         );
         
         if (!commitmentResult.success) {
-            throw new Error(`Commitment失败: ${commitmentResult.error}`);
+            throw new Error(`Commitmentfailed: ${commitmentResult.error}`);
         }
         
-        logger.info('✅ Commitment执行成功');
-        logger.info(`🔗 Commitment哈希: ${commitmentResult.commitmentHash}`);
+        logger.info('✅ CommitmentExecutesuccessful');
+        logger.info(`🔗 CommitmentHash: ${commitmentResult.commitmentHash}`);
         
-        // 3. 执行Withdraw
-        logger.info('🔄 步骤2: 执行Withdraw...');
+        // 3. ExecuteWithdraw
+        logger.info('🔄 Step2: ExecuteWithdraw...');
         
         const recipientInfo = {
             chain_id: 714,
@@ -131,14 +131,14 @@ async function testReadyCheckBook() {
         );
         
         if (!withdrawResult.success) {
-            throw new Error(`Withdraw失败: ${withdrawResult.error}`);
+            throw new Error(`Withdrawfailed: ${withdrawResult.error}`);
         }
         
-        logger.info('✅ Withdraw执行成功');
+        logger.info('✅ WithdrawExecutesuccessful');
         logger.info(`🎫 Check ID: ${withdrawResult.checkId}`);
         
-        // 4. 执行Payout
-        logger.info('💰 步骤3: 执行Payout...');
+        // 4. ExecutePayout
+        logger.info('💰 Step3: ExecutePayout...');
         
         const payoutResult = await zkpayClient.payout(
             withdrawResult.checkId,
@@ -147,19 +147,19 @@ async function testReadyCheckBook() {
         );
         
         if (!payoutResult.success) {
-            throw new Error(`Payout失败: ${payoutResult.error}`);
+            throw new Error(`Payoutfailed: ${payoutResult.error}`);
         }
         
-        logger.info('✅ Payout执行成功');
-        logger.info(`🔗 交易哈希: ${payoutResult.txHash}`);
+        logger.info('✅ PayoutExecutesuccessful');
+        logger.info(`🔗 交易Hash: ${payoutResult.txHash}`);
         
-        // 5. 完成总结
-        logger.info('🎉 完整ZKSDK流程执行成功！');
-        logger.info('📋 执行步骤总结:');
+        // 5. completedSummary
+        logger.info('🎉 完整ZKSDK流程Executesuccessful！');
+        logger.info('📋 ExecuteStepSummary:');
         logger.info(`   1. ✅ Commitment: ${commitmentResult.commitmentHash}`);
         logger.info(`   2. ✅ Withdraw: ${withdrawResult.checkId}`);
         logger.info(`   3. ✅ Payout: ${payoutResult.txHash}`);
-        logger.info(`💸 成功转账 10000 USDT 到 ${recipientAddress}`);
+        logger.info(`💸 successful转账 10000 USDT 到 ${recipientAddress}`);
         
         return {
             success: true,
@@ -170,8 +170,8 @@ async function testReadyCheckBook() {
         };
         
     } catch (error) {
-        logger.error('❌ 测试失败:', error.message);
-        logger.error('错误详情:', error);
+        logger.error('❌ Testfailed:', error.message);
+        logger.error('ErrorDetails:', error);
         return {
             success: false,
             error: error.message
@@ -179,19 +179,19 @@ async function testReadyCheckBook() {
     }
 }
 
-// 运行测试
+// 运行Test
 testReadyCheckBook()
     .then(result => {
         if (result.success) {
-            console.log('🎉 测试成功完成！');
+            console.log('🎉 Testsuccessfulcompleted！');
             process.exit(0);
         } else {
-            console.log('❌ 测试失败');
+            console.log('❌ Testfailed');
             process.exit(1);
         }
     })
     .catch(error => {
-        console.error('❌ 测试异常:', error);
+        console.error('❌ Test异常:', error);
         process.exit(1);
     });
 

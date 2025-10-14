@@ -1,417 +1,488 @@
-# ZKPay SDK 完整指南
+# ZKPay SDK Complete Guide
 
-## 🏗️ 系统架构
+## 🏗️ System Architecture
 
 ```
 ZKPay SDK
-├── ZKPayClient (主客户端)
-├── WalletManager (钱包管理 - 一个私钥对应一个钱包实例)
-├── DepositManager (存款管理)
-├── CommitmentManager (承诺管理)
-└── WithdrawManager (提现管理)
+├── ZKPayClient (Main Client)
+├── WalletManager (Wallet Management - One private key corresponds to one wallet instance)
+├── DepositManager (Deposit Management)
+├── CommitmentManager (Commitment Management)
+└── WithdrawManager (Withdrawal Management)
 ```
 
-## 🎯 核心功能
+## 🎯 Core Features
 
-| 功能                  | API 方法                                              | 同步/异步 | 说明                       |
-| --------------------- | ----------------------------------------------------- | --------- | -------------------------- |
-| 1. 登录到后台         | `login(privateKey)`                                 | 同步      | 使用私钥登录认证           |
-| 2. Approve 和 Deposit | `deposit(chainId, tokenSymbol, amount)`             | 同步      | 自动处理授权和存款         |
-| 3. 读取 CheckBook     | `getUserDeposits()`                                 | 同步      | 获取用户的存款记录         |
-| 4. 创建分配+签名      | `createAllocationAndSign(checkbookId, allocations)` | 同步      | 创建分配方案并签名         |
-| 5. 执行 Commitment    | `executeCommitmentSync()`                           | 同步      | 等待到 with_checkbook 状态 |
-| 5. 执行 Commitment    | `executeCommitmentAsync()`                          | 异步      | 立即返回，提供监控方法     |
-| 6. 生成提现证明       | `generateProofSync()`                               | 同步      | 等待到 completed 状态      |
-| 6. 生成提现证明       | `generateProofAsync()`                              | 异步      | 立即返回，提供监控方法     |
+| Feature                    | API Method                                          | Sync/Async | Description                               |
+| -------------------------- | --------------------------------------------------- | ---------- | ----------------------------------------- |
+| 1. Backend Login           | `login(privateKey)`                                 | Sync       | Login authentication using private key    |
+| 2. Approve and Deposit     | `deposit(chainId, tokenSymbol, amount)`             | Sync       | Automatically handle approval and deposit |
+| 3. Read CheckBook          | `getUserDeposits()`                                 | Sync       | Get user's deposit records                |
+| 4. Create Allocation+Sign  | `createAllocationAndSign(checkbookId, allocations)` | Sync       | Create allocation plan and sign           |
+| 5. Execute Commitment      | `executeCommitmentSync()`                           | Sync       | Wait until with_checkbook status          |
+| 5. Execute Commitment      | `executeCommitmentAsync()`                          | Async      | Return immediately, provide monitoring    |
+| 6. Generate Withdraw Proof | `generateProofSync()`                               | Sync       | Wait until completed status               |
+| 6. Generate Withdraw Proof | `generateProofAsync()`                              | Async      | Return immediately, provide monitoring    |
 
-## 🔄 完整业务流程
+## 🔄 Complete Business Flow
 
-### 1. 初始化和认证
+### 1. Initialization and Authentication
 
 ```javascript
-const { ZKPayClient } = require('./core/zkpay-client-library');
+const { ZKPayClient } = require("./core/zkpay-client-library");
 const client = new ZKPayClient(config, logger);
 await client.initialize();
 
-// 方式1: 使用私钥登录
+// Method 1: Login with private key
 await client.login(privateKey);
 
-// 方式2: 使用KMS签名器登录
+// Method 2: Login with KMS signer
 const kmsSigner = new ZKPayKMSSigner(kmsConfig);
 await client.loginWithSigner(kmsSigner, userAddress);
 ```
 
-### API流程概览
+### API Flow Overview
 
-ZKPay的完整API流程包含以下关键步骤：
+ZKPay's complete API flow includes the following key steps:
 
 ```
-1. 认证登录 → 2. 存款检测 → 3. 承诺分配 → 4. 证明生成 → 5. 提现完成
-     ↓              ↓              ↓              ↓              ↓
-  登录后端        检测链上交易     创建分配签名     生成ZK证明     执行链上提现
+1. Auth Login → 2. Deposit Detection → 3. Commitment Allocation → 4. Proof Generation → 5. Withdrawal Complete
+     ↓              ↓                    ↓                      ↓                    ↓
+  Backend Login   Detect On-chain Tx   Create Allocation Sign   Generate ZK Proof   Execute On-chain Withdrawal
 ```
 
-#### 详细API调用流程
+#### Detailed API Call Flow
 
-**阶段1: 初始化和认证**
+**Phase 1: Initialization and Authentication**
+
 ```javascript
-// 1.1 初始化客户端
+// 1.1 Initialize client
 await client.initialize();
 
-// 1.2 用户认证 (二选一)
-await client.login(privateKey);  // 直接私钥登录
-// 或
-await client.loginWithSigner(kmsSigner, userAddress);  // KMS签名器登录
+// 1.2 User authentication (choose one)
+await client.login(privateKey); // Direct private key login
+// or
+await client.loginWithSigner(kmsSigner, userAddress); // KMS signer login
 ```
 
-**阶段2: 存款操作**
-```javascript
-// 2.1 检查Token余额和授权
-const balance = await client.checkTokenBalance(chainId, tokenAddress);
-const allowance = await client.checkTokenAllowance(chainId, tokenAddress, treasuryAddress);
+**Phase 2: Deposit Operations**
 
-// 2.2 授权Token (如果需要)
+```javascript
+// 2.1 Check token balance and allowance
+const balance = await client.checkTokenBalance(chainId, tokenAddress);
+const allowance = await client.checkTokenAllowance(
+  chainId,
+  tokenAddress,
+  treasuryAddress
+);
+
+// 2.2 Approve token (if needed)
 if (allowance.balance < requiredAmount) {
-    await client.approveToken(chainId, tokenAddress, amount, treasuryAddress);
+  await client.approveToken(chainId, tokenAddress, amount, treasuryAddress);
 }
 
-// 2.3 执行存款
-const depositResult = await client.deposit(chainId, tokenAddress, amount, treasuryAddress);
+// 2.3 Execute deposit
+const depositResult = await client.deposit(
+  chainId,
+  tokenAddress,
+  amount,
+  treasuryAddress
+);
 
-// 2.4 等待后端检测存款
-const depositRecord = await client.waitForDepositDetection(depositResult.txHash, chainId, 60);
+// 2.4 Wait for backend deposit detection
+const depositRecord = await client.waitForDepositDetection(
+  depositResult.txHash,
+  chainId,
+  60
+);
 ```
 
-**阶段3: 承诺分配**
+**Phase 3: Commitment Allocation**
+
 ```javascript
-// 3.1 创建分配方案
-const allocations = [{
+// 3.1 Create allocation plan
+const allocations = [
+  {
     recipient_chain_id: targetChainId,
     recipient_address: recipientAddress,
-    amount: amountInWei
-}];
+    amount: amountInWei,
+  },
+];
 
-// 3.2 执行承诺 (同步或异步)
+// 3.2 Execute commitment (sync or async)
 const commitmentResult = await client.executeCommitmentSync(
-    depositRecord.checkbookId, allocations, true
+  depositRecord.checkbookId,
+  allocations,
+  true
 );
 ```
 
-**阶段4: 证明生成**
+**Phase 4: Proof Generation**
+
 ```javascript
-// 4.1 准备提现信息
+// 4.1 Prepare withdrawal information
 const recipientInfo = {
-    chain_id: targetChainId,
-    address: recipientAddress,
-    amount: amountInWei,
-    token_symbol: tokenSymbol
+  chain_id: targetChainId,
+  address: recipientAddress,
+  amount: amountInWei,
+  token_symbol: tokenSymbol,
 };
 
-// 4.2 生成提现证明 (同步或异步)
+// 4.2 Generate withdrawal proof (sync or async)
 const proofResult = await client.generateProofSync(
-    depositRecord.checkbookId, recipientInfo, true
+  depositRecord.checkbookId,
+  recipientInfo,
+  true
 );
 ```
 
-**阶段5: 状态监控**
-```javascript
-// 5.1 监控承诺状态
-await client.waitForCommitmentStatus(checkbookId, ['with_checkbook'], 300);
+**Phase 5: Status Monitoring**
 
-// 5.2 监控证明生成状态
-await client.waitForProofStatus(checkId, ['completed'], 300);
+```javascript
+// 5.1 Monitor commitment status
+await client.waitForCommitmentStatus(checkbookId, ["with_checkbook"], 300);
+
+// 5.2 Monitor proof generation status
+await client.waitForProofStatus(checkId, ["completed"], 300);
 ```
 
-### 2. 存款 (Deposit)
+### 2. Deposit
 
 ```javascript
-// 定义必要的地址和参数
-const testUsdtAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309';
-const treasuryAddress = '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8';
-const amount = '10.0';
+// Define necessary addresses and parameters
+const testUsdtAddress = "0xbFBD79DbF5369D013a3D31812F67784efa6e0309";
+const treasuryAddress = "0x83DCC14c8d40B87DE01cC641b655bD608cf537e8";
+const amount = "10.0";
 
-// 获取Token信息（包括decimals）
+// Get token information (including decimals)
 const tokenInfo = await client.getTokenInfo(714, testUsdtAddress);
-console.log(`Token: ${tokenInfo.symbol} (${tokenInfo.name}) - ${tokenInfo.decimals} decimals`);
+console.log(
+  `Token: ${tokenInfo.symbol} (${tokenInfo.name}) - ${tokenInfo.decimals} decimals`
+);
 
-// 检查余额和授权 (使用Token地址)
+// Check balance and allowance (using token address)
 const balance = await client.checkTokenBalance(714, testUsdtAddress);
-const allowance = await client.checkTokenAllowance(714, testUsdtAddress, treasuryAddress);
+const allowance = await client.checkTokenAllowance(
+  714,
+  testUsdtAddress,
+  treasuryAddress
+);
 
-// 授权代币 (使用Token地址和动态decimals)
+// Approve token (using token address and dynamic decimals)
 if (allowance.balance < ethers.parseUnits(amount, tokenInfo.decimals)) {
-    await client.approveToken(714, testUsdtAddress, amount, treasuryAddress);
+  await client.approveToken(714, testUsdtAddress, amount, treasuryAddress);
 }
 
-// 执行存款 (使用Token地址)
-const depositResult = await client.deposit(714, testUsdtAddress, amount, treasuryAddress);
+// Execute deposit (using token address)
+const depositResult = await client.deposit(
+  714,
+  testUsdtAddress,
+  amount,
+  treasuryAddress
+);
 const depositRecord = await client.waitForDepositDetection(
-    depositResult.txHash, 714, 60
+  depositResult.txHash,
+  714,
+  60
 );
 ```
 
-### 3. 承诺 (Commitment)
+### 3. Commitment
 
 ```javascript
-// 创建分配方案
-const allocations = [{
+// Create allocation plan
+const allocations = [
+  {
     recipient_chain_id: 714,
-    recipient_address: '0x接收地址',
-    amount: '10000000000000000000' // 10.0 USDT
-}];
+    recipient_address: "0xRecipientAddress",
+    amount: "10000000000000000000", // 10.0 USDT
+  },
+];
 
-// 执行承诺
+// Execute commitment
 const commitmentResult = await client.executeCommitmentSync(
-    depositRecord.checkbookId, allocations, true
+  depositRecord.checkbookId,
+  allocations,
+  true
 );
 ```
 
-### 4. 提现 (Withdraw)
+### 4. Withdrawal
 
 ```javascript
-// 准备接收信息
+// Prepare recipient information
 const recipientInfo = {
-    chain_id: 714,
-    address: '0x接收地址',
-    amount: '10000000000000000000',
-    token_symbol: 'test_usdt'
+  chain_id: 714,
+  address: "0xRecipientAddress",
+  amount: "10000000000000000000",
+  token_symbol: "test_usdt",
 };
 
-// 生成提现证明
+// Generate withdrawal proof
 const withdrawResult = await client.generateProofSync(
-    depositRecord.checkbookId, recipientInfo, true
+  depositRecord.checkbookId,
+  recipientInfo,
+  true
 );
 ```
 
-## 🚀 使用方法
+## 🚀 Usage Methods
 
-### 方法1: 分步执行
+### Method 1: Step-by-Step Execution
 
 ```javascript
 async function stepByStepFlow() {
-    const client = new ZKPayClient(config, logger);
-    await client.initialize();
-    await client.login(privateKey);
-  
-    // 定义必要的地址和参数
-    const testUsdtAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309';
-    const treasuryAddress = '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8';
-    const amount = '10.0';
-  
-    // 获取Token信息（包括decimals）
-    const tokenInfo = await client.getTokenInfo(714, testUsdtAddress);
-    console.log(`Token: ${tokenInfo.symbol} (${tokenInfo.name}) - ${tokenInfo.decimals} decimals`);
-  
-    // 检查余额和授权 (使用Token地址)
-    const balance = await client.checkTokenBalance(714, testUsdtAddress);
-    const allowance = await client.checkTokenAllowance(714, testUsdtAddress, treasuryAddress);
-  
-    // 授权代币 (如果需要，使用Token地址和动态decimals)
-    if (allowance.balance < ethers.parseUnits(amount, tokenInfo.decimals)) {
-        await client.approveToken(714, testUsdtAddress, amount, treasuryAddress);
-    }
-  
-    // 存款 (使用Token地址)
-    const depositResult = await client.deposit(714, testUsdtAddress, amount, treasuryAddress);
-    const depositRecord = await client.waitForDepositDetection(
-        depositResult.txHash, 714, 60
-    );
-  
-    // 承诺
-    const allocations = [{
-        recipient_chain_id: 714,
-        recipient_address: '0x接收地址',
-        amount: '10000000000000000000'
-    }];
-    const commitmentResult = await client.executeCommitmentSync(
-        depositRecord.checkbookId, allocations, true
-    );
-  
-    // 提现
-    const recipientInfo = {
-        chain_id: 714,
-        address: '0x接收地址',
-        amount: '10000000000000000000',
-        token_symbol: 'test_usdt'
-    };
-    const withdrawResult = await client.generateProofSync(
-        depositRecord.checkbookId, recipientInfo, true
-    );
-  
-    return { depositResult, commitmentResult, withdrawResult };
+  const client = new ZKPayClient(config, logger);
+  await client.initialize();
+  await client.login(privateKey);
+
+  // Define necessary addresses and parameters
+  const testUsdtAddress = "0xbFBD79DbF5369D013a3D31812F67784efa6e0309";
+  const treasuryAddress = "0x83DCC14c8d40B87DE01cC641b655bD608cf537e8";
+  const amount = "10.0";
+
+  // Get token information (including decimals)
+  const tokenInfo = await client.getTokenInfo(714, testUsdtAddress);
+  console.log(
+    `Token: ${tokenInfo.symbol} (${tokenInfo.name}) - ${tokenInfo.decimals} decimals`
+  );
+
+  // Check balance and allowance (using token address)
+  const balance = await client.checkTokenBalance(714, testUsdtAddress);
+  const allowance = await client.checkTokenAllowance(
+    714,
+    testUsdtAddress,
+    treasuryAddress
+  );
+
+  // Approve token (if needed, using token address and dynamic decimals)
+  if (allowance.balance < ethers.parseUnits(amount, tokenInfo.decimals)) {
+    await client.approveToken(714, testUsdtAddress, amount, treasuryAddress);
+  }
+
+  // Deposit (using token address)
+  const depositResult = await client.deposit(
+    714,
+    testUsdtAddress,
+    amount,
+    treasuryAddress
+  );
+  const depositRecord = await client.waitForDepositDetection(
+    depositResult.txHash,
+    714,
+    60
+  );
+
+  // Commitment
+  const allocations = [
+    {
+      recipient_chain_id: 714,
+      recipient_address: "0xRecipientAddress",
+      amount: "10000000000000000000",
+    },
+  ];
+  const commitmentResult = await client.executeCommitmentSync(
+    depositRecord.checkbookId,
+    allocations,
+    true
+  );
+
+  // Withdrawal
+  const recipientInfo = {
+    chain_id: 714,
+    address: "0xRecipientAddress",
+    amount: "10000000000000000000",
+    token_symbol: "test_usdt",
+  };
+  const withdrawResult = await client.generateProofSync(
+    depositRecord.checkbookId,
+    recipientInfo,
+    true
+  );
+
+  return { depositResult, commitmentResult, withdrawResult };
 }
 ```
 
-### 方法2: 便捷方法
+### Method 2: Convenient Methods
 
 ```javascript
 async function convenientFlow() {
-    const client = new ZKPayClient(config, logger);
-    await client.initialize();
-    await client.login(privateKey);
-  
-    // 从存款到承诺
-    const allocations = [{
-        recipient_chain_id: 714,
-        recipient_address: '0x接收地址',
-        amount: '10000000000000000000'
-    }];
-  
-    const depositToCommitment = await client.performFullDepositToCommitment(
-        714, 'test_usdt', '10.0', allocations, { waitForCommitment: true }
-    );
-  
-    // 从承诺到提现
-    const recipientInfo = {
-        chain_id: 714,
-        address: '0x接收地址',
-        amount: '10000000000000000000',
-        token_symbol: 'test_usdt'
-    };
-  
-    const commitmentToWithdraw = await client.performFullCommitmentToWithdraw(
-        depositToCommitment.depositRecord.checkbook_id,
-        recipientInfo,
-        { waitForProof: true, maxWaitTime: 300 }
-    );
-  
-    return { depositToCommitment, commitmentToWithdraw };
+  const client = new ZKPayClient(config, logger);
+  await client.initialize();
+  await client.login(privateKey);
+
+  // From deposit to commitment
+  const allocations = [
+    {
+      recipient_chain_id: 714,
+      recipient_address: "0xRecipientAddress",
+      amount: "10000000000000000000",
+    },
+  ];
+
+  const depositToCommitment = await client.performFullDepositToCommitment(
+    714,
+    "test_usdt",
+    "10.0",
+    allocations,
+    { waitForCommitment: true }
+  );
+
+  // From commitment to withdrawal
+  const recipientInfo = {
+    chain_id: 714,
+    address: "0xRecipientAddress",
+    amount: "10000000000000000000",
+    token_symbol: "test_usdt",
+  };
+
+  const commitmentToWithdraw = await client.performFullCommitmentToWithdraw(
+    depositToCommitment.depositRecord.checkbook_id,
+    recipientInfo,
+    { waitForProof: true, maxWaitTime: 300 }
+  );
+
+  return { depositToCommitment, commitmentToWithdraw };
 }
 ```
 
-## 📊 状态流转
+## 📊 Status Flow
 
 ```
-存款: pending → detected → ready_for_commitment → with_checkbook → issued
-承诺: ready_for_commitment → submitting_commitment → commitment_pending → with_checkbook
-提现: with_checkbook → generating_proof → proved → completed
+Deposit: pending → detected → ready_for_commitment → with_checkbook → issued
+Commitment: ready_for_commitment → submitting_commitment → commitment_pending → with_checkbook
+Withdrawal: with_checkbook → generating_proof → proved → completed
 ```
 
-## 🔧 核心接口
+## 🔧 Core Interfaces
 
-### 钱包管理
+### Wallet Management
 
-- `login(privateKey)`: 设置用户钱包
-- `getCurrentUser()`: 获取当前用户信息
+- `login(privateKey)`: Set user wallet
+- `getCurrentUser()`: Get current user information
 
-### 存款管理
+### Deposit Management
 
-- `getTokenInfo(chainId, tokenContractAddress)`: 获取Token信息 (地址、decimals、symbol、name)
-- `checkTokenBalance(chainId, tokenContractAddress)`: 检查余额 (使用Token合约地址)
-- `checkTokenAllowance(chainId, tokenContractAddress, treasuryAddress)`: 检查授权 (使用Token合约地址)
-- `approveToken(chainId, tokenAddress, amount, treasuryAddress)`: 授权代币 (使用Token地址)
-- `deposit(chainId, tokenAddress, amount, treasuryAddress)`: 执行存款 (使用Token地址)
-- `waitForDepositDetection(txHash, chainId, maxWaitTime)`: 等待检测
+- `getTokenInfo(chainId, tokenContractAddress)`: Get token information (address, decimals, symbol, name)
+- `checkTokenBalance(chainId, tokenContractAddress)`: Check balance (using token contract address)
+- `checkTokenAllowance(chainId, tokenContractAddress, treasuryAddress)`: Check allowance (using token contract address)
+- `approveToken(chainId, tokenAddress, amount, treasuryAddress)`: Approve token (using token address)
+- `deposit(chainId, tokenAddress, amount, treasuryAddress)`: Execute deposit (using token address)
+- `waitForDepositDetection(txHash, chainId, maxWaitTime)`: Wait for detection
 
-### 承诺管理
+### Commitment Management
 
-- `getUserDeposits(userAddress?, chainId?)`: 获取存款记录
-- `getCheckbookDetails(checkbookId)`: 获取CheckBook详情
-- `executeCommitmentSync(checkbookId, allocations, waitForWithCheck)`: 同步执行承诺
-- `executeCommitmentAsync(checkbookId, allocations)`: 异步执行承诺
+- `getUserDeposits(userAddress?, chainId?)`: Get deposit records
+- `getCheckbookDetails(checkbookId)`: Get CheckBook details
+- `executeCommitmentSync(checkbookId, allocations, waitForWithCheck)`: Synchronously execute commitment
+- `executeCommitmentAsync(checkbookId, allocations)`: Asynchronously execute commitment
 
-### 提现管理
+### Withdrawal Management
 
-- `generateProofSync(checkbookId, recipientInfo, waitForCompleted)`: 同步生成证明
-- `generateProofAsync(checkbookId, recipientInfo)`: 异步生成证明
+- `generateProofSync(checkbookId, recipientInfo, waitForCompleted)`: Synchronously generate proof
+- `generateProofAsync(checkbookId, recipientInfo)`: Asynchronously generate proof
 
-### 便捷方法
+### Convenient Methods
 
-- `performFullDepositToCommitment(chainId, tokenSymbol, amount, allocations, options)`: 存款到承诺
-- `performFullCommitmentToWithdraw(checkbookId, recipientInfo, options)`: 承诺到提现
+- `performFullDepositToCommitment(chainId, tokenSymbol, amount, allocations, options)`: Deposit to commitment
+- `performFullCommitmentToWithdraw(checkbookId, recipientInfo, options)`: Commitment to withdrawal
 
-## ⚙️ 配置说明
+## ⚙️ Configuration Guide
 
-### 完整配置结构
+### Complete Configuration Structure
 
 ```javascript
 const config = {
-    // 1. 服务配置
-    services: {
-        zkpay_backend: {
-            url: 'https://backend.zkpay.network',    // 必需：ZKPay后端API地址
-            timeout: 300000                          // 必需：API请求超时时间(毫秒)
-        }
+  // 1. Service Configuration
+  services: {
+    zkpay_backend: {
+      url: "https://backend.zkpay.network", // Required: ZKPay backend API address
+      timeout: 300000, // Required: API request timeout (milliseconds)
     },
+  },
 
-    // 2. 区块链配置
-    blockchain: {
-        // 源链配置数组（管理链配置已移除，统一使用source_chains）
-        source_chains: [{
-            chain_id: 714,                          // 必需：源链ID (SLIP44 BSC)
-            rpc_url: 'https://bsc-dataseed1.binance.org',  // 必需：RPC节点地址
-            contracts: {
-                treasury_contract: '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8'  // 必需：Treasury合约地址
-            },
-            tokens: {
-                test_usdt: {                          // Token配置
-                    address: '0xbFBD79DbF5369D013a3D31812F67784efa6e0309',  // 必需：Token合约地址
-                    decimals: 6,                        // 必需：Token精度
-                    symbol: 'TUSDT',                    // 必需：Token符号
-                    token_id: 65535                     // 必需：Token ID
-                }
-            }
-        }]
-    },
-
-    // 3. 运行时配置
-    runtime: {
-        withdraw: {
-            default_recipient_address: '0x0848d929b9d35bfb7aa50641d392a4ad83e145ce',  // 可选：默认接收地址
-            max_wait_time: 300000                   // 必需：提现最大等待时间(毫秒)
+  // 2. Blockchain Configuration
+  blockchain: {
+    // Source chain configuration array (management chain config removed, unified use of source_chains)
+    source_chains: [
+      {
+        chain_id: 714, // Required: Source chain ID (SLIP44 BSC)
+        rpc_url: "https://bsc-dataseed1.binance.org", // Required: RPC node address
+        contracts: {
+          treasury_contract: "0x83DCC14c8d40B87DE01cC641b655bD608cf537e8", // Required: Treasury contract address
         },
-        deposit: {
-            confirmation_blocks: 3                  // 必需：存款确认区块数
+        tokens: {
+          test_usdt: {
+            // Token configuration
+            address: "0xbFBD79DbF5369D013a3D31812F67784efa6e0309", // Required: Token contract address
+            decimals: 6, // Required: Token decimals
+            symbol: "TUSDT", // Required: Token symbol
+            token_id: 65535, // Required: Token ID
+          },
         },
-        proof_generation: {
-            max_wait_time: 300000                   // 必需：证明生成最大等待时间(毫秒)
-        }
-    },
+      },
+    ],
+  },
 
-    // 4. 测试配置（可选）
-    test: {
-        users: {
-            default: {
-                private_key: '0x...'                // 可选：测试用户私钥
-            }
-        }
-    }
+  // 3. Runtime Configuration
+  runtime: {
+    withdraw: {
+      default_recipient_address: "0x0848d929b9d35bfb7aa50641d392a4ad83e145ce", // Optional: Default recipient address
+      max_wait_time: 300000, // Required: Maximum withdrawal wait time (milliseconds)
+    },
+    deposit: {
+      confirmation_blocks: 3, // Required: Deposit confirmation blocks
+    },
+    proof_generation: {
+      max_wait_time: 300000, // Required: Maximum proof generation wait time (milliseconds)
+    },
+  },
+
+  // 4. Test Configuration (Optional)
+  test: {
+    users: {
+      default: {
+        private_key: "0x...", // Optional: Test user private key
+      },
+    },
+  },
 };
 ```
 
-### 配置架构优化说明
+### Configuration Architecture Optimization Description
 
-**重构后的配置架构特点：**
+**Refactored Configuration Architecture Features:**
 
-1. **参数化传递**：ZKPayClient和所有Manager都使用参数化配置，不再依赖复杂的config对象
-2. **职责分离**：WalletManager负责RPC连接，其他Manager负责业务逻辑
-3. **配置简化**：移除了management_chain配置，统一使用参数化Map结构
-4. **代码清晰**：只有一套配置方式，避免兼容性混乱
+1. **Parameterized Passing**: ZKPayClient and all Managers use parameterized configuration, no longer dependent on complex config objects
+2. **Responsibility Separation**: WalletManager handles RPC connections, other Managers handle business logic
+3. **Configuration Simplification**: Removed management_chain configuration, unified use of parameterized Map structure
+4. **Code Clarity**: Only one configuration method, avoiding compatibility confusion
 
-**新的使用方式：**
+**New Usage Method:**
 
 ```javascript
-// 创建参数化配置
+// Create parameterized configuration
 const treasuryContracts = new Map([
-    [56, '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8']
+  [56, "0x83DCC14c8d40B87DE01cC641b655bD608cf537e8"],
 ]);
 
-// Token配置：只需要配置地址，decimals和symbol从合约自动读取
+// Token configuration: Only need to configure address, decimals and symbol are automatically read from contract
 const tokenConfigs = new Map([
-    ['56_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309']
+  ["56_test_usdt", "0xbFBD79DbF5369D013a3D31812F67784efa6e0309"],
 ]);
 
-// 创建客户端
+// Create client
 const client = new ZKPayClient(logger, {
-    apiConfig: {
-        baseURL: 'https://backend.zkpay.network',
-        timeout: 300000
-    },
-    treasuryContracts,
-    tokenConfigs,
-    confirmationBlocks: 3,
-    maxWaitTime: 300000,
-    defaultRecipientAddress: '0x0848d929b9d35bfb7aa50641d392a4ad83e145ce'
+  apiConfig: {
+    baseURL: "https://backend.zkpay.network",
+    timeout: 300000,
+  },
+  treasuryContracts,
+  tokenConfigs,
+  confirmationBlocks: 3,
+  maxWaitTime: 300000,
+  defaultRecipientAddress: "0x0848d929b9d35bfb7aa50641d392a4ad83e145ce",
 });
 ```
 
@@ -421,10 +492,10 @@ const client = new ZKPayClient(logger, {
 
 ```javascript
 const client = new ZKPayClient(logger, {
-    apiConfig: {
-        baseURL: 'https://backend.zkpay.network',
-        timeout: 300000
-    }
+  apiConfig: {
+    baseURL: "https://backend.zkpay.network",
+    timeout: 300000,
+  },
 });
 ```
 
@@ -432,86 +503,89 @@ const client = new ZKPayClient(logger, {
 
 #### 必需字段
 
-- `apiConfig.baseURL` - ZKPay后端API地址
-- `apiConfig.timeout` - API请求超时时间
+- `apiConfig.baseURL` - ZKPay 后端 API 地址
+- `apiConfig.timeout` - API 请求超时时间
 
 #### 可选字段
 
-- `treasuryContracts` - Treasury合约地址Map (chainId -> address)
-- `tokenConfigs` - Token地址Map (chainId_symbol -> tokenAddress)
+- `treasuryContracts` - Treasury 合约地址 Map (chainId -> address)
+- `tokenConfigs` - Token 地址 Map (chainId_symbol -> tokenAddress)
 - `confirmationBlocks` - 存款确认区块数 (默认: 3)
 - `maxWaitTime` - 最大等待时间 (默认: 300000ms)
 - `defaultRecipientAddress` - 默认接收地址
 
-#### Token配置说明
+#### Token 配置说明
 
-Token配置只需要提供合约地址，其他信息（decimals、symbol、name）会自动从合约中读取：
+Token 配置只需要提供合约地址，其他信息（decimals、symbol、name）会自动从合约中读取：
 
 **配置格式**：`slip44Id_symbol -> tokenAddress`
 
 ```javascript
 const tokenConfigs = new Map([
-    ['714_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309'],  // BSC上的测试USDT (SLIP44 714)
-    ['60_usdt', '0xdAC17F958D2ee523a2206206994597C13D831ec7'],        // Ethereum上的USDT (SLIP44 60)
-    ['966_usdc', '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174'],      // Polygon上的USDC (SLIP44 966)
-    ['714_busd', '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56'],       // BSC上的BUSD (SLIP44 714)
-    ['60_weth', '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2']         // Ethereum上的WETH (SLIP44 60)
+  ["714_test_usdt", "0xbFBD79DbF5369D013a3D31812F67784efa6e0309"], // BSC上的测试USDT (SLIP44 714)
+  ["60_usdt", "0xdAC17F958D2ee523a2206206994597C13D831ec7"], // Ethereum上的USDT (SLIP44 60)
+  ["966_usdc", "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"], // Polygon上的USDC (SLIP44 966)
+  ["714_busd", "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"], // BSC上的BUSD (SLIP44 714)
+  ["60_weth", "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"], // Ethereum上的WETH (SLIP44 60)
 ]);
 ```
 
 **优势**：
 
 - ✅ **简化配置**：只需要配置合约地址
-- ✅ **自动获取**：decimals、symbol、name从合约自动读取
-- ✅ **避免错误**：不会因为手动配置decimals导致精度错误
-- ✅ **支持任意Token**：只要是ERC20标准Token都可以使用
+- ✅ **自动获取**：decimals、symbol、name 从合约自动读取
+- ✅ **避免错误**：不会因为手动配置 decimals 导致精度错误
+- ✅ **支持任意 Token**：只要是 ERC20 标准 Token 都可以使用
 
-### 初始化示例
+### Initialization Example
 
 ```javascript
-// 创建参数化配置
+// Create parameterized configuration
 const treasuryContracts = new Map([
-    [714, '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8']  // SLIP44 BSC
+  [714, "0x83DCC14c8d40B87DE01cC641b655bD608cf537e8"], // SLIP44 BSC
 ]);
 
 const tokenConfigs = new Map([
-    ['714_test_usdt', '0xbFBD79DbF5369D013a3D31812F67784efa6e0309']  // SLIP44 BSC
+  ["714_test_usdt", "0xbFBD79DbF5369D013a3D31812F67784efa6e0309"], // SLIP44 BSC
 ]);
 
-// 初始化客户端
+// Initialize client
 const client = new ZKPayClient(logger, {
-    apiConfig: {
-        baseURL: 'https://backend.zkpay.network',
-        timeout: 300000
-    },
-    treasuryContracts,
-    tokenConfigs,
-    confirmationBlocks: 3,
-    maxWaitTime: 300000
+  apiConfig: {
+    baseURL: "https://backend.zkpay.network",
+    timeout: 300000,
+  },
+  treasuryContracts,
+  tokenConfigs,
+  confirmationBlocks: 3,
+  maxWaitTime: 300000,
 });
 await client.initialize();
 
-// 登录用户（私钥通过参数传入，不存储在配置中）
-await client.login('0x你的私钥');
+// Login user (private key passed as parameter, not stored in configuration)
+await client.login("0xYourPrivateKey");
 
-// 使用示例 - 所有地址直接传入
-const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309';
-const treasuryAddress = '0x83DCC14c8d40B87DE01cC641b655bD608cf537e8';
-const amount = '10.0';
+// Usage example - All addresses passed directly
+const tokenAddress = "0xbFBD79DbF5369D013a3D31812F67784efa6e0309";
+const treasuryAddress = "0x83DCC14c8d40B87DE01cC641b655bD608cf537e8";
+const amount = "10.0";
 
 await client.deposit(714, tokenAddress, amount, treasuryAddress);
 ```
 
-## 🔢 动态获取Token Decimals示例
+## 🔢 动态获取 Token Decimals 示例
 
 ```javascript
 // 获取Token信息
-const tokenInfo = await client.getTokenInfo(714, '0xbFBD79DbF5369D013a3D31812F67784efa6e0309');
+const tokenInfo = await client.getTokenInfo(
+  714,
+  "0xbFBD79DbF5369D013a3D31812F67784efa6e0309"
+);
 console.log(`Token: ${tokenInfo.symbol} (${tokenInfo.name})`);
 console.log(`Decimals: ${tokenInfo.decimals}`);
 
 // 使用动态decimals进行金额计算
-const amount = '10.0';
+const amount = "10.0";
 const amountWei = ethers.parseUnits(amount, tokenInfo.decimals);
 console.log(`${amount} ${tokenInfo.symbol} = ${amountWei.toString()} Wei`);
 
@@ -521,25 +595,25 @@ console.log(`余额: ${balance.formatted} ${tokenInfo.symbol}`);
 
 // 授权时使用动态decimals
 if (balance.balance < amountWei) {
-    console.log('余额不足，需要充值');
+  console.log("余额不足，需要充值");
 } else {
-    await client.approveToken(714, tokenInfo.address, amount, treasuryAddress);
+  await client.approveToken(714, tokenInfo.address, amount, treasuryAddress);
 }
 ```
 
 ## 🌐 RPC URL 配置
 
-SDK支持从环境变量获取RPC URL，或使用默认值：
+SDK 支持从环境变量获取 RPC URL，或使用默认值：
 
 ### 环境变量配置
 
 ```bash
-# 设置特定链的RPC URL (使用SLIP44 ID，SDK会自动转换)
+# Set specific chain RPC URL (using SLIP44 ID, SDK will automatically convert)
 export RPC_URL_714=https://bsc-dataseed1.binance.org  # SLIP44 BSC
 export RPC_URL_60=https://eth.llamarpc.com            # SLIP44 Ethereum
 export RPC_URL_966=https://polygon-rpc.com            # SLIP44 Polygon
 
-# 或者使用.env文件
+# Or use .env file
 echo "RPC_URL_714=https://bsc-dataseed1.binance.org" >> .env
 echo "RPC_URL_60=https://eth.llamarpc.com" >> .env
 
@@ -547,9 +621,9 @@ echo "RPC_URL_60=https://eth.llamarpc.com" >> .env
 # 例如：SLIP44 714 (Tron) 会自动映射到 Chain ID 56 (BSC RPC)
 ```
 
-### 支持的链和SLIP44映射
+### 支持的链和 SLIP44 映射
 
-| SLIP44 ID | EVM Chain ID | 链名称            | 默认RPC URL                                    |
+| SLIP44 ID | EVM Chain ID | 链名称            | 默认 RPC URL                                   |
 | --------- | ------------ | ----------------- | ---------------------------------------------- |
 | 60        | 1            | Ethereum Mainnet  | https://eth.llamarpc.com                       |
 | 60        | 3            | Ethereum Ropsten  | https://ropsten.infura.io/v3/                  |
@@ -578,82 +652,82 @@ echo "RPC_URL_60=https://eth.llamarpc.com" >> .env
 | 195       | 195          | Tron Mainnet      | https://rpc.trongrid.io                        |
 | 195       | 2494104990   | Tron Shasta       | https://api.shasta.trongrid.io                 |
 
-### SLIP44映射说明
+### SLIP44 映射说明
 
-SDK支持SLIP44币种ID到EVM链ID的映射，主要特点：
+SDK 支持 SLIP44 币种 ID 到 EVM 链 ID 的映射，主要特点：
 
-- **SLIP44 60** → **Chain ID 1** (Ethereum主网)
-- **SLIP44 714** → **Chain ID 56** (BSC主网)
-- **SLIP44 966** → **Chain ID 137** (Polygon主网)
+- **SLIP44 60** → **Chain ID 1** (Ethereum 主网)
+- **SLIP44 714** → **Chain ID 56** (BSC 主网)
+- **SLIP44 966** → **Chain ID 137** (Polygon 主网)
 - **SLIP44 42161** → **Chain ID 42161** (Arbitrum One)
-- **SLIP44 10** → **Chain ID 10** (Optimism主网)
-- **SLIP44 250** → **Chain ID 250** (Fantom主网)
-- **SLIP44 195** → **Chain ID 195** (Tron主网)
-- **其他链**: 大部分SLIP44 ID与EVM Chain ID相同，无需映射
+- **SLIP44 10** → **Chain ID 10** (Optimism 主网)
+- **SLIP44 250** → **Chain ID 250** (Fantom 主网)
+- **SLIP44 195** → **Chain ID 195** (Tron 主网)
+- **其他链**: 大部分 SLIP44 ID 与 EVM Chain ID 相同，无需映射
 
-**使用示例**：
+**Usage Example:**
 
 ```javascript
-// 使用SLIP44 ID访问BSC
+// Use SLIP44 ID to access BSC
 const provider = walletManager.getProvider(714); // SLIP44 BSC ID
-const network = await provider.getNetwork(); // 返回 Chain ID 56
+const network = await provider.getNetwork(); // Returns Chain ID 56
 
-// 使用SLIP44 ID访问Ethereum
-const provider = walletManager.getProvider(60); // SLIP44 Ethereum ID  
-const network = await provider.getNetwork(); // 返回 Chain ID 1
+// Use SLIP44 ID to access Ethereum
+const provider = walletManager.getProvider(60); // SLIP44 Ethereum ID
+const network = await provider.getNetwork(); // Returns Chain ID 1
 
-// 使用SLIP44 ID访问Polygon
+// Use SLIP44 ID to access Polygon
 const provider = walletManager.getProvider(966); // SLIP44 Polygon ID
-const network = await provider.getNetwork(); // 返回 Chain ID 137
+const network = await provider.getNetwork(); // Returns Chain ID 137
 
-// 使用SLIP44 ID访问Tron
+// Use SLIP44 ID to access Tron
 const provider = walletManager.getProvider(195); // SLIP44 Tron ID
-const network = await provider.getNetwork(); // 返回 Chain ID 195
+const network = await provider.getNetwork(); // Returns Chain ID 195
 ```
 
-## 🔐 KMS集成
+## 🔐 KMS 集成
 
-zksdk支持与外部密钥管理系统(KMS)集成，实现私钥的安全管理。支持SLIP44标准和多种签名类型：
+zksdk 支持与外部密钥管理系统(KMS)集成，实现私钥的安全管理。支持 SLIP44 标准和多种签名类型：
 
-### 基础KMS集成
+### 基础 KMS 集成
 
 ```javascript
-const { ZKPayClient } = require('zksdk');
-const { ZKPayKMSSigner } = require('zksdk/utils/zkpay-kms-adapter');
+const { ZKPayClient } = require("zksdk");
+const { ZKPayKMSSigner } = require("zksdk/utils/zkpay-kms-adapter");
 
-// KMS配置 - 使用SLIP44标准
+// KMS configuration - using SLIP44 standard
 const kmsConfig = {
-    baseURL: 'http://localhost:18082',
-    keyAlias: 'my_bsc_key',
-    encryptedKey: 'encrypted_private_key_from_kms',
-    slip44Id: 714,  // BSC使用SLIP44 ID 714
-    address: '0x...',
-    defaultSignatureType: 'eip191'  // BSC使用EIP-191签名
+  baseURL: "http://localhost:18082",
+  keyAlias: "my_bsc_key",
+  encryptedKey: "encrypted_private_key_from_kms",
+  slip44Id: 714, // BSC uses SLIP44 ID 714
+  address: "0x...",
+  defaultSignatureType: "eip191", // BSC uses EIP-191 signature
 };
 
-// 创建KMS签名器
+// Create KMS signer
 const kmsSigner = new ZKPayKMSSigner(kmsConfig);
 
-// 使用KMS签名器登录
+// Login using KMS signer
 const client = new ZKPayClient(config);
 await client.loginWithSigner(kmsSigner, kmsConfig.address);
 ```
 
-### SAAS KMS集成
+### SAAS KMS 集成
 
-对于企业级用户，支持通过SAAS系统的KMS服务进行签名：
+对于企业级用户，支持通过 SAAS 系统的 KMS 服务进行签名：
 
 ```javascript
-const { SaasKMSSigner } = require('zksdk/utils/saas-kms-signer');
+const { SaasKMSSigner } = require("zksdk/utils/saas-kms-signer");
 
 // SAAS KMS配置
 const saasKmsConfig = {
-    kmsUrl: 'https://kms.your-saas.com',
-    enterpriseId: 'your_enterprise_id',
-    chainId: 714,  // BSC
-    userAddress: '0x...',
-    keyAlias: 'enterprise_key',
-    k1Key: 'your_k1_key'
+  kmsUrl: "https://kms.your-saas.com",
+  enterpriseId: "your_enterprise_id",
+  chainId: 714, // BSC
+  userAddress: "0x...",
+  keyAlias: "enterprise_key",
+  k1Key: "your_k1_key",
 };
 
 // 创建SAAS KMS签名器
@@ -665,53 +739,58 @@ await client.loginWithSigner(saasSigner, saasKmsConfig.userAddress);
 
 ### 支持的区块链网络
 
-| 网络 | SLIP44 ID | 签名类型 | 说明 |
-|------|-----------|----------|------|
-| Ethereum | 60 | eip191 | 以太坊主网 |
-| BSC | 714 | eip191 | 币安智能链 |
-| Tron | 195 | tip191t | 波场网络 |
-| Polygon | 966 | eip191 | Polygon网络 |
-| Arbitrum | 42161 | eip191 | Arbitrum One |
-| Optimism | 10 | eip191 | Optimism网络 |
+| 网络     | SLIP44 ID | 签名类型 | 说明          |
+| -------- | --------- | -------- | ------------- |
+| Ethereum | 60        | eip191   | 以太坊主网    |
+| BSC      | 714       | eip191   | 币安智能链    |
+| Tron     | 195       | tip191t  | 波场网络      |
+| Polygon  | 966       | eip191   | Polygon 网络  |
+| Arbitrum | 42161     | eip191   | Arbitrum One  |
+| Optimism | 10        | eip191   | Optimism 网络 |
 
-### 多链KMS使用示例
+### Multi-chain KMS Usage Example
 
 ```javascript
 // 多链管理器
-const { MultiChainKMSManager } = require('zksdk/examples/multi-chain-kms-example');
+const {
+  MultiChainKMSManager,
+} = require("zksdk/examples/multi-chain-kms-example");
 
-const manager = new MultiChainKMSManager({
-    baseURL: 'http://localhost:18082',
-    keyAlias: 'multi_chain'
-}, logger);
+const manager = new MultiChainKMSManager(
+  {
+    baseURL: "http://localhost:18082",
+    keyAlias: "multi_chain",
+  },
+  logger
+);
 
 // 添加不同链的配置
-manager.addChain('bsc', {
-    slip44Id: 714,
-    encryptedKey: 'bsc_encrypted_key',
-    address: '0xBSC_ADDRESS',
-    defaultSignatureType: 'eip191'
+manager.addChain("bsc", {
+  slip44Id: 714,
+  encryptedKey: "bsc_encrypted_key",
+  address: "0xBSC_ADDRESS",
+  defaultSignatureType: "eip191",
 });
 
-manager.addChain('tron', {
-    slip44Id: 195,
-    encryptedKey: 'tron_encrypted_key',
-    address: 'TRON_ADDRESS',
-    defaultSignatureType: 'tip191t'
+manager.addChain("tron", {
+  slip44Id: 195,
+  encryptedKey: "tron_encrypted_key",
+  address: "TRON_ADDRESS",
+  defaultSignatureType: "tip191t",
 });
 
 // 跨链签名
-await manager.signMessage('bsc', 'Hello BSC!');
-await manager.signMessage('tron', 'Hello Tron!');
+await manager.signMessage("bsc", "Hello BSC!");
+await manager.signMessage("tron", "Hello Tron!");
 ```
 
 ## 🔒 安全使用指南
 
 ### 私钥管理
 
-- ✅ 使用KMS系统管理私钥（推荐）
+- ✅ 使用 KMS 系统管理私钥（推荐）
 - ✅ 使用环境变量存储私钥
-- ✅ 使用.env文件（不要提交到代码仓库）
+- ✅ 使用.env 文件（不要提交到代码仓库）
 - ✅ 定期轮换测试私钥
 - ❌ 绝不在代码中硬编码私钥
 - ❌ 绝不在公共仓库中暴露私钥
@@ -719,11 +798,11 @@ await manager.signMessage('tron', 'Hello Tron!');
 ### 环境变量设置
 
 ```bash
-# 设置环境变量
-export TEST_USER_PRIVATE_KEY=0x你的私钥
+# Set environment variable
+export TEST_USER_PRIVATE_KEY=0xYourPrivateKey
 
-# 或者使用.env文件
-echo "TEST_USER_PRIVATE_KEY=0x你的私钥" > .env
+# Or use .env file
+echo "TEST_USER_PRIVATE_KEY=0xYourPrivateKey" > .env
 ```
 
 ### 安全检查清单
@@ -768,38 +847,38 @@ node zkpay-client-example.js --example example1
 
 ## 📝 注意事项
 
-- **私钥管理**: 通过Wallet Manager统一管理，一个私钥对应一个钱包实例
+- **私钥管理**: 通过 Wallet Manager 统一管理，一个私钥对应一个钱包实例
 - **数据格式**: 金额使用字符串格式，避免精度丢失
 - **超时设置**: 长时间操作有合理的超时设置
 - **错误处理**: 所有方法都有完整的错误处理和日志记录
 - **状态检查**: 操作前检查相关状态，确保流程正确
-- **API设计统一**:
-  - 所有方法都使用Token合约地址，确保API一致性
-  - 不再依赖config.yaml配置文件，所有参数直接传入
-  - 支持任意Token合约，无需预配置
-- **动态获取Token信息**:
-  - 使用 `getTokenInfo()`方法动态获取Token的decimals、symbol、name
-  - 不再硬编码decimals，确保精度计算的准确性
-  - 支持任意ERC20 Token，自动适配其精度
+- **API 设计统一**:
+  - 所有方法都使用 Token 合约地址，确保 API 一致性
+  - 不再依赖 config.yaml 配置文件，所有参数直接传入
+  - 支持任意 Token 合约，无需预配置
+- **动态获取 Token 信息**:
+  - 使用 `getTokenInfo()`方法动态获取 Token 的 decimals、symbol、name
+  - 不再硬编码 decimals，确保精度计算的准确性
+  - 支持任意 ERC20 Token，自动适配其精度
 
-## 🔄 与原有代码的关系
+## 🔄 Relationship with Existing Code
 
-这个库是在现有 E2E 自动化代码基础上构建的：
+This library is built on top of existing E2E automation code:
 
-- **复用**: 完全复用现有的 manager 类
-- **增强**: 添加了统一的客户端接口
-- **集成**: 使用 CommitmentManager 内部签名方法
-- **扩展**: 提供了同步/异步两种操作方式
+- **Reuse**: Fully reuses existing manager classes
+- **Enhancement**: Added unified client interface
+- **Integration**: Uses CommitmentManager internal signing methods
+- **Extension**: Provides both synchronous/asynchronous operation modes
 
-## 📦 依赖
+## 📦 Dependencies
 
-- `ethers` - 以太坊交互
-- `axios` - HTTP 请求
-- `dotenv` - 环境变量管理
-- 现有的 logger 和 manager 组件
+- `ethers` - Ethereum interaction
+- `axios` - HTTP requests
+- `dotenv` - Environment variable management
+- Existing logger and manager components
 
-## 🔗 相关文件
+## 🔗 Related Files
 
-- 原始 E2E 测试: `../zkpay-e2e-test.js`
-- 日志工具: `../logger.js`
-- 使用示例: `examples/zkpay-client-example.js`
+- Original E2E test: `../zkpay-e2e-test.js`
+- Logging utility: `../logger.js`
+- Usage example: `examples/zkpay-client-example.js`

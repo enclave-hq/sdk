@@ -1,46 +1,49 @@
-# ZKPay Client Library - 安装和使用指南
+# ZKPay Client Library - Installation and Usage Guide
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 1. 安装
+### 1. Installation
 
 ```bash
-# 克隆仓库
+# Clone repository
 git clone git@github.com:QuantrixLab/ZKPaySDK.git
 cd ZKPaySDK
 
-# 安装依赖
+# Install dependencies
 npm install
 ```
 
-### 2. 配置
+### 2. Configuration
 
-#### 基础配置
+#### Basic Configuration
+
 ```bash
 cd examples
-# 编辑 config.yaml 设置API地址和测试参数
-# 设置环境变量
+# Edit config.yaml to set API address and test parameters
+# Set environment variables
 export TEST_USER_PRIVATE_KEY="your_private_key_without_0x_prefix"
 ```
 
-#### KMS集成配置
+#### KMS Integration Configuration
 
-对于企业级用户，可以配置KMS服务进行安全的密钥管理：
+For enterprise users, you can configure KMS service for secure key management:
 
-**方式1: 基础KMS配置**
+**Method 1: Basic KMS Configuration**
+
 ```bash
-# 设置KMS服务地址
+# Set KMS service address
 export KMS_BASE_URL="http://localhost:18082"
 
-# 设置KMS密钥配置
+# Set KMS key configuration
 export KMS_KEY_ALIAS="your_key_alias"
 export KMS_ENCRYPTED_KEY="your_encrypted_key"
 export KMS_USER_ADDRESS="0x..."
 ```
 
-**方式2: SAAS KMS配置**
+**Method 2: SAAS KMS Configuration**
+
 ```bash
-# 设置SAAS KMS服务
+# Set SAAS KMS service
 export SAAS_KMS_URL="https://kms.your-saas.com"
 export SAAS_ENTERPRISE_ID="your_enterprise_id"
 export SAAS_K1_KEY="your_k1_key"
@@ -48,8 +51,9 @@ export SAAS_USER_ADDRESS="0x..."
 export SAAS_KEY_ALIAS="enterprise_key"
 ```
 
-**方式3: 配置文件方式**
-创建 `kms-config.json` 文件：
+**Method 3: Configuration File Method**
+Create `kms-config.json` file:
+
 ```json
 {
   "kms": {
@@ -66,59 +70,63 @@ export SAAS_KEY_ALIAS="enterprise_key"
 }
 ```
 
-### 3. 运行测试
+### 3. Run Tests
 
-#### 基础测试
+#### Basic Tests
+
 ```bash
-# 快速测试
+# Quick test
 npm test
 
-# 完整功能测试
+# Full functionality test
 npm run test:full
 
-# 异步功能测试
+# Async functionality test
 npm run test:async
 ```
 
-#### KMS集成测试
+#### KMS Integration Tests
+
 ```bash
-# KMS密钥初始化测试
+# KMS key initialization test
 node examples/kms-key-initialization-example.js
 
-# KMS集成测试
+# KMS integration test
 node examples/zkpay-kms-integration-example.js
 
-# KMS完整流程测试
+# KMS full flow test
 node examples/kms-full-flow-example.js --amount 10.0
 
-# 使用客户端提供的私钥进行KMS测试
+# KMS test using client-provided private key
 node examples/kms-full-flow-example.js --use-provided-key --private-key 0x... --amount 10.0
 ```
 
-### 4. 运行示例
+### 4. Run Examples
 
-#### 基础示例
+#### Basic Examples
+
 ```bash
-# 基本示例
+# Basic example
 npm run example
 
-# 异步示例
+# Async example
 npm run example:async
 ```
 
-#### KMS示例
+#### KMS Examples
+
 ```bash
-# KMS集成示例
+# KMS integration example
 node examples/zkpay-kms-integration-example.js
 
-# 完整KMS流程示例
+# Full KMS flow example
 node examples/kms-full-flow-example.js --amount 5.0
 
-# 多链KMS管理示例
+# Multi-chain KMS management example
 node examples/multi-chain-kms-example.js
 ```
 
-## 📦 作为 NPM 包使用
+## 📦 Use as NPM Package
 
 ```bash
 npm install zkpay-client-library
@@ -131,69 +139,72 @@ const client = new ZKPayClient(config);
 await client.initialize();
 await client.login(privateKey);
 
-// 执行操作
+// Execute operations
 const result = await client.executeCommitmentSync(checkbookId, allocations);
 ```
 
-## 📚 文档
+## 📚 Documentation
 
-- [README.md](./README.md) - 项目概述
-- [LIBRARY_OVERVIEW.md](./LIBRARY_OVERVIEW.md) - 库架构说明
-- [USAGE_GUIDE.md](./USAGE_GUIDE.md) - 详细使用指南
-- [examples/README.md](./examples/README.md) - 示例和测试说明
+- [README.md](./README.md) - Project overview
+- [LIBRARY_OVERVIEW.md](./LIBRARY_OVERVIEW.md) - Library architecture description
+- [USAGE_GUIDE.md](./USAGE_GUIDE.md) - Detailed usage guide
+- [examples/README.md](./examples/README.md) - Examples and test descriptions
 
-## 🔧 开发
+## 🔧 Development
 
 ```bash
-# 运行测试
+# Run tests
 npm test
 
-# 运行示例
+# Run examples
 npm run example
 
-# 查看所有可用脚本
+# View all available scripts
 npm run
 ```
 
-## 📋 系统要求
+## 📋 System Requirements
 
 - Node.js >= 16.0.0
 - NPM or Yarn
-- 连接到 ZKPay 后端服务
+- Connection to ZKPay backend service
 
-## 🎯 主要功能
+## 🎯 Main Features
 
-- ✅ 完整的 ZKPay 后端交互
-- ✅ 存款、Commitment、提现操作
-- ✅ 同步和异步操作模式
-- ✅ 状态监控和等待机制
-- ✅ 完整的测试覆盖
-- ✅ 详细的文档和示例
-- ✅ KMS密钥管理系统集成
-- ✅ SAAS企业级KMS支持
-- ✅ 多链签名和SLIP44标准支持
-- ✅ 安全的私钥管理和签名服务
+- ✅ Complete ZKPay backend interaction
+- ✅ Deposit, Commitment, Withdrawal operations
+- ✅ Synchronous and asynchronous operation modes
+- ✅ Status monitoring and waiting mechanisms
+- ✅ Complete test coverage
+- ✅ Detailed documentation and examples
+- ✅ KMS key management system integration
+- ✅ SAAS enterprise-level KMS support
+- ✅ Multi-chain signing and SLIP44 standard support
+- ✅ Secure private key management and signing services
 
-## 🔐 KMS集成特性
+## 🔐 KMS Integration Features
 
-### 支持的KMS类型
-- **基础KMS**: 标准KMS服务集成
-- **SAAS KMS**: 企业级SAAS KMS服务
-- **多链KMS**: 支持多区块链网络的统一KMS管理
+### Supported KMS Types
 
-### 支持的区块链网络
-| 网络 | SLIP44 ID | 签名类型 | KMS支持 |
-|------|-----------|----------|---------|
-| Ethereum | 60 | eip191 | ✅ |
-| BSC | 714 | eip191 | ✅ |
-| Tron | 195 | tip191t | ✅ |
-| Polygon | 966 | eip191 | ✅ |
-| Arbitrum | 42161 | eip191 | ✅ |
-| Optimism | 10 | eip191 | ✅ |
+- **Basic KMS**: Standard KMS service integration
+- **SAAS KMS**: Enterprise-level SAAS KMS service
+- **Multi-chain KMS**: Unified KMS management supporting multiple blockchain networks
 
-### 安全特性
-- 🔒 私钥从不离开KMS服务
-- 🔐 支持硬件安全模块(HSM)
-- 📝 完整的签名审计日志
-- 🔑 基于角色的访问控制(RBAC)
-- 🛡️ 企业级安全合规支持
+### Supported Blockchain Networks
+
+| Network  | SLIP44 ID | Signature Type | KMS Support |
+| -------- | --------- | -------------- | ----------- |
+| Ethereum | 60        | eip191         | ✅          |
+| BSC      | 714       | eip191         | ✅          |
+| Tron     | 195       | tip191t        | ✅          |
+| Polygon  | 966       | eip191         | ✅          |
+| Arbitrum | 42161     | eip191         | ✅          |
+| Optimism | 10        | eip191         | ✅          |
+
+### Security Features
+
+- 🔒 Private keys never leave KMS service
+- 🔐 Hardware Security Module (HSM) support
+- 📝 Complete signature audit logs
+- 🔑 Role-Based Access Control (RBAC)
+- 🛡️ Enterprise-level security compliance support

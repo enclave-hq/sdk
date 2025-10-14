@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-// ZKPay Client Library 快速验证测试
-// 用于快速验证client-library的基本功能是否正常
+// ZKPay Client Library 快速VerifyTest
+// 用于快速Verifyclient-library的基本Function是否Normal
 
-// 加载环境变量
+// 加载Environment变量
 require('dotenv').config();
 
 const { ZKPayClient } = require('../core/zkpay-client-library');
@@ -13,7 +13,7 @@ const path = require('path');
 const chalk = require('chalk');
 
 /**
- * 快速验证测试
+ * 快速VerifyTest
  */
 class QuickClientLibraryTest {
     constructor() {
@@ -27,12 +27,12 @@ class QuickClientLibraryTest {
      * 初始化
      */
     async initialize() {
-        console.log(chalk.blue('🔧 初始化快速测试...'));
+        console.log(chalk.blue('🔧 初始化快速Test...'));
         
-        // 清理日志
+        // CleanupLog
         this.clearLogs();
         
-        // 使用参数化配置
+        // Use参数化Configuration
         const options = {
             apiConfig: {
                 baseURL: process.env.ZKPAY_BACKEND_URL || 'https://backend.zkpay.network',
@@ -40,15 +40,15 @@ class QuickClientLibraryTest {
             }
         };
         
-        // 创建客户端
+        // Create客户端
         this.client = new ZKPayClient(this.logger, options);
         await this.client.initialize();
         
-        console.log(chalk.green('✅ 快速测试初始化完成'));
+        console.log(chalk.green('✅ 快速Test初始化completed'));
     }
 
     /**
-     * 清理日志
+     * CleanupLog
      */
     clearLogs() {
         const logFiles = [
@@ -66,36 +66,36 @@ class QuickClientLibraryTest {
 
 
     /**
-     * 执行测试
+     * ExecuteTest
      */
     async runTest(name, testFn) {
-        console.log(chalk.cyan(`🧪 测试: ${name}`));
+        console.log(chalk.cyan(`🧪 Test: ${name}`));
         const startTime = Date.now();
         
         try {
             const result = await testFn();
             const duration = Date.now() - startTime;
             
-            console.log(chalk.green(`✅ ${name} - 通过 (${duration}ms)`));
+            console.log(chalk.green(`✅ ${name} - Pass (${duration}ms)`));
             this.testResults.push({ name, success: true, duration, result });
             return result;
         } catch (error) {
             const duration = Date.now() - startTime;
             
-            console.log(chalk.red(`❌ ${name} - 失败: ${error.message}`));
+            console.log(chalk.red(`❌ ${name} - failed: ${error.message}`));
             this.testResults.push({ name, success: false, duration, error: error.message });
             throw error;
         }
     }
 
     /**
-     * 快速验证流程
+     * 快速Verify流程
      */
     async runQuickValidation() {
-        console.log(chalk.blue('\n🚀 开始ZKPay Client Library快速验证...\n'));
+        console.log(chalk.blue('\n🚀 StartingZKPay Client Library快速Verify...\n'));
         
         try {
-            // 1. 测试初始化
+            // 1. Test初始化
             await this.runTest('客户端初始化', async () => {
                 return {
                     initialized: this.client.isInitialized,
@@ -103,81 +103,81 @@ class QuickClientLibraryTest {
                 };
             });
 
-            // 2. 测试登录
-            const loginResult = await this.runTest('用户登录', async () => {
+            // 2. Test登录
+            const loginResult = await this.runTest('User登录', async () => {
                 const privateKey = process.env.TEST_USER_PRIVATE_KEY;
                 if (!privateKey) {
-                    throw new Error('请设置环境变量 TEST_USER_PRIVATE_KEY');
+                    throw new Error('Please设置Environment变量 TEST_USER_PRIVATE_KEY');
                 }
                 return await this.client.login(privateKey);
             });
 
-            // 3. 测试Token操作
-            await this.runTest('Token操作', async () => {
+            // 3. TestTokenOperation
+            await this.runTest('TokenOperation', async () => {
                 const chainId = 714;  // SLIP44 BSC
                 const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309'; // BSC Testnet USDT
                 
                 const balance = await this.client.checkTokenBalance(chainId, tokenAddress);
-                // 跳过授权检查，因为需要Treasury地址配置
+                // 跳过授权Check，因为需要TreasuryAddressConfiguration
                 // const allowance = await this.client.checkTokenAllowance(chainId, tokenAddress);
                 
-                return { balance, message: 'Token余额检查成功' };
+                return { balance, message: 'Token余额Checksuccessful' };
             });
 
-            // 4. 测试CheckBook查询
-            const deposits = await this.runTest('CheckBook查询', async () => {
+            // 4. TestCheckBookQuery
+            const deposits = await this.runTest('CheckBookQuery', async () => {
                 return await this.client.getUserDeposits();
             });
 
-            // 5. 如果有存款记录，测试CheckBook详情
+            // 5. 如果有Deposit记录，TestCheckBookDetails
             if (deposits && deposits.length > 0) {
-                await this.runTest('CheckBook详情', async () => {
+                await this.runTest('CheckBookDetails', async () => {
                     const checkbookId = deposits[0].checkbookId || deposits[0].checkbook_id;
                     if (!checkbookId) {
-                        throw new Error(`存款记录中checkbook_id为空: ${JSON.stringify(deposits[0])}`);
+                        throw new Error(`Deposit记录中checkbook_id为空: ${JSON.stringify(deposits[0])}`);
                     }
                     return await this.client.getCheckbookDetails(checkbookId);
                 });
             }
 
-            // 显示结果
+            // DisplayResult
             this.displayQuickResults();
             
             return true;
 
         } catch (error) {
-            console.log(chalk.red(`\n❌ 快速验证失败: ${error.message}\n`));
+            console.log(chalk.red(`\n❌ 快速Verifyfailed: ${error.message}\n`));
             this.displayQuickResults();
             return false;
         }
     }
 
     /**
-     * 执行完整的功能测试（包含实际交易）
+     * Execute完整的FunctionTest（包含实际交易）
      */
     async runFullFunctionalTest() {
-        console.log(chalk.blue('\n🚀 开始完整功能测试（包含实际交易）...\n'));
+        console.log(chalk.blue('\n🚀 Starting完整FunctionTest（包含实际交易）...\n'));
         
         try {
-            // 先执行快速验证
+            // 先Execute快速Verify
             const quickResult = await this.runQuickValidation();
             if (!quickResult) {
-                throw new Error('快速验证失败，跳过完整测试');
+                throw new Error('快速Verifyfailed，跳过完整Test');
             }
 
-            console.log(chalk.blue('\n🔄 继续完整功能测试...\n'));
+            console.log(chalk.blue('\n🔄 继续完整FunctionTest...\n'));
 
-            // 6. 测试存款
-            const depositResult = await this.runTest('存款操作', async () => {
+            // 6. TestDeposit
+            const depositResult = await this.runTest('DepositOperation', async () => {
                 const chainId = 714;  // SLIP44 BSC
                 const tokenAddress = '0xbFBD79DbF5369D013a3D31812F67784efa6e0309'; // BSC Testnet USDT
-                const amount = '2.0'; // 最低金额要求
+                const amount = '2.0'; // 最低Amount要求
                 
                 return await this.client.deposit(chainId, tokenAddress, amount);
             });
 
-            // 7. 等待存款检测
-            const depositRecord = await this.runTest('存款检测', async () => {
+            // 7. WaitDeposit检测
+            const depositRecord = await this.runTest('Deposit检测', async () => {
                 return await this.client.waitForDepositDetection(
                     depositResult.deposit.txHash,
                     56,
@@ -185,39 +185,39 @@ class QuickClientLibraryTest {
                 );
             });
 
-                    // 8. 等待checkbook状态变为ready_for_commitment
-        await this.runTest('等待checkbook准备', async () => {
-            return await this.client.waitForCheckbookReady(depositRecord.checkbook_id); // 使用默认60秒超时
+                    // 8. WaitcheckbookStatus变为ready_for_commitment
+        await this.runTest('Waitcheckbook准备', async () => {
+            return await this.client.waitForCheckbookReady(depositRecord.checkbook_id); // UseDefault60秒超时
         });
 
-            // 9. 测试分配和签名
-            await this.runTest('分配和签名', async () => {
+            // 9. Test分配和Signature
+            await this.runTest('分配和Signature', async () => {
                 const allocations = [
                     {
                         recipient_chain_id: 714,  // SLIP44 BSC
                         recipient_address: this.client.getCurrentUser().address,
-                        amount: "1800000", // 1.8 USDT (6位精度，扣除手续费后的可用金额)
+                        amount: "1800000", // 1.8 USDT (6位精度，扣除手续费后的可用Amount)
                     }
                 ];
                 
                 return await this.client.executeCommitmentSync(
                     depositRecord.checkbook_id,
                     allocations,
-                    true // 等待到with_checkbook状态
+                    true // Wait到with_checkbookStatus
                 );
             });
 
-            // 10. 测试Commitment状态验证（跳过重复执行）
-            await this.runTest('Commitment状态验证', async () => {
+            // 10. TestCommitmentStatusVerify（跳过重复Execute）
+            await this.runTest('CommitmentStatusVerify', async () => {
                 const details = await this.client.getCheckbookDetails(depositRecord.checkbook_id);
                 if (details.status !== 'with_checkbook') {
-                    throw new Error(`期望状态为with_checkbook，实际为${details.status}`);
+                    throw new Error(`期望Status为with_checkbook，实际为${details.status}`);
                 }
-                return { status: details.status, message: 'Commitment状态验证成功' };
+                return { status: details.status, message: 'CommitmentStatusVerifysuccessful' };
             });
 
-            // 11. 测试提现证明生成
-            await this.runTest('提现证明生成', async () => {
+            // 11. Test提现证明Generate
+            await this.runTest('提现证明Generate', async () => {
                 const recipientInfo = {
                     chain_id: 714,  // SLIP44 BSC
                     address: this.client.getCurrentUser().address,
@@ -232,30 +232,30 @@ class QuickClientLibraryTest {
                 );
             });
 
-            console.log(chalk.green('\n🎉 完整功能测试全部通过！'));
+            console.log(chalk.green('\n🎉 完整FunctionTest全部Pass！'));
             this.displayQuickResults();
             
             return true;
 
         } catch (error) {
-            console.log(chalk.red(`\n❌ 完整功能测试失败: ${error.message}\n`));
+            console.log(chalk.red(`\n❌ 完整FunctionTestfailed: ${error.message}\n`));
             this.displayQuickResults();
             return false;
         }
     }
 
     /**
-     * 显示快速测试结果
+     * Display快速TestResult
      */
     displayQuickResults() {
-        console.log('\n' + chalk.blue('📊 ====== 快速测试结果 ======'));
+        console.log('\n' + chalk.blue('📊 ====== 快速TestResult ======'));
         
         const successCount = this.testResults.filter(t => t.success).length;
         const totalCount = this.testResults.length;
         const successRate = ((successCount / totalCount) * 100).toFixed(1);
         
-        console.log(`总测试: ${totalCount}, 通过: ${chalk.green(successCount)}, 失败: ${chalk.red(totalCount - successCount)}`);
-        console.log(`成功率: ${successRate}%`);
+        console.log(`总Test: ${totalCount}, Pass: ${chalk.green(successCount)}, failed: ${chalk.red(totalCount - successCount)}`);
+        console.log(`successful率: ${successRate}%`);
         
         this.testResults.forEach(test => {
             const icon = test.success ? '✅' : '❌';
@@ -263,7 +263,7 @@ class QuickClientLibraryTest {
             console.log(`${icon} ${color(test.name)} (${test.duration}ms)`);
             
             if (!test.success) {
-                console.log(`   ${chalk.red('错误:')} ${test.error}`);
+                console.log(`   ${chalk.red('Error:')} ${test.error}`);
             }
         });
         
@@ -271,7 +271,7 @@ class QuickClientLibraryTest {
     }
 
     /**
-     * 清理
+     * Cleanup
      */
     async cleanup() {
         if (this.client) {
@@ -280,12 +280,12 @@ class QuickClientLibraryTest {
     }
 }
 
-// CLI处理
+// CLIProcess
 async function main() {
     const args = process.argv.slice(2);
     const testType = (args.includes('--full') || args.includes('functional')) ? 'full' : 'quick';
     
-    console.log(chalk.blue('🔧 ZKPay Client Library 验证测试\n'));
+    console.log(chalk.blue('🔧 ZKPay Client Library VerifyTest\n'));
     
     try {
         const test = new QuickClientLibraryTest();
@@ -301,15 +301,15 @@ async function main() {
         await test.cleanup();
         
         if (success) {
-            console.log(chalk.green('🎉 ZKPay Client Library 验证通过！'));
+            console.log(chalk.green('🎉 ZKPay Client Library VerifyPass！'));
         } else {
-            console.log(chalk.red('❌ ZKPay Client Library 验证失败！'));
+            console.log(chalk.red('❌ ZKPay Client Library Verifyfailed！'));
         }
         
         process.exit(success ? 0 : 1);
         
     } catch (error) {
-        console.error(chalk.red('❌ 测试执行失败:'), error.message);
+        console.error(chalk.red('❌ TestExecutefailed:'), error.message);
         process.exit(1);
     }
 }

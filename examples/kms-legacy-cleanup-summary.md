@@ -1,79 +1,89 @@
-# 🗑️ KMS传统系统清理总结
+# 🗑️ KMS Legacy System Cleanup Summary
 
-## ✅ 已完成的清理
+## ✅ Completed Cleanup
 
-### 1. **模型和结构体清理** (`internal/models/models.go`)
-- ❌ 删除 `EncryptedPrivateKey` 结构体
-- ❌ 删除 `EncryptKeyRequest/Response` 
-- ❌ 删除 `SignRequest/Response`
-- ❌ 删除 `GetAddressRequest/Response`
-- ✅ 保留 `DualLayerEncryptedKey` 和相关双层加密结构
+### 1. **Model and Struct Cleanup** (`internal/models/models.go`)
 
-### 2. **API路由清理** (`internal/router/router.go`)
-- ❌ 删除 `POST /api/v1/encrypt`
-- ❌ 删除 `POST /api/v1/sign` 
-- ❌ 删除 `POST /api/v1/get-address`
-- ❌ 删除 `POST /api/v1/sign/transaction`
-- ✅ 保留 `GET /api/v1/health`
-- ✅ 保留 `POST /api/v1/generate-key`
-- 📋 待添加双层加密路由
+- ❌ Delete `EncryptedPrivateKey` struct
+- ❌ Delete `EncryptKeyRequest/Response`
+- ❌ Delete `SignRequest/Response`
+- ❌ Delete `GetAddressRequest/Response`
+- ✅ Keep `DualLayerEncryptedKey` and related dual-layer encryption structures
 
-## 🚧 需要继续清理
+### 2. **API Route Cleanup** (`internal/router/router.go`)
 
-### 3. **服务方法清理** (`internal/services/kms_service.go`)
-需要删除以下方法：
-- `EncryptPrivateKey()` - 传统加密方法
-- `SignData()` - 传统签名方法  
-- `GetAddress()` - 传统地址获取方法
-- `GetStoredKey()` - 查询传统表的方法
-- `GetStoredKeysWithEncryptedData()` - 获取传统表数据
+- ❌ Delete `POST /api/v1/encrypt`
+- ❌ Delete `POST /api/v1/sign`
+- ❌ Delete `POST /api/v1/get-address`
+- ❌ Delete `POST /api/v1/sign/transaction`
+- ✅ Keep `GET /api/v1/health`
+- ✅ Keep `POST /api/v1/generate-key`
+- 📋 Pending dual-layer encryption routes
 
-### 4. **处理器清理**
-- `internal/handlers/encrypt_handler.go` - 删除传统加密处理器
-- `internal/handlers/sign_handler.go` - 删除传统签名处理器
+## 🚧 Needs Continued Cleanup
 
-### 5. **数据库表清理**
-- 删除 `encrypted_private_keys` 表的建表语句
-- 更新迁移脚本，移除对传统表的引用
+### 3. **Service Method Cleanup** (`internal/services/kms_service.go`)
 
-### 6. **文档和测试清理**
-- 更新API文档，移除传统接口说明
-- 更新测试脚本，改用双层加密接口
-- 更新Postman集合
+Need to delete the following methods:
 
-## 🎯 清理后的KMS架构
+- `EncryptPrivateKey()` - Legacy encryption method
+- `SignData()` - Legacy signing method
+- `GetAddress()` - Legacy address retrieval method
+- `GetStoredKey()` - Method to query legacy table
+- `GetStoredKeysWithEncryptedData()` - Get legacy table data
 
-### **保留的功能**
+### 4. **Process器Cleanup**
+
+- `internal/handlers/encrypt_handler.go` - DeleteLegacyEncryptionProcess器
+- `internal/handlers/sign_handler.go` - DeleteLegacySignatureProcess器
+
+### 5. **Data库TableCleanup**
+
+- Delete `encrypted_private_keys` Table的建TableStatement
+- UpdateMigrationScript，RemoveToLegacyTable的Reference
+
+### 6. **Document和TestCleanup**
+
+- Update API Document，RemoveLegacyInterface说明
+- UpdateTestScript，Change to useDual-layerEncryptionInterface
+- Update Postman Collection
+
+## 🎯 Cleanup后的 KMS Architecture
+
+### **Keep的Function**
+
 ```
-✅ 健康检查:     GET  /api/v1/health
-✅ 密钥生成:     POST /api/v1/generate-key  
-✅ 双层加密:     POST /api/v1/dual-layer/encrypt
-✅ 双层签名:     POST /api/v1/dual-layer/sign
-✅ 业务密钥:     POST /api/v1/business/keys/*
-✅ 数据加解密:   POST /api/v1/data/encrypt|decrypt
+✅ HealthCheck:     GET  /api/v1/health
+✅ KeyGenerate:     POST /api/v1/generate-key
+✅ Dual-layerEncryption:     POST /api/v1/dual-layer/encrypt
+✅ Dual-layerSignature:     POST /api/v1/dual-layer/sign
+✅ BusinessKey:     POST /api/v1/business/keys/*
+✅ Data加Decryption:   POST /api/v1/data/encrypt|decrypt
 ```
 
-### **删除的功能**
+### **Delete的Function**
+
 ```
-❌ 传统加密:     POST /api/v1/encrypt
-❌ 传统签名:     POST /api/v1/sign
-❌ 传统地址:     POST /api/v1/get-address
-❌ 传统交易:     POST /api/v1/sign/transaction
+❌ LegacyEncryption:     POST /api/v1/encrypt
+❌ LegacySignature:     POST /api/v1/sign
+❌ LegacyAddress:     POST /api/v1/get-address
+❌ Legacy交易:     POST /api/v1/sign/transaction
 ```
 
 ## 💡 下一步行动
 
-1. **完成服务方法清理** - 删除KMSService中的传统方法
-2. **添加双层加密路由** - 在router中启用双层加密API
-3. **清理处理器文件** - 删除不需要的handler文件
-4. **更新数据库脚本** - 移除传统表相关SQL
-5. **测试验证** - 确保双层加密功能正常工作
+1. **完成ServiceMethodCleanup** - Delete KMSService 中的LegacyMethod
+2. **添加Dual-layerEncryptionRoute** - 在 router 中启用Dual-layerEncryption API
+3. **CleanupProcess器File** - Delete不Need的 handler File
+4. **UpdateData库Script** - RemoveLegacyTableRelated SQL
+5. **Test验证** - 确保Dual-layerEncryptionFunctionNormal工作
 
 ## 🚨 注意事项
 
-- 确保双层加密功能完整可用后再删除传统方法
-- 保留必要的审计日志和统计功能
-- 更新所有相关文档和测试用例
+- 确保Dual-layerEncryptionFunction完整可用后再DeleteLegacyMethod
+- Keep必要的审计Log和StatisticsFunction
+- Update所有RelatedDocument和Test用例
 
 ---
-**清理进度**: 30% 完成 ✅ 模型清理 ✅ 路由清理 🚧 服务清理 ⏳ 文档更新
+
+**Cleanup进度**: 30% 完成 ✅ 模型Cleanup ✅ RouteCleanup 🚧 ServiceCleanup ⏳ DocumentUpdate

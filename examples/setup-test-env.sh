@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ZKPay SDK Examples 测试环境设置脚本
+# ZKPay SDK Examples Test Environment Setup Script
 
 set -e
 
@@ -10,75 +10,75 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}🔧 ZKPay SDK Examples 测试环境设置${NC}"
+echo -e "${BLUE}🔧 ZKPay SDK Examples Test Environment Setup${NC}"
 echo ""
 
-# 检查是否已有.env文件
+# Check if .env file already exists
 if [ -f ".env" ]; then
-    echo -e "${YELLOW}⚠️  发现现有.env文件${NC}"
-    read -p "是否要覆盖现有配置? (y/N): " overwrite
+    echo -e "${YELLOW}⚠️  Found existing .env file${NC}"
+    read -p "Do you want to overwrite existing configuration? (y/N): " overwrite
     if [[ $overwrite != [yY] ]]; then
-        echo "保持现有配置"
+        echo "Keeping existing configuration"
         exit 0
     fi
 fi
 
-echo -e "${BLUE}请选择私钥设置方式：${NC}"
-echo "1. 使用新的测试私钥（推荐）"
-echo "2. 输入现有私钥"
-echo "3. 使用默认测试私钥（仅用于测试）"
+echo -e "${BLUE}Please select private key setup method:${NC}"
+echo "1. Use new test private key (recommended)"
+echo "2. Enter existing private key"
+echo "3. Use default test private key (for testing only)"
 echo ""
 
-read -p "请选择 (1-3): " choice
+read -p "Please select (1-3): " choice
 
 case $choice in
     1)
-        echo -e "${GREEN}生成新的测试私钥...${NC}"
-        # 生成一个新的测试私钥
+        echo -e "${GREEN}Generating new test private key...${NC}"
+        # Generate a new test private key
         NEW_PRIVATE_KEY=$(openssl rand -hex 32)
-        echo "新生成的测试私钥: 0x$NEW_PRIVATE_KEY"
-        echo -e "${YELLOW}⚠️  请保存此私钥，这是你的测试账户私钥${NC}"
+        echo "New generated test private key: 0x$NEW_PRIVATE_KEY"
+        echo -e "${YELLOW}⚠️  Please save this private key, this is your test account private key${NC}"
         PRIVATE_KEY="0x$NEW_PRIVATE_KEY"
         ;;
     2)
-        echo -e "${BLUE}请输入你的私钥：${NC}"
-        read -p "私钥 (0x开头): " PRIVATE_KEY
+        echo -e "${BLUE}Please enter your private key:${NC}"
+        read -p "Private key (starts with 0x): " PRIVATE_KEY
         if [[ ! $PRIVATE_KEY =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-            echo -e "${RED}❌ 私钥格式错误，应该是64位十六进制字符${NC}"
+            echo -e "${RED}❌ Private key format error, should be 64-bit hexadecimal Characters${NC}"
             exit 1
         fi
         ;;
     3)
-        echo -e "${YELLOW}⚠️  使用默认测试私钥（仅用于演示）${NC}"
+        echo -e "${YELLOW}⚠️  UseDefault测试Private Key（Only forDemo）${NC}"
         PRIVATE_KEY="your_private_key"
         ;;
     *)
-        echo -e "${RED}❌ 无效选择${NC}"
+        echo -e "${RED}❌ 无效Select${NC}"
         exit 1
         ;;
 esac
 
-# 创建.env文件
-echo -e "${GREEN}创建.env文件...${NC}"
+# Create.envFile
+echo -e "${GREEN}Create.envFile...${NC}"
 cat > .env << EOF
-# ZKPay SDK Examples 测试配置
+# ZKPay SDK Examples 测试Configuration
 # 生成时间: $(date)
 
-# 测试用户私钥
+# 测试UserPrivate Key
 TEST_USER_PRIVATE_KEY=$PRIVATE_KEY
 
-# 其他可选配置
-# TEST_USER_ALT_PRIVATE_KEY=0x你的备用私钥
-# SAFE_ADDRESS=0x你的安全地址
+# 其他可选Configuration
+# TEST_USER_ALT_PRIVATE_KEY=0xYour备用Private Key
+# SAFE_ADDRESS=0xYourSecurityAddress
 EOF
 
-echo -e "${GREEN}✅ .env文件已创建${NC}"
+echo -e "${GREEN}✅ .envFile已Create${NC}"
 echo ""
 
-# 验证配置
-echo -e "${BLUE}验证配置...${NC}"
+# 验证Configuration
+echo -e "${BLUE}验证Configuration...${NC}"
 if [ -f ".env" ]; then
-    echo "✅ .env文件存在"
+    echo "✅ .envFile存在"
     if grep -q "TEST_USER_PRIVATE_KEY" .env; then
         echo "✅ TEST_USER_PRIVATE_KEY已设置"
     else
@@ -86,14 +86,14 @@ if [ -f ".env" ]; then
         exit 1
     fi
 else
-    echo -e "${RED}❌ .env文件创建失败${NC}"
+    echo -e "${RED}❌ .envFileCreate失败${NC}"
     exit 1
 fi
 
 echo ""
-echo -e "${GREEN}🎉 测试环境设置完成！${NC}"
+echo -e "${GREEN}🎉 测试Environment设置完成！${NC}"
 echo ""
-echo -e "${BLUE}现在可以运行测试：${NC}"
+echo -e "${BLUE}现在可以Run测试：${NC}"
 echo "1. 快速验证测试:"
 echo "   node quick-client-library-test.js --config config.yaml"
 echo ""
@@ -101,9 +101,9 @@ echo "2. 完整示例测试:"
 echo "   node zkpay-client-example.js --all"
 echo ""
 echo -e "${YELLOW}注意：${NC}"
-echo "- 请确保测试账户有足够的BNB用于Gas费用"
-echo "- 请确保测试账户有TestUSDT代币用于测试"
-echo "- 私钥已保存在.env文件中，请妥善保管"
+echo "- Please确保测试Account有足够的BNB用于Gas费用"
+echo "- Please确保测试Account有TestUSDT代币用于测试"
+echo "- Private KeySaved在.envFile中，Please妥善保管"
 echo ""
-echo -e "${BLUE}如需重新设置，请运行：${NC}"
+echo -e "${BLUE}如需重新设置，PleaseRun：${NC}"
 echo "   ./setup-test-env.sh"

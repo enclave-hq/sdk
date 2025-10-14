@@ -1,125 +1,137 @@
-# 🗑️ KMS老系统删除分析报告
+# 🗑️ KMS Legacy System Removal Analysis Report
 
-## 📊 当前依赖分析
+## 📊 Current Dependency Analysis
 
-### **传统加密表依赖** (`encrypted_private_keys`)
+### **Legacy Encryption Table Dependencies** (`encrypted_private_keys`)
 
-**KMS内部使用:**
-1. `EncryptPrivateKey()` - 存储新密钥
-2. `GetStoredKey()` - 查询单个密钥  
-3. `GetStoredKeysWithEncryptedData()` - 获取密钥列表
-4. `Health检查` - 统计密钥数量
+**KMS Internal Usage:**
 
-**API接口依赖:**
-1. `POST /api/v1/encrypt` - 加密存储私钥
-2. `POST /api/v1/sign` - 签名操作
-3. `POST /api/v1/get-address` - 获取地址
+1. `EncryptPrivateKey()` - Store new keys
+2. `GetStoredKey()` - Query single key
+3. `GetStoredKeysWithEncryptedData()` - Get key list
+4. `Health check` - Count keys
 
-**外部系统依赖:**
-- 测试脚本 (test-kms.sh, test-api-updated.js)
-- Postman集合
-- 文档示例
-- Web界面模板
+**API Interface Dependencies:**
 
-## ⚠️ 删除风险评估
+1. `POST /api/v1/encrypt` - Encrypt and store private key
+2. `POST /api/v1/sign` - Signing operations
+3. `POST /api/v1/get-address` - Get address
 
-### 🔴 **高风险 - 不建议删除**
+**External System Dependencies:**
 
-**原因分析:**
+- Test scripts (test-kms.sh, test-api-updated.js)
+- Postman collections
+- Documentation examples
+- Web interface templates
 
-1. **核心功能绑定**
-   - `GetStoredKey()` 只查询传统表
-   - 双层表没有对应的查询接口
-   - 删除后会导致现有密钥无法查询
+## ⚠️ Deletion Risk Assessment
 
-2. **API接口广泛使用**
+### 🔴 **High Risk - Not Recommended for Deletion**
+
+**Reason Analysis:**
+
+1. **Core Function Binding**
+
+   - `GetStoredKey()` only queries legacy table
+   - Dual-layer table has no corresponding query interface
+   - Deletion would cause existing keys to be unqueryable
+
+2. **API Interface Widely Used**
+
    ```bash
-   # 这些API都依赖传统表
-   /api/v1/encrypt      # 在多个测试和文档中使用
-   /api/v1/sign         # 核心签名功能
-   /api/v1/get-address  # 地址查询功能
+   # These APIs all depend on legacy table
+   /api/v1/encrypt      # Used in multiple tests and documentation
+   /api/v1/sign         # Core signing functionality
+   /api/v1/get-address  # Address query functionality
    ```
 
-3. **数据迁移复杂性**
-   - 传统表中可能已有重要密钥数据
-   - 迁移过程需要解密再重新加密
-   - 迁移失败风险高
+3. **Data MigrationComplexity**
+   - LegacyTable中可能已有重要 KeyData
+   - Migration过程NeedDecryption再重新Encryption
+   - Migration失败Risk高
 
-## ✅ 安全删除方案
+## ✅ Security Delete Plan
 
-### **阶段1: 功能对等**
+### **Phase 1: FunctionTo等**
+
 ```go
-// 修改 GetStoredKey 同时查询两个表
+// 修改 GetStoredKey 同时Query两个Table
 func (k *KMSService) GetStoredKey(keyAlias string, chainID int) {
-    // 1. 先查双层表
+    // 1. 先查Dual-layerTable
     key := queryDualLayerTable(keyAlias, chainID)
     if key != nil {
         return key
     }
-    
-    // 2. 再查传统表（兼容）
+
+    // 2. 再查LegacyTable（兼容）
     return queryTraditionalTable(keyAlias, chainID)
 }
 ```
 
-### **阶段2: API统一**
+### **Phase 2: API Unified**
+
 ```go
-// 让传统API内部调用双层加密
+// 让LegacyAPI内部调用Dual-layerEncryption
 func (h *EncryptHandler) EncryptPrivateKey(req) {
-    // 内部转发到双层加密
+    // 内部转发到Dual-layerEncryption
     return h.dualLayerService.EncryptPrivateKey(req)
 }
 ```
 
-### **阶段3: 数据迁移**
+### **Phase 3: Data Migration**
+
 ```sql
--- 迁移现有数据
-INSERT INTO dual_layer_encrypted_keys 
+-- MigrationExistingData
+INSERT INTO dual_layer_encrypted_keys
 SELECT id, key_alias, slip44_id, encrypted_key, public_address, created_at, updated_at, status
-FROM encrypted_private_keys 
+FROM encrypted_private_keys
 WHERE status = 'active';
 ```
 
-### **阶段4: 清理删除**
+### **Phase 4: CleanupDelete**
+
 ```go
-// 删除传统表相关代码
-// 删除传统API路由
-// 删除数据表
+// DeleteLegacyTableRelated代码
+// DeleteLegacyAPIRoute
+// DeleteDataTable
 ```
 
-## 🎯 建议方案
+## 🎯 RecommendPlan
 
-### **方案A: 渐进式统一 (推荐)**
-1. 保留传统API接口，内部调用双层加密
-2. 新密钥只存储到双层表
-3. 查询时同时查询两个表
-4. 逐步迁移现有数据
-5. 最后删除传统表
+### **Plan A: ProgressiveUnified (Recommended)**
 
-### **方案B: 立即删除 (高风险)**
-1. 立即迁移所有现有数据
-2. 修改所有API实现
-3. 更新所有测试和文档
-4. 删除传统表和相关代码
+1. KeepLegacy API Interface，内部调用Dual-layerEncryption
+2. 新 Key 只Storage到Dual-layerTable
+3. Query时同时Query两个Table
+4. 逐步MigrationExisting Data
+5. 最后 Delete LegacyTable
 
-## 📋 删除检查清单
+### **Plan B: Immediate Delete (高Risk)**
 
-如果坚持要删除，必须完成:
+1. ImmediateMigration所有Existing Data
+2. 修改所有 API 实现
+3. Update所有Test和Document
+4. Delete LegacyTable和Related代码
 
-- [ ] 数据完整迁移到双层表
-- [ ] 修改GetStoredKey查询双层表  
-- [ ] 传统API内部调用双层服务
-- [ ] 更新所有测试脚本
-- [ ] 更新Postman集合
-- [ ] 更新API文档
-- [ ] 更新Web界面
-- [ ] 充分测试验证
+## 📋 Delete CheckList
 
-## 💡 最终建议
+如果坚持要 Delete，必须完成:
 
-**不建议立即删除传统系统**，因为:
-1. 风险太高，可能导致现有功能失效
-2. 迁移工作量大，容易出错
-3. 双层加密功能还不够成熟
+- [ ] Data 完整Migration到Dual-layerTable
+- [ ] 修改 GetStoredKey QueryDual-layerTable
+- [ ] Legacy API 内部调用Dual-layer Service
+- [ ] Update所有TestScript
+- [ ] Update Postman Collection
+- [ ] Update API Document
+- [ ] Update Web 界面
+- [ ] 充分Test验证
 
-**建议采用方案A**，通过内部重构实现统一，保持外部接口兼容。
+## 💡 FinalRecommend
+
+**不RecommendImmediate Delete LegacySystem**，因为:
+
+1. Risk太高，可能导致ExistingFunction失效
+2. Migration工作量大，容易出错
+3. Dual-layerEncryptionFunction还不够成熟
+
+**Recommend采用Plan A**，Pass内部重构实现Unified，保持外部Interface兼容。

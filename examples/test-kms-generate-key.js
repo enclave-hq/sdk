@@ -1,25 +1,25 @@
 #!/usr/bin/env node
 
-// 测试KMS自动生成密钥功能
-// 验证新的generate-key API端点
+// Test KMS automatic key generation functionality
+// Verify new generate-key API endpoint
 
 const axios = require("axios");
 
 async function testKMSGenerateKey() {
-  console.log("🧪 测试KMS自动生成密钥功能");
+  console.log("🧪 Test KMS automatic key generation functionality");
   console.log("================================");
 
   const kmsBaseURL = process.env.KMS_BASE_URL || "http://localhost:18082";
   const keyAlias = `test_auto_${Date.now()}`;
 
   try {
-    // 1. 测试健康检查
-    console.log("1️⃣ 检查KMS服务状态...");
+    // 1. Test health check
+    console.log("1️⃣ Checking KMS service status...");
     const healthResponse = await axios.get(`${kmsBaseURL}/api/v1/health`);
-    console.log("✅ KMS服务正常:", healthResponse.data);
+    console.log("✅ KMS service normal:", healthResponse.data);
 
-    // 2. 测试自动生成密钥
-    console.log("\n2️⃣ 测试自动生成密钥...");
+    // 2. Test automatic key generation
+    console.log("\n2️⃣ Testing automatic key generation...");
     const generateRequest = {
       key_alias: keyAlias,
       slip44_id: 714, // BSC
@@ -38,17 +38,19 @@ async function testKMSGenerateKey() {
     );
 
     if (generateResponse.data.success) {
-      console.log("✅ 密钥自动生成成功:");
-      console.log(`  🏷️  密钥别名: ${keyAlias}`);
-      console.log(`  📍 生成地址: ${generateResponse.data.public_address}`);
+      console.log("✅ Key auto-generation successful:");
+      console.log(`  🏷️  Key alias: ${keyAlias}`);
+      console.log(
+        `  📍 Generated address: ${generateResponse.data.public_address}`
+      );
       console.log(`  🌐 SLIP44 ID: ${generateResponse.data.slip44_id}`);
       console.log(`  ⛓️  EVM链ID: ${generateResponse.data.evm_chain_id}`);
       console.log(
-        `  🔐 加密密钥: ${generateResponse.data.encrypted_key.slice(0, 20)}...`
+        `  🔐 EncryptionKey: ${generateResponse.data.encrypted_key.slice(0, 20)}...`
       );
 
-      // 3. 测试使用生成的密钥进行签名
-      console.log("\n3️⃣ 测试使用生成的密钥签名...");
+      // 3. TestUseGenerate的Key进行Signature
+      console.log("\n3️⃣ TestUseGenerate的KeySignature...");
       const signRequest = {
         key_alias: keyAlias,
         encrypted_key: generateResponse.data.encrypted_key,
@@ -71,41 +73,43 @@ async function testKMSGenerateKey() {
       );
 
       if (signResponse.data.success) {
-        console.log("✅ 签名测试成功:");
-        console.log(`  📝 签名: ${signResponse.data.signature}`);
-        console.log(`  📍 签名地址: ${signResponse.data.address}`);
+        console.log("✅ SignatureTestsuccessful:");
+        console.log(`  📝 Signature: ${signResponse.data.signature}`);
+        console.log(`  📍 SignatureAddress: ${signResponse.data.address}`);
       } else {
-        console.log("❌ 签名测试失败:", signResponse.data.error);
+        console.log("❌ SignatureTestfailed:", signResponse.data.error);
       }
 
-      // 4. 获取密钥列表验证
-      console.log("\n4️⃣ 验证密钥已存储...");
+      // 4. GetKey列表Verify
+      console.log("\n4️⃣ VerifyKeyAlreadyStorage...");
       const keysResponse = await axios.get(`${kmsBaseURL}/api/v1/keys`);
       const foundKey = keysResponse.data.keys.find(
         (k) => k.key_alias === keyAlias
       );
 
       if (foundKey) {
-        console.log("✅ 密钥已成功存储在KMS中");
-        console.log(`  📋 密钥信息: ${JSON.stringify(foundKey, null, 2)}`);
+        console.log("✅ KeyAlreadysuccessfulStorage在KMS中");
+        console.log(
+          `  📋 KeyInformation: ${JSON.stringify(foundKey, null, 2)}`
+        );
       } else {
-        console.log("❌ 在密钥列表中未找到生成的密钥");
+        console.log("❌ 在Key列表中未找ToGenerate的Key");
       }
     } else {
-      console.log("❌ 密钥生成失败:", generateResponse.data.error);
+      console.log("❌ KeyGeneratefailed:", generateResponse.data.error);
     }
 
-    console.log("\n🎉 KMS自动生成密钥测试完成");
+    console.log("\n🎉 KMSAutoGenerateKeyTestcompleted");
   } catch (error) {
-    console.error("❌ 测试失败:", error.message);
+    console.error("❌ Testfailed:", error.message);
     if (error.response) {
-      console.error("错误详情:", error.response.data);
+      console.error("ErrorDetails:", error.response.data);
     }
     process.exit(1);
   }
 }
 
-// 运行测试
+// RunTest
 if (require.main === module) {
   testKMSGenerateKey();
 }

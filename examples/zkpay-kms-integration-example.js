@@ -1,5 +1,5 @@
-// ZKPay KMS服务集成示例
-// 演示如何使用您现有的KMS服务与zksdk集成
+// ZKPay KMS Service Integration Example
+// Demonstrates how to integrate your existing KMS service with zksdk
 
 const { ZKPayClient } = require("../core/zkpay-client-library");
 const {
@@ -9,42 +9,42 @@ const {
 const { createLogger } = require("../utils/logger");
 
 /**
- * 示例1: 使用现有KMS密钥创建签名器
+ * Example 1: Create signer using existing KMS key
  */
 async function useExistingKMSKey() {
   const logger = createLogger("KMSIntegration");
-  logger.info("🚀 示例1: 使用现有KMS密钥");
+  logger.info("🚀 Example 1: Using existing KMS key");
 
   try {
-    // 1. KMS配置（使用您已经存储在KMS中的密钥）
+    // 1. KMS configuration (using key already stored in your KMS)
     const kmsConfig = {
       baseURL: "http://localhost:18082",
-      keyAlias: "bsc_relayer", // 您在KMS中的密钥别名
+      keyAlias: "bsc_relayer", // Your key alias in KMS
       encryptedKey:
-        "YWRzZmFzZGZhc2RmYXNkZmFzZGZhc2RmYXNkZmFzZGZhc2RmYXNkZmFzZGY=", // 从KMS获取的加密密钥
-      slip44Id: 714, // BSC使用SLIP44 ID 714
-      address: "0x4Da7cf999162ecb79749D0186E5759c7a6BD4477", // 对应的地址
-      // 可选的签名配置
-      defaultSignatureType: "eip191", // BSC使用EIP-191签名
-      // 可选的认证配置
+        "YWRzZmFzZGZhc2RmYXNkZmFzZGZhc2RmYXNkZmFzZGZhc2RmYXNkZmFzZGY=", // Encrypted key obtained from KMS
+      slip44Id: 714, // BSCUseSLIP44 ID 714
+      address: "0x4Da7cf999162ecb79749D0186E5759c7a6BD4477", // 对应的Address
+      // 可选的SignatureConfiguration
+      defaultSignatureType: "eip191", // BSCUseEIP-191Signature
+      // 可选的认证Configuration
       // bearerToken: 'your-bearer-token',
       // serviceKey: 'zkpay-service-key-your-service',
       // serviceName: 'zksdk'
     };
 
-    // 2. 创建KMS签名器
+    // 2. CreateKMSSignature器
     const kmsSigner = ZKPayKMSSignerFactory.createFromExistingKey(
       kmsConfig,
       logger
     );
 
-    // 3. 验证KMS配置
+    // 3. VerifyKMSConfiguration
     const isValid = await kmsSigner.validateConfig();
     if (!isValid) {
-      throw new Error("KMS配置验证失败");
+      throw new Error("KMSConfigurationVerifyfailed");
     }
 
-    // 4. 创建ZKPay客户端并使用KMS签名器登录
+    // 4. CreateZKPayClient并UseKMSSignature器Login
     const client = new ZKPayClient(logger);
     await client.initialize();
 
@@ -54,41 +54,41 @@ async function useExistingKMSKey() {
       "kms-user"
     );
 
-    logger.info("✅ KMS登录成功:", loginResult);
+    logger.info("✅ KMSLoginsuccessful:", loginResult);
 
-    // 5. 现在所有操作都会使用KMS签名
+    // 5. 现在所有Operation都会UseKMSSignature
     return { client, kmsSigner };
   } catch (error) {
-    logger.error("❌ 示例1失败:", error.message);
+    logger.error("❌ Example1failed:", error.message);
     throw error;
   }
 }
 
 /**
- * 示例2: 创建新的KMS密钥并使用
+ * Example2: CreateNewKMSKey并Use
  */
 async function createNewKMSKey() {
   const logger = createLogger("KMSNewKey");
-  logger.info("🚀 示例2: 创建新的KMS密钥");
+  logger.info("🚀 Example2: CreateNewKMSKey");
 
   try {
-    // 1. 新密钥配置
+    // 1. 新KeyConfiguration
     const newKeyConfig = {
       baseURL: "http://localhost:18082",
-      privateKey: "your_private_key", // 要加密存储的私钥
-      keyAlias: "zksdk_user_001", // 新的密钥别名
-      slip44Id: 714, // BSC使用SLIP44 ID 714
-      defaultSignatureType: "eip191", // BSC使用EIP-191签名
+      privateKey: "your_private_key", // ToEncryptionStorage的Private Key
+      keyAlias: "zksdk_user_001", // NewKeyAlias
+      slip44Id: 714, // BSCUseSLIP44 ID 714
+      defaultSignatureType: "eip191", // BSCUseEIP-191Signature
       timeout: 30000,
     };
 
-    // 2. 创建KMS签名器（会自动加密并存储私钥）
+    // 2. CreateKMSSignature器（会AutoEncryption并StoragePrivate Key）
     const kmsSigner = await ZKPayKMSSignerFactory.createWithNewKey(
       newKeyConfig,
       logger
     );
 
-    // 3. 使用新创建的签名器
+    // 3. Use新Create的Signature器
     const client = new ZKPayClient(logger);
     await client.initialize();
 
@@ -98,49 +98,49 @@ async function createNewKMSKey() {
       "new-kms-user"
     );
 
-    logger.info("✅ 新KMS密钥创建并登录成功:", loginResult);
+    logger.info("✅ 新KMSKeyCreate并Loginsuccessful:", loginResult);
 
     return { client, kmsSigner };
   } catch (error) {
-    logger.error("❌ 示例2失败:", error.message);
+    logger.error("❌ Example2failed:", error.message);
     throw error;
   }
 }
 
 /**
- * 示例3: 完整的存款和提现流程（使用KMS签名）
+ * Example3: 完整的Deposit和WithdrawFlow（UseKMSSignature）
  */
 async function fullKMSWorkflow() {
   const logger = createLogger("KMSWorkflow");
-  logger.info("🚀 示例3: 完整的KMS工作流程");
+  logger.info("🚀 Example3: 完整的KMS工作Flow");
 
   try {
-    // 1. 使用现有KMS密钥
+    // 1. UseExistingKMSKey
     const { client } = await useExistingKMSKey();
 
-    // 2. 执行存款（ERC20交易会使用KMS的signTransaction）
-    logger.info("📋 步骤1: 执行存款...");
+    // 2. ExecuteDeposit（ERC20Transaction会UseKMS的signTransaction）
+    logger.info("📋 Step1: ExecuteDeposit...");
     const depositResult = await client.deposit(
       714, // BSC链ID (SLIP44)
-      "USDT", // Token符号
-      "100.50", // 金额
-      "0x1234567890123456789012345678901234567890" // Treasury地址
+      "USDT", // TokenSymbol
+      "100.50", // Amount
+      "0x1234567890123456789012345678901234567890" // TreasuryAddress
     );
 
-    logger.info("✅ 存款交易已发送:", depositResult.txHash);
+    logger.info("✅ DepositTransactionAlreadySend:", depositResult.txHash);
 
-    // 3. 等待存款检测
-    logger.info("📋 步骤2: 等待存款检测...");
+    // 3. WaitDepositDetection
+    logger.info("📋 Step2: WaitDepositDetection...");
     const depositRecord = await client.waitForDepositDetection(
       depositResult.txHash,
       714,
-      60 // 超时时间（秒）
+      60 // Timeout时间（秒）
     );
 
-    logger.info("✅ 存款已检测到:", depositRecord.checkbookId);
+    logger.info("✅ DepositAlreadyDetectionTo:", depositRecord.checkbookId);
 
-    // 4. 创建分配方案并提交Commitment（消息签名会使用KMS的signMessage）
-    logger.info("📋 步骤3: 提交Commitment...");
+    // 4. CreateAllocationPlan并提交Commitment（MessageSignature会UseKMS的signMessage）
+    logger.info("📋 Step3: 提交Commitment...");
     const allocations = [
       {
         recipient_address: "0x9876543210987654321098765432109876543210",
@@ -152,16 +152,16 @@ async function fullKMSWorkflow() {
     const commitmentResult = await client.submitCommitment(
       depositRecord.checkbookId,
       allocations,
-      true // 自动提交
+      true // Auto提交
     );
 
     logger.info(
-      "✅ Commitment已提交:",
+      "✅ CommitmentAlready提交:",
       commitmentResult.signature.slice(0, 20) + "..."
     );
 
-    // 5. 执行提现
-    logger.info("📋 步骤4: 执行提现...");
+    // 5. ExecuteWithdraw
+    logger.info("📋 Step4: ExecuteWithdraw...");
     const withdrawResult = await client.performWithdraw(
       depositRecord.checkbookId,
       {
@@ -169,10 +169,10 @@ async function fullKMSWorkflow() {
         recipient_chain_id: 714,
         amount: "100.50",
       },
-      true // 自动提交
+      true // Auto提交
     );
 
-    logger.info("✅ 提现完成:", withdrawResult);
+    logger.info("✅ Withdrawcompleted:", withdrawResult);
 
     return {
       deposit: depositResult,
@@ -180,20 +180,20 @@ async function fullKMSWorkflow() {
       withdraw: withdrawResult,
     };
   } catch (error) {
-    logger.error("❌ 完整KMS工作流程失败:", error.message);
+    logger.error("❌ 完整KMS工作Flowfailed:", error.message);
     throw error;
   }
 }
 
 /**
- * 示例4: KMS健康检查和密钥管理
+ * Example4: KMS健康Check和KeyManagement
  */
 async function kmsManagementExample() {
   const logger = createLogger("KMSManagement");
-  logger.info("🚀 示例4: KMS管理功能");
+  logger.info("🚀 Example4: KMSManagementFunction");
 
   try {
-    // 1. 创建KMS签名器
+    // 1. CreateKMSSignature器
     const kmsConfig = {
       baseURL: "http://localhost:18082",
       keyAlias: "management_test",
@@ -204,13 +204,15 @@ async function kmsManagementExample() {
 
     const kmsSigner = new ZKPayKMSSigner(kmsConfig, logger);
 
-    // 2. 健康检查
+    // 2. 健康Check
     const isHealthy = await kmsSigner.isAvailable();
-    logger.info(`🔍 KMS服务健康状态: ${isHealthy ? "✅ 健康" : "❌ 不健康"}`);
+    logger.info(
+      `🔍 KMSService健康Status: ${isHealthy ? "✅ 健康" : "❌ 不健康"}`
+    );
 
-    // 3. 获取密钥列表
+    // 3. GetKey列表
     const keysList = await kmsSigner.getKeysList();
-    logger.info("📋 KMS中的密钥列表:");
+    logger.info("📋 KMS中的Key列表:");
     keysList.forEach((key, index) => {
       logger.info(
         `  ${index + 1}. ${key.key_alias} (Chain ${key.chain_id}) - ${
@@ -219,9 +221,11 @@ async function kmsManagementExample() {
       );
     });
 
-    // 4. 配置验证
+    // 4. ConfigurationVerify
     const isValidConfig = await kmsSigner.validateConfig();
-    logger.info(`🔍 KMS配置验证: ${isValidConfig ? "✅ 有效" : "❌ 无效"}`);
+    logger.info(
+      `🔍 KMSConfigurationVerify: ${isValidConfig ? "✅ 有效" : "❌ 无效"}`
+    );
 
     return {
       isHealthy,
@@ -229,20 +233,20 @@ async function kmsManagementExample() {
       isValidConfig,
     };
   } catch (error) {
-    logger.error("❌ KMS管理示例失败:", error.message);
+    logger.error("❌ KMSManagementExamplefailed:", error.message);
     throw error;
   }
 }
 
 /**
- * 示例5: 错误处理和重试机制
+ * Example5: ErrorProcess和重试机制
  */
 async function errorHandlingExample() {
   const logger = createLogger("KMSErrorHandling");
-  logger.info("🚀 示例5: KMS错误处理");
+  logger.info("🚀 Example5: KMSErrorProcess");
 
   try {
-    // 1. 使用无效配置测试错误处理
+    // 1. Use无效ConfigurationTestErrorProcess
     const invalidConfig = {
       baseURL: "http://localhost:18082",
       keyAlias: "non_existent_key",
@@ -253,37 +257,37 @@ async function errorHandlingExample() {
 
     const kmsSigner = new ZKPayKMSSigner(invalidConfig, logger);
 
-    // 2. 测试健康检查
+    // 2. Test健康Check
     try {
       const isHealthy = await kmsSigner.isAvailable();
-      logger.info(`健康检查结果: ${isHealthy}`);
+      logger.info(`健康CheckResult: ${isHealthy}`);
     } catch (error) {
-      logger.warn("健康检查异常:", error.message);
+      logger.warn("健康Check异常:", error.message);
     }
 
-    // 3. 测试无效签名
+    // 3. Test无效Signature
     try {
       await kmsSigner.signMessage("test message", invalidConfig.address);
     } catch (error) {
-      logger.info("✅ 正确捕获签名错误:", error.message);
+      logger.info("✅ 正确捕获SignatureError:", error.message);
     }
 
-    // 4. 测试配置验证
+    // 4. TestConfigurationVerify
     try {
       const isValid = await kmsSigner.validateConfig();
-      logger.info(`配置验证结果: ${isValid}`);
+      logger.info(`ConfigurationVerifyResult: ${isValid}`);
     } catch (error) {
-      logger.info("✅ 正确捕获配置错误:", error.message);
+      logger.info("✅ 正确捕获ConfigurationError:", error.message);
     }
 
     return true;
   } catch (error) {
-    logger.error("❌ 错误处理示例失败:", error.message);
+    logger.error("❌ ErrorProcessExamplefailed:", error.message);
     throw error;
   }
 }
 
-// 导出所有示例函数
+// 导出所有Example函数
 module.exports = {
   useExistingKMSKey,
   createNewKMSKey,
@@ -292,32 +296,32 @@ module.exports = {
   errorHandlingExample,
 };
 
-// 如果直接运行此文件，执行示例
+// If直接Run此File，ExecuteExample
 if (require.main === module) {
   (async () => {
     try {
-      console.log("🔐 ZKPay KMS集成示例");
+      console.log("🔐 ZKPay KMS集成Example");
       console.log("=====================================");
 
-      // 选择要运行的示例
+      // SelectToRun的Example
       const examples = [
-        { name: "使用现有KMS密钥", fn: useExistingKMSKey },
-        { name: "创建新KMS密钥", fn: createNewKMSKey },
-        { name: "完整KMS工作流程", fn: fullKMSWorkflow },
-        { name: "KMS管理功能", fn: kmsManagementExample },
-        { name: "错误处理", fn: errorHandlingExample },
+        { name: "UseExistingKMSKey", fn: useExistingKMSKey },
+        { name: "Create新KMSKey", fn: createNewKMSKey },
+        { name: "完整KMS工作Flow", fn: fullKMSWorkflow },
+        { name: "KMSManagementFunction", fn: kmsManagementExample },
+        { name: "ErrorProcess", fn: errorHandlingExample },
       ];
 
-      // 取消注释要运行的示例
-      // await examples[0].fn(); // 示例1
-      // await examples[1].fn(); // 示例2
-      // await examples[2].fn(); // 示例3
-      // await examples[3].fn(); // 示例4
-      // await examples[4].fn(); // 示例5
+      // 取消注释ToRun的Example
+      // await examples[0].fn(); // Example1
+      // await examples[1].fn(); // Example2
+      // await examples[2].fn(); // Example3
+      // await examples[3].fn(); // Example4
+      // await examples[4].fn(); // Example5
 
-      console.log("✅ 所有示例已准备就绪，请根据需要取消注释相应的示例");
+      console.log("✅ 所有ExampleAlreadyPrepare就绪，Please根据Need取消注释相应的Example");
     } catch (error) {
-      console.error("❌ 示例运行失败:", error.message);
+      console.error("❌ ExampleRunfailed:", error.message);
     }
   })();
 }
