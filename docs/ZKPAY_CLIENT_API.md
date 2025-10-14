@@ -504,7 +504,10 @@ async function fullExample() {
       recipientInfo,
       true
     );
-    console.log("Withdrawal successful:", proofResult.completionResult.transaction_hash);
+    console.log(
+      "Withdrawal successful:",
+      proofResult.completionResult.transaction_hash
+    );
   } finally {
     await client.cleanup();
   }
@@ -701,14 +704,14 @@ logging:
 
 ### Supported KMS Signature Types
 
-| Network  | SLIP44 ID | Signature Type | Description             |
-| -------- | --------- | -------- | ----------------------- |
-| Ethereum | 60        | eip191   | Ethereum EIP-191 standard signature |
-| BSC      | 714       | eip191   | Binance Smart Chain EIP-191 signature |
-| Tron     | 195       | tip191t  | Tron TIP-191T signature      |
-| Polygon  | 966       | eip191   | Polygon EIP-191 签名    |
-| Arbitrum | 42161     | eip191   | Arbitrum EIP-191 签名   |
-| Optimism | 10        | eip191   | Optimism EIP-191 签名   |
+| Network  | SLIP44 ID | Signature Type | Description                           |
+| -------- | --------- | -------------- | ------------------------------------- |
+| Ethereum | 60        | eip191         | Ethereum EIP-191 standard signature   |
+| BSC      | 714       | eip191         | Binance Smart Chain EIP-191 signature |
+| Tron     | 195       | tip191t        | Tron TIP-191T signature               |
+| Polygon  | 966       | eip191         | Polygon EIP-191 签名                  |
+| Arbitrum | 42161     | eip191         | Arbitrum EIP-191 签名                 |
+| Optimism | 10        | eip191         | Optimism EIP-191 签名                 |
 
 ## Important Notes
 
