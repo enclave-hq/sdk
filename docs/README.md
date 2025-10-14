@@ -66,25 +66,25 @@ npm run check-env
 
 ### 2. Configuration Setup
 
-#### 基础配置
+#### Basic Configuration
 
-复制并编辑环境变量配置：
+Copy and edit environment variable configuration:
 
 ```bash
 cp env.example .env
-# 编辑 .env 文件，设置你的私钥和RPC URL
+# Edit .env file, set your private key and RPC URL
 ```
 
-编辑 `config.yaml` 文件，根据你的测试环境调整配置。
+Edit `config.yaml` file according to your test environment.
 
-#### KMS 配置
+#### KMS Configuration
 
-对于企业用户，可以配置 KMS 服务：
+For enterprise users, KMS service can be configured:
 
-**环境变量方式：**
+**Environment Variable Method:**
 
 ```bash
-# SAAS KMS配置
+# SAAS KMS configuration
 export SAAS_KMS_URL="https://kms.your-saas.com"
 export SAAS_ENTERPRISE_ID="your_enterprise_id"
 export SAAS_K1_KEY="your_k1_key"
@@ -92,8 +92,8 @@ export SAAS_USER_ADDRESS="0x..."
 export SAAS_KEY_ALIAS="enterprise_key"
 ```
 
-**配置文件方式：**
-创建 `kms-config.json` 文件：
+**Configuration File Method:**
+Create `kms-config.json` file:
 
 ```json
 {
@@ -113,136 +113,136 @@ export SAAS_KEY_ALIAS="enterprise_key"
 
 ### 3. Run Tests
 
-#### 基础端到端测试
+#### Basic End-to-End Tests
 
 ```bash
-# 运行完整的E2E测试
+# Run complete E2E test
 npm test
 
-# 或使用node直接运行
+# Or run directly with node
 node zkpay-e2e-test.js
 ```
 
-#### 自定义测试参数
+#### Custom Test Parameters
 
 ```bash
-# 指定测试用户和金额
+# Specify test user and amount
 node zkpay-e2e-test.js --user default --amount 5.0 --token usdt
 
-# 指定源链和目标链
+# Specify source and target chains
 node zkpay-e2e-test.js --source-chain 31337 --target-chain 97
 
-# 跳过某些阶段
-node zkpay-e2e-test.js --skip-deposit  # 只测试Commitment和Withdraw
-node zkpay-e2e-test.js --skip-withdraw # 只测试Deposit和Commitment
+# Skip certain phases
+node zkpay-e2e-test.js --skip-deposit  # Only test Commitment and Withdraw
+node zkpay-e2e-test.js --skip-withdraw # Only test Deposit and Commitment
 ```
 
-#### 压力测试
+#### Stress Testing
 
 ```bash
-# 运行压力测试 (2个用户，每用户3笔交易)
+# Run stress test (2 users, 3 transactions per user)
 node zkpay-e2e-test.js --stress-test --concurrent-users 2 --tx-per-user 3
 ```
 
-#### 乱序提现测试
+#### Out-of-Order Withdrawal Testing
 
 ```bash
-# 运行乱序提现测试 (创建3个commitment，按2,0,1顺序提现)
+# Run out-of-order withdrawal test (create 3 commitments, withdraw in order 2,0,1)
 node zkpay-e2e-test.js --out-of-order-test --commitment-count 3 --withdraw-order 2,0,1
 
-# 自定义乱序测试
+# Custom out-of-order test
 node zkpay-e2e-test.js --out-of-order-test --commitment-count 5 --withdraw-order 4,1,0,3,2
 ```
 
-## 📋 详细用法
+## 📋 Detailed Usage
 
-### 命令行选项
+### Command Line Options
 
-| 选项                       | 描述             | 默认值        |
-| -------------------------- | ---------------- | ------------- |
-| `-c, --config <file>`      | 配置文件路径     | `config.yaml` |
-| `-u, --user <name>`        | 测试用户名       | `default`     |
-| `-s, --source-chain <id>`  | 源链 ID          | `31337`       |
-| `-t, --target-chain <id>`  | 目标链 ID        | `97`          |
-| `--token <symbol>`         | Token 符号       | `usdt`        |
-| `-a, --amount <amount>`    | 测试金额         | `10.0`        |
-| `--skip-deposit`           | 跳过存款阶段     | false         |
-| `--skip-withdraw`          | 跳过提现阶段     | false         |
-| `--stress-test`            | 运行压力测试     | false         |
-| `--out-of-order-test`      | 运行乱序提现测试 | false         |
-| `--concurrent-users <num>` | 并发用户数       | `2`           |
-| `--tx-per-user <num>`      | 每用户交易数     | `3`           |
-| `--commitment-count <num>` | Commitment 数量  | `5`           |
-| `--withdraw-order <order>` | 提现顺序         | `4,1,0,3,2`   |
+| Option                     | Description               | Default       |
+| -------------------------- | ------------------------- | ------------- |
+| `-c, --config <file>`      | Configuration file path   | `config.yaml` |
+| `-u, --user <name>`        | Test user name            | `default`     |
+| `-s, --source-chain <id>`  | Source chain ID           | `31337`       |
+| `-t, --target-chain <id>`  | Target chain ID           | `97`          |
+| `--token <symbol>`         | Token symbol              | `usdt`        |
+| `-a, --amount <amount>`    | Test amount               | `10.0`        |
+| `--skip-deposit`           | Skip deposit phase        | false         |
+| `--skip-withdraw`          | Skip withdraw phase       | false         |
+| `--stress-test`            | Run stress test           | false         |
+| `--out-of-order-test`      | Run out-of-order withdraw test | false    |
+| `--concurrent-users <num>` | Concurrent user count     | `2`           |
+| `--tx-per-user <num>`      | Transactions per user     | `3`           |
+| `--commitment-count <num>` | Commitment count          | `5`           |
+| `--withdraw-order <order>` | Withdraw order            | `4,1,0,3,2`   |
 
-### 测试流程说明
+### Test Flow Description
 
-#### 1. 存款阶段 (Deposit Phase)
+#### 1. Deposit Phase
 
-- ✅ 检查 Token 余额
-- ✅ 授权 Token 给 Treasury 合约
-- ✅ 执行存款交易
-- ✅ 监听存款事件
-- ✅ 记录存款 ID 和相关信息
+- ✅ Check token balance
+- ✅ Approve token to Treasury contract
+- ✅ Execute deposit transaction
+- ✅ Listen for deposit events
+- ✅ Record deposit ID and related information
 
-#### 2. Commitment 阶段 (Commitment Phase)
+#### 2. Commitment Phase
 
-- ✅ 创建存款记录到后端
-- ✅ 生成隐私证明 (零知识证明)
-- ✅ 提交 Commitment 到管理链
-- ✅ 等待区块链确认
-- ✅ 监控状态变化
+- ✅ Create deposit record to backend
+- ✅ Generate privacy proof (zero-knowledge proof)
+- ✅ Submit commitment to management chain
+- ✅ Wait for blockchain confirmation
+- ✅ Monitor status changes
 
-#### 3. 提现阶段 (Withdraw Phase)
+#### 3. Withdraw Phase
 
-- ✅ 创建 Check (提现凭证)
-- ✅ 生成提现证明
-- ✅ 执行跨链提现
-- ✅ 验证目标链交易
-- ✅ 检查余额变化
+- ✅ Create check (withdrawal voucher)
+- ✅ Generate withdrawal proof
+- ✅ Execute cross-chain withdrawal
+- ✅ Verify target chain transaction
+- ✅ Check balance changes
 
-### 支持的测试场景
+### Supported Test Scenarios
 
-1. **单用户完整流程** - 测试一个用户的完整 ZKPay 使用流程
-2. **多用户并发测试** - 测试系统在多用户并发使用时的稳定性
-3. **跨链测试** - 测试不同链之间的资金转移
-4. **乱序提现测试** - 创建多个 commitment，然后不按顺序执行 withdraw，验证隐私和安全性
-5. **BSC 主网功能测试** - 验证所有功能在 BSC 主网环境中的完整性
-6. **失败恢复测试** - 测试系统在失败情况下的恢复能力
-7. **性能压力测试** - 测试系统的性能极限
+1. **Single User Complete Flow** - Test complete ZKPay usage flow for one user
+2. **Multi-user Concurrent Test** - Test system stability with concurrent users
+3. **Cross-chain Test** - Test fund transfers between different chains
+4. **Out-of-order Withdrawal Test** - Create multiple commitments, then execute withdrawals out of order to verify privacy and security
+5. **BSC Mainnet Functionality Test** - Verify all functions work correctly in BSC mainnet environment
+6. **Failure Recovery Test** - Test system's recovery capability in failure scenarios
+7. **Performance Stress Test** - Test system's performance limits
 
-## 🔗 支持的区块链网络
+## 🔗 Supported Blockchain Networks
 
-### 生产网络
+### Production Networks
 
-**BSC Mainnet** - 生产主网
+**BSC Mainnet** - Production Mainnet
 
 - Chain ID: 56
 - RPC: https://bsc-dataseed1.binance.org
-- 真实的 Gas 费用和网络环境
-- 完整的 EVM 兼容性
-- 生产级别的性能和稳定性
+- Real gas fees and network environment
+- Complete EVM compatibility
+- Production-level performance and stability
 
-### 网络特点
+### Network Features
 
-- **真实环境**: 使用真实的 BSC 主网进行测试
-- **Gas 费用**: 需要真实的 BNB 支付 Gas 费用
-- **高可靠性**: 生产级别的网络稳定性
-- **完整功能**: 验证所有功能在真实环境中的表现
+- **Real Environment**: Use real BSC mainnet for testing
+- **Gas Fees**: Requires real BNB to pay gas fees
+- **High Reliability**: Production-level network stability
+- **Complete Functionality**: Verify all functions work in real environment
 
-## 📊 测试结果
+## 📊 Test Results
 
-### 日志输出
+### Log Output
 
-测试过程中的所有信息都会输出到：
+All information during testing is output to:
 
-- 控制台 (实时显示)
-- 日志文件 `e2e-test.log`
-- 测试结果文件 `test-results-<timestamp>.json`
+- Console (real-time display)
+- Log file `e2e-test.log`
+- Test result file `test-results-<timestamp>.json`
 
-### 结果分析
+### Result Analysis
 
-测试完成后会生成详细的结果报告，包括：
+After testing completes, a detailed result report is generated, including:
 
 ```json
 {
@@ -258,9 +258,9 @@ node zkpay-e2e-test.js --out-of-order-test --commitment-count 5 --withdraw-order
       "status": "completed",
       "duration": 45000,
       "steps": [
-        { "name": "存款流程完成", "status": "completed" },
-        { "name": "Commitment流程完成", "status": "completed" },
-        { "name": "提现流程完成", "status": "completed" }
+        { "name": "Deposit flow completed", "status": "completed" },
+        { "name": "Commitment flow completed", "status": "completed" },
+        { "name": "Withdraw flow completed", "status": "completed" }
       ],
       "metadata": {
         "userAddress": "0x...",
@@ -274,140 +274,140 @@ node zkpay-e2e-test.js --out-of-order-test --commitment-count 5 --withdraw-order
 }
 ```
 
-## ⚙️ 配置说明
+## ⚙️ Configuration
 
-### 环境变量配置
+### Environment Variable Configuration
 
-必须设置的环境变量：
+Required environment variables:
 
 ```bash
-# 测试用户私钥
+# Test user private key
 export TEST_USER_PRIVATE_KEY="0x..."
 
 # BSC Testnet RPC
 export BSC_TESTNET_RPC="https://data-seed-prebsc-1-s1.binance.org:8545"
 
-# ZKPay后端服务
+# ZKPay backend service
 export ZKPAY_BACKEND_URL="http://localhost:3001"
 ```
 
-### 配置文件说明
+### Configuration File Description
 
-`config.yaml` 文件包含了测试的所有配置项：
+`config.yaml` file contains all test configuration items:
 
-- **environment** - 测试环境信息
-- **services** - 后端服务配置
-- **blockchain** - 区块链网络配置
-- **test_users** - 测试用户配置
-- **test_config** - 测试参数配置
-- **logging** - 日志配置
+- **environment** - Test environment information
+- **services** - Backend service configuration
+- **blockchain** - Blockchain network configuration
+- **test_users** - Test user configuration
+- **test_config** - Test parameter configuration
+- **logging** - Logging configuration
 
-## 🔧 故障排除
+## 🔧 Troubleshooting
 
-### 常见问题
+### Common Issues
 
-1. **私钥格式错误**
+1. **Private Key Format Error**
 
    ```bash
-   # 确保私钥格式正确 (64位十六进制，带0x前缀)
+   # Ensure private key format is correct (64-bit hexadecimal with 0x prefix)
    export TEST_USER_PRIVATE_KEY="0x1234567890abcdef..."
    ```
 
-2. **网络连接失败**
+2. **Network Connection Failed**
 
    ```bash
-   # 检查RPC URL是否可访问
+   # Check if RPC URL is accessible
    curl -X POST -H "Content-Type: application/json" \
         --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
         $BSC_TESTNET_RPC
    ```
 
-3. **余额不足**
+3. **Insufficient Balance**
 
    ```bash
-   # 确保测试账户有足够的BNB和测试Token
-   # BSC Testnet可以通过水龙头获取测试币
+   # Ensure test account has enough BNB and test tokens
+   # BSC Testnet can obtain test coins through faucets
    ```
 
-4. **服务不可用**
+4. **Service Unavailable**
    ```bash
-   # 检查ZKPay后端服务是否运行
+   # Check if ZKPay backend service is running
    curl $ZKPAY_BACKEND_URL/health
    ```
 
-### 调试模式
+### Debug Mode
 
-启用详细日志：
+Enable verbose logging:
 
 ```bash
-# 设置日志级别为debug
+# Set log level to debug
 export LOG_LEVEL=debug
 node zkpay-e2e-test.js
 ```
 
-## 🔐 安全注意事项
+## 🔐 Security Considerations
 
-1. **私钥安全**
+1. **Private Key Security**
 
-   - 仅使用测试网络的私钥
-   - 不要在生产环境中使用真实私钥
-   - 不要将私钥提交到代码仓库
+   - Only use test network private keys
+   - Do not use real private keys in production environment
+   - Do not commit private keys to code repository
 
-2. **网络安全**
+2. **Network Security**
 
-   - 使用可信的 RPC 端点
-   - 在公共网络上运行时注意网络安全
+   - Use trusted RPC endpoints
+   - Be mindful of network security when running on public networks
 
-3. **测试数据**
-   - 所有测试仅使用测试网络
-   - 测试 Token 没有实际价值
+3. **Test Data**
+   - All tests only use test networks
+   - Test tokens have no real value
 
-## 📝 开发指南
+## 📝 Development Guide
 
-### 添加新的测试场景
+### Adding New Test Scenarios
 
-1. 在 `zkpay-e2e-test.js` 中添加新的测试方法
-2. 在配置文件中添加相应的参数
-3. 在命令行接口中添加新的选项
+1. Add new test methods in `zkpay-e2e-test.js`
+2. Add corresponding parameters in configuration file
+3. Add new options in command line interface
 
-### 扩展管理器功能
+### Extending Manager Functionality
 
-每个管理器都是独立的模块，可以单独扩展：
+Each manager is an independent module that can be extended separately:
 
-- `zkpay-wallet-manager.js` - 钱包和私钥管理
-- `zkpay-deposit-manager.js` - 存款和 Token 操作
-- `zkpay-commitment-manager.js` - 隐私证明和承诺
-- `zkpay-withdraw-manager.js` - 提现和跨链操作
+- `zkpay-wallet-manager.js` - Wallet and private key management
+- `zkpay-deposit-manager.js` - Deposit and token operations
+- `zkpay-commitment-manager.js` - Privacy proof and commitment
+- `zkpay-withdraw-manager.js` - Withdrawal and cross-chain operations
 
-## 📈 性能优化
+## 📈 Performance Optimization
 
-### 并发优化
+### Concurrency Optimization
 
-- 使用连接池管理 RPC 连接
-- 合理设置交易之间的延迟
-- 避免 nonce 冲突
+- Use connection pools to manage RPC connections
+- Set reasonable delays between transactions
+- Avoid nonce conflicts
 
-### 错误处理
+### Error Handling
 
-- 自动重试机制
-- 优雅的错误恢复
-- 详细的错误日志
+- Automatic retry mechanism
+- Graceful error recovery
+- Detailed error logging
 
-## 🤝 贡献指南
+## 🤝 Contribution Guide
 
-1. Fork 项目
-2. 创建功能分支
-3. 提交更改
-4. 创建 Pull Request
+1. Fork the project
+2. Create feature branch
+3. Submit changes
+4. Create Pull Request
 
-## 📄 许可证
+## 📄 License
 
-MIT License - 详见 LICENSE 文件
+MIT License - See LICENSE file for details
 
-## 🆘 支持
+## 🆘 Support
 
-如有问题或建议，请：
+If you have questions or suggestions, please:
 
-1. 查看故障排除部分
-2. 检查日志文件
-3. 提交 Issue 或联系开发团队
+1. Check the troubleshooting section
+2. Review log files
+3. Submit an Issue or contact the development team

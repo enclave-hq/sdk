@@ -524,7 +524,7 @@ async function asyncExample() {
     await client.initialize();
     await client.login("0x...", "user1");
 
-    // 异步执行Commitment
+    // Execute commitment asynchronously
     const commitmentResult = await client.executeCommitmentAsync(
       "checkbook_123",
       allocations
@@ -709,15 +709,15 @@ logging:
 | Ethereum | 60        | eip191         | Ethereum EIP-191 standard signature   |
 | BSC      | 714       | eip191         | Binance Smart Chain EIP-191 signature |
 | Tron     | 195       | tip191t        | Tron TIP-191T signature               |
-| Polygon  | 966       | eip191         | Polygon EIP-191 签名                  |
-| Arbitrum | 42161     | eip191         | Arbitrum EIP-191 签名                 |
-| Optimism | 10        | eip191         | Optimism EIP-191 签名                 |
+| Polygon  | 966       | eip191         | Polygon EIP-191 Signature             |
+| Arbitrum | 42161     | eip191         | Arbitrum EIP-191 Signature            |
+| Optimism | 10        | eip191         | Optimism EIP-191 Signature            |
 
 ## Important Notes
 
 ### Basic Usage Notes
 
-1. **Login Status**: Most operations require calling `login()` 或 `loginWithSigner()` 方法
+1. **Login Status**: Most operations require calling `login()` or `loginWithSigner()` methods
 2. **Async Operations**: The difference between sync and async methods is whether to wait for operation completion
 3. **Error Handling**: All methods may throw exceptions, proper error handling is required
 4. **Resource Cleanup**: Call `cleanup()` method to clean up resources after use
