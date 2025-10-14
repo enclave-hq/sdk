@@ -46,24 +46,24 @@
    ```
 
 3. **Data MigrationComplexity**
-   - LegacyTable中可能已有重要 KeyData
-   - Migration过程NeedDecryption再重新Encryption
-   - Migration失败Risk高
+   - Legacy table may already have important key data
+   - Migration process requires decryption and re-encryption
+   - High risk of migration failure
 
 ## ✅ Security Delete Plan
 
-### **Phase 1: FunctionTo等**
+### **Phase 1: Function Equivalence**
 
 ```go
-// 修改 GetStoredKey 同时Query两个Table
+// Modify GetStoredKey to query both tables
 func (k *KMSService) GetStoredKey(keyAlias string, chainID int) {
-    // 1. 先查Dual-layerTable
+    // 1. First query dual-layer table
     key := queryDualLayerTable(keyAlias, chainID)
     if key != nil {
         return key
     }
 
-    // 2. 再查LegacyTable（兼容）
+    // 2. Then query legacy table (compatibility)
     return queryTraditionalTable(keyAlias, chainID)
 }
 ```
@@ -71,9 +71,9 @@ func (k *KMSService) GetStoredKey(keyAlias string, chainID int) {
 ### **Phase 2: API Unified**
 
 ```go
-// 让LegacyAPI内部调用Dual-layerEncryption
+// Let legacy API internally call dual-layer encryption
 func (h *EncryptHandler) EncryptPrivateKey(req) {
-    // 内部转发到Dual-layerEncryption
+    // Internally forward to dual-layer encryption
     return h.dualLayerService.EncryptPrivateKey(req)
 }
 ```
@@ -91,47 +91,47 @@ WHERE status = 'active';
 ### **Phase 4: CleanupDelete**
 
 ```go
-// DeleteLegacyTableRelated代码
-// DeleteLegacyAPIRoute
-// DeleteDataTable
+// Delete legacy table related code
+// Delete legacy API routes
+// Delete data table
 ```
 
-## 🎯 RecommendPlan
+## 🎯 Recommend Plan
 
-### **Plan A: ProgressiveUnified (Recommended)**
+### **Plan A: Progressive Unified (Recommended)**
 
-1. KeepLegacy API Interface，内部调用Dual-layerEncryption
-2. 新 Key 只Storage到Dual-layerTable
-3. Query时同时Query两个Table
-4. 逐步MigrationExisting Data
-5. 最后 Delete LegacyTable
+1. Keep legacy API interface, internally call dual-layer encryption
+2. New keys only stored to dual-layer table
+3. Query both tables simultaneously
+4. Gradually migrate existing data
+5. Finally delete legacy table
 
-### **Plan B: Immediate Delete (高Risk)**
+### **Plan B: Immediate Delete (High Risk)**
 
-1. ImmediateMigration所有Existing Data
-2. 修改所有 API 实现
-3. Update所有Test和Document
-4. Delete LegacyTable和Related代码
+1. Immediately migrate all existing data
+2. Modify all API implementations
+3. Update all tests and documentation
+4. Delete legacy table and related code
 
-## 📋 Delete CheckList
+## 📋 Delete Checklist
 
-如果坚持要 Delete，必须完成:
+If insisting on deletion, must complete:
 
-- [ ] Data 完整Migration到Dual-layerTable
-- [ ] 修改 GetStoredKey QueryDual-layerTable
-- [ ] Legacy API 内部调用Dual-layer Service
-- [ ] Update所有TestScript
+- [ ] Complete data migration to dual-layer table
+- [ ] Modify GetStoredKey to query dual-layer table
+- [ ] Legacy API internally calls dual-layer service
+- [ ] Update all test scripts
 - [ ] Update Postman Collection
-- [ ] Update API Document
-- [ ] Update Web 界面
-- [ ] 充分Test验证
+- [ ] Update API documentation
+- [ ] Update web interface
+- [ ] Thorough testing and verification
 
-## 💡 FinalRecommend
+## 💡 Final Recommendation
 
-**不RecommendImmediate Delete LegacySystem**，因为:
+**Do Not Recommend Immediate Delete of Legacy System**, because:
 
-1. Risk太高，可能导致ExistingFunction失效
-2. Migration工作量大，容易出错
-3. Dual-layerEncryptionFunction还不够成熟
+1. Risk is too high, may cause existing functionality to fail
+2. Migration workload is large, error-prone
+3. Dual-layer encryption functionality not yet mature enough
 
-**Recommend采用Plan A**，Pass内部重构实现Unified，保持外部Interface兼容。
+**Recommend adopting Plan A**, achieve unification through internal refactoring while maintaining external interface compatibility.
