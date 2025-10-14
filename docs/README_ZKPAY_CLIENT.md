@@ -27,41 +27,41 @@ This is a complete client library for interacting with ZKPay backend, providing 
 - Automatic resource cleanup
 - Concurrent operation support
 
-## 快速开始
+## Quick Start
 
-### 1. 安装依赖
+### 1. Install Dependencies
 
 ```bash
 npm install ethers axios js-yaml
 ```
 
-### 2. 基本使用
+### 2. Basic Usage
 
 ```javascript
 const { ZKPayClient } = require("./zkpay-client-library");
 
 async function example() {
-  // 创建客户端
+  // Create client
   const client = new ZKPayClient(config);
 
   try {
-    // 初始化
+    // Initialize
     await client.initialize();
 
-    // 登录
+    // Login
     await client.login("0x...", "user1");
 
-    // 执行存款
+    // Execute deposit
     const depositResult = await client.deposit(56, "test_usdt", "10.0");
 
-    // 等待检测
+    // Wait for detection
     const depositRecord = await client.waitForDepositDetection(
       depositResult.deposit.txHash,
       56,
       60
     );
 
-    // 创建分配并执行Commitment
+    // Create allocation and execute Commitment
     const allocations = [
       {
         recipient_chain_id: 714,
@@ -76,7 +76,7 @@ async function example() {
       true
     );
 
-    // 生成提现证明
+    // Generate withdrawal proof
     const recipientInfo = {
       chain_id: 714,
       address: client.getCurrentUser().address,
@@ -90,136 +90,136 @@ async function example() {
       true
     );
 
-    console.log("完整流程执行成功!");
+    console.log("Complete flow executed successfully!");
   } finally {
     await client.cleanup();
   }
 }
 ```
 
-## 文件结构
+## File Structure
 
 ```
 e2e-automation/
-├── zkpay-client-library.js      # 核心客户端库
-├── zkpay-client-example.js      # 详细使用示例
-├── test-zkpay-client.js         # 功能测试脚本
-├── ZKPAY_CLIENT_API.md          # 完整API文档
-└── README_ZKPAY_CLIENT.md       # 本文件
+├── zkpay-client-library.js      # Core client library
+├── zkpay-client-example.js      # Detailed usage examples
+├── test-zkpay-client.js         # Functional test script
+├── ZKPAY_CLIENT_API.md          # Complete API documentation
+└── README_ZKPAY_CLIENT.md       # This file
 ```
 
-## 核心 API
+## Core API
 
-### 认证相关
+### Authentication
 
-- `initialize()` - 初始化客户端
-- `login(privateKey, userName)` - 用户登录
-- `isLoggedIn()` - 检查登录状态
-- `logout()` - 退出登录
+- `initialize()` - Initialize client
+- `login(privateKey, userName)` - User login
+- `isLoggedIn()` - Check login status
+- `logout()` - Logout
 
-### Token 操作
+### Token Operations
 
-- `checkTokenBalance(chainId, tokenSymbol)` - 检查余额
-- `checkTokenAllowance(chainId, tokenSymbol)` - 检查授权额度
-- `approveToken(chainId, tokenSymbol, amount)` - 授权 Token
-- `deposit(chainId, tokenSymbol, amount)` - 执行存款
+- `checkTokenBalance(chainId, tokenSymbol)` - Check balance
+- `checkTokenAllowance(chainId, tokenSymbol)` - Check allowance
+- `approveToken(chainId, tokenSymbol, amount)` - Approve token
+- `deposit(chainId, tokenSymbol, amount)` - Execute deposit
 
-### CheckBook 操作
+### CheckBook Operations
 
-- `getUserDeposits(userAddress?, chainId?)` - 获取存款记录
-- `getCheckbookDetails(checkbookId)` - 获取 CheckBook 详情
-- `waitForDepositDetection(txHash, chainId, maxWaitTime?)` - 等待存款检测
+- `getUserDeposits(userAddress?, chainId?)` - Get deposit records
+- `getCheckbookDetails(checkbookId)` - Get CheckBook details
+- `waitForDepositDetection(txHash, chainId, maxWaitTime?)` - Wait for deposit detection
 
-### Commitment 操作（同步/异步）
+### Commitment Operations (Sync/Async)
 
-- `executeCommitmentSync(checkbookId, allocations, waitForWithCheck?)` - 同步执行
-- `executeCommitmentAsync(checkbookId, allocations)` - 异步执行
-- `createAllocationAndSign(checkbookId, allocations)` - 创建分配和签名
+- `executeCommitmentSync(checkbookId, allocations, waitForWithCheck?)` - Synchronous execution
+- `executeCommitmentAsync(checkbookId, allocations)` - Asynchronous execution
+- `createAllocationAndSign(checkbookId, allocations)` - Create allocation and sign
 
-### 提现操作（同步/异步）
+### Withdrawal Operations (Sync/Async)
 
-- `generateProofSync(checkbookId, recipientInfo, waitForCompleted?)` - 同步生成证明
-- `generateProofAsync(checkbookId, recipientInfo)` - 异步生成证明
+- `generateProofSync(checkbookId, recipientInfo, waitForCompleted?)` - Synchronous proof generation
+- `generateProofAsync(checkbookId, recipientInfo)` - Asynchronous proof generation
 
-### 高级功能
+### Advanced Features
 
-- `performFullDepositToCommitment(...)` - 完整存款到 Commitment 流程
-- `performFullCommitmentToWithdraw(...)` - 完整 Commitment 到提现流程
+- `performFullDepositToCommitment(...)` - Complete flow from deposit to commitment
+- `performFullCommitmentToWithdraw(...)` - Complete flow from commitment to withdrawal
 
-## 同步 vs 异步操作
+## Synchronous vs Asynchronous Operations
 
-### 同步方式（等待完成）
+### Synchronous Method (Wait for Completion)
 
 ```javascript
-// 执行Commitment并等待完成
+// Execute Commitment and wait for completion
 const result = await client.executeCommitmentSync(
   checkbookId,
   allocations,
   true
 );
-console.log("Commitment完成:", result.finalStatus);
+console.log("Commitment completed:", result.finalStatus);
 
-// 生成证明并等待完成
+// Generate proof and wait for completion
 const proofResult = await client.generateProofSync(
   checkbookId,
   recipientInfo,
   true
 );
-console.log("提现完成:", proofResult.completionResult.transaction_hash);
+console.log("Withdrawal completed:", proofResult.completionResult.transaction_hash);
 ```
 
-### 异步方式（立即返回）
+### Asynchronous Method (Return Immediately)
 
 ```javascript
-// 提交Commitment请求，立即返回
+// Submit Commitment request, return immediately
 const commitmentResult = await client.executeCommitmentAsync(
   checkbookId,
   allocations
 );
-console.log("Commitment已提交:", commitmentResult.status);
+console.log("Commitment submitted:", commitmentResult.status);
 
-// 在后台等待完成
+// Wait for completion in background
 commitmentResult
   .waitForCompletion(["with_checkbook"], 300)
   .then((result) => {
-    console.log("Commitment完成:", result.status);
+    console.log("Commitment completed:", result.status);
 
-    // 继续下一步操作
+    // Continue to next operation
     return client.generateProofAsync(checkbookId, recipientInfo);
   })
   .then((proofResult) => {
     return proofResult.waitForCompletion(300);
   })
   .then((completionResult) => {
-    console.log("提现完成:", completionResult.transaction_hash);
+    console.log("Withdrawal completed:", completionResult.transaction_hash);
   });
 
-// 主线程可以继续其他操作...
+// Main thread can continue other operations...
 ```
 
-## 运行示例
+## Running Examples
 
-### 运行完整示例
+### Run Complete Example
 
 ```bash
 node zkpay-client-example.js --config config.yaml --all
 ```
 
-### 运行单个示例
+### Run Single Example
 
 ```bash
 node zkpay-client-example.js --config config.yaml --example example1
 ```
 
-### 运行功能测试
+### Run Functional Tests
 
 ```bash
 node test-zkpay-client.js --config config.yaml
 ```
 
-## 配置要求
+## Configuration Requirements
 
-客户端库需要以下配置结构（`config.yaml`）：
+The client library requires the following configuration structure (`config.yaml`):
 
 ```yaml
 environment:
@@ -269,77 +269,77 @@ logging:
   level: "info"
 ```
 
-## 错误处理
+## Error Handling
 
-所有 API 方法都会抛出异常，建议使用 try-catch 进行错误处理：
+All API methods throw exceptions, it's recommended to use try-catch for error handling:
 
 ```javascript
 try {
   const result = await client.deposit(56, "test_usdt", "10.0");
-  console.log("操作成功:", result);
+  console.log("Operation successful:", result);
 } catch (error) {
-  console.error("操作失败:", error.message);
+  console.error("Operation failed:", error.message);
 
-  // 检查特定错误类型
-  if (error.message.includes("余额不足")) {
-    console.log("请先充值Token");
-  } else if (error.message.includes("未登录")) {
-    console.log("请先登录");
+  // Check specific error types
+  if (error.message.includes("Insufficient balance")) {
+    console.log("Please deposit tokens first");
+  } else if (error.message.includes("Not logged in")) {
+    console.log("Please login first");
   }
 }
 ```
 
-## 注意事项
+## Important Notes
 
-1. **登录状态**: 大部分操作需要先调用 `login()` 方法
-2. **异步操作**: 同步和异步方法的区别在于是否等待操作完成
-3. **错误处理**: 所有方法都可能抛出异常，需要适当的错误处理
-4. **资源清理**: 使用完毕后调用 `cleanup()` 方法清理资源
-5. **金额精度**: Token 金额需要考虑精度，通常为 18 位小数
-6. **链 ID**: 使用 SLIP-44 标准的链 ID（如 BSC 为 714）
+1. **Login Status**: Most operations require calling the `login()` method first
+2. **Async Operations**: The difference between sync and async methods is whether to wait for operation completion
+3. **Error Handling**: All methods may throw exceptions, proper error handling is required
+4. **Resource Cleanup**: Call `cleanup()` method to clean up resources after use
+5. **Amount Precision**: Token amounts need to consider precision, typically 18 decimals
+6. **Chain ID**: Use SLIP-44 standard chain IDs (e.g., BSC is 714)
 
-## 开发和调试
+## Development and Debugging
 
-### 启用调试日志
+### Enable Debug Logging
 
 ```javascript
 const logger = createLogger("ZKPayClient", { level: "debug" });
 const client = new ZKPayClient(config, logger);
 ```
 
-### 运行测试
+### Run Tests
 
 ```bash
-# 运行功能测试
+# Run functional tests
 node test-zkpay-client.js --config config.yaml
 
-# JSON格式输出
+# JSON format output
 node test-zkpay-client.js --config config.yaml --json
 ```
 
-### 检查 API 连接
+### Check API Connection
 
 ```javascript
 await client.initialize();
 await client.testApiConnection();
 ```
 
-## 支持和贡献
+## Support and Contributing
 
-如有问题或建议，请查看：
+For questions or suggestions, please refer to:
 
-- `ZKPAY_CLIENT_API.md` - 完整 API 文档
-- `zkpay-client-example.js` - 详细使用示例
-- `test-zkpay-client.js` - 功能测试代码
+- `ZKPAY_CLIENT_API.md` - Complete API documentation
+- `zkpay-client-example.js` - Detailed usage examples
+- `test-zkpay-client.js` - Functional test code
 
-## 更新日志
+## Changelog
 
-- **v1.0.0** - 初始版本，支持完整的 ZKPay 操作流程
-  - 用户认证和登录
-  - Token 授权和存款
-  - CheckBook 查询和管理
-  - 分配创建和签名
-  - Commitment 执行（同步/异步）
-  - 提现证明生成（同步/异步）
-  - 高级流程封装
-  - 完整的错误处理和日志记录
+- **v1.0.0** - Initial version, supporting complete ZKPay operation flow
+  - User authentication and login
+  - Token authorization and deposit
+  - CheckBook query and management
+  - Allocation creation and signing
+  - Commitment execution (sync/async)
+  - Withdrawal proof generation (sync/async)
+  - Advanced flow encapsulation
+  - Complete error handling and logging

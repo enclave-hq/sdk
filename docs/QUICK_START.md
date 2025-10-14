@@ -76,7 +76,7 @@ const record = await client.waitForDepositDetection(deposit.deposit.txHash, 56);
 const allocations = [
   {
     recipient_chain_id: 714,
-    recipient_address: "0x接收地址",
+    recipient_address: "0xRecipientAddress",
     amount: "10000000000000000000", // 10.0 USDT
   },
 ];
@@ -86,10 +86,10 @@ const commitment = await client.executeCommitmentSync(
   allocations
 );
 
-// 提现
+// Withdraw
 const recipientInfo = {
   chain_id: 714,
-  address: "0x接收地址",
+  address: "0xRecipientAddress",
   amount: "10000000000000000000",
   token_symbol: "test_usdt",
 };
@@ -100,11 +100,11 @@ const withdraw = await client.generateProofSync(
 );
 ```
 
-## 📋 核心功能对照表
+## 📋 Core Features Table
 
-| 需求                         | 方法                                                   | 说明                                           |
+| Requirement                  | Method                                                 | Description                                    |
 | ---------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
-| 1. 登录到后台                | `login(privateKey, userName)`                          | 使用私钥登录认证                               |
+| 1. Login to Backend          | `login(privateKey, userName)`                          | Login with private key authentication          |
 | 2. Approve and Deposit       | `deposit(chainId, tokenSymbol, amount)`                | Automatically handle authorization and deposit |
 | 3. Read CheckBook            | `getUserDeposits()`                                    | Get user's deposit records                     |
 | 4. Create Allocation + Sign  | `createAllocationAndSign(checkbookId, allocations)`    | Create allocation plan and sign                |
