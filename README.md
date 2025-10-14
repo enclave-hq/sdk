@@ -486,9 +486,9 @@ const client = new ZKPayClient(logger, {
 });
 ```
 
-### 最小配置
+### Minimum Configuration
 
-对于基本功能，只需要以下最小配置：
+For basic functionality, only the following minimum configuration is required:
 
 ```javascript
 const client = new ZKPayClient(logger, {
@@ -499,43 +499,43 @@ const client = new ZKPayClient(logger, {
 });
 ```
 
-### 配置字段说明
+### Configuration Fields
 
-#### 必需字段
+#### Required Fields
 
-- `apiConfig.baseURL` - ZKPay 后端 API 地址
-- `apiConfig.timeout` - API 请求超时时间
+- `apiConfig.baseURL` - ZKPay backend API address
+- `apiConfig.timeout` - API request timeout
 
-#### 可选字段
+#### Optional Fields
 
-- `treasuryContracts` - Treasury 合约地址 Map (chainId -> address)
-- `tokenConfigs` - Token 地址 Map (chainId_symbol -> tokenAddress)
-- `confirmationBlocks` - 存款确认区块数 (默认: 3)
-- `maxWaitTime` - 最大等待时间 (默认: 300000ms)
-- `defaultRecipientAddress` - 默认接收地址
+- `treasuryContracts` - Treasury contract address Map (chainId -> address)
+- `tokenConfigs` - Token address Map (chainId_symbol -> tokenAddress)
+- `confirmationBlocks` - Deposit confirmation blocks (default: 3)
+- `maxWaitTime` - Maximum wait time (default: 300000ms)
+- `defaultRecipientAddress` - Default recipient address
 
-#### Token 配置说明
+#### Token Configuration
 
-Token 配置只需要提供合约地址，其他信息（decimals、symbol、name）会自动从合约中读取：
+Token configuration only requires contract address, other information (decimals, symbol, name) is automatically read from the contract:
 
-**配置格式**：`slip44Id_symbol -> tokenAddress`
+**Configuration Format**: `slip44Id_symbol -> tokenAddress`
 
 ```javascript
 const tokenConfigs = new Map([
-  ["714_test_usdt", "0xbFBD79DbF5369D013a3D31812F67784efa6e0309"], // BSC上的测试USDT (SLIP44 714)
-  ["60_usdt", "0xdAC17F958D2ee523a2206206994597C13D831ec7"], // Ethereum上的USDT (SLIP44 60)
-  ["966_usdc", "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"], // Polygon上的USDC (SLIP44 966)
-  ["714_busd", "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"], // BSC上的BUSD (SLIP44 714)
-  ["60_weth", "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"], // Ethereum上的WETH (SLIP44 60)
+  ["714_test_usdt", "0xbFBD79DbF5369D013a3D31812F67784efa6e0309"], // Test USDT on BSC (SLIP44 714)
+  ["60_usdt", "0xdAC17F958D2ee523a2206206994597C13D831ec7"], // USDT on Ethereum (SLIP44 60)
+  ["966_usdc", "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"], // USDC on Polygon (SLIP44 966)
+  ["714_busd", "0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56"], // BUSD on BSC (SLIP44 714)
+  ["60_weth", "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"], // WETH on Ethereum (SLIP44 60)
 ]);
 ```
 
-**优势**：
+**Advantages**:
 
-- ✅ **简化配置**：只需要配置合约地址
-- ✅ **自动获取**：decimals、symbol、name 从合约自动读取
-- ✅ **避免错误**：不会因为手动配置 decimals 导致精度错误
-- ✅ **支持任意 Token**：只要是 ERC20 标准 Token 都可以使用
+- ✅ **Simplified Configuration**: Only need to configure contract address
+- ✅ **Auto Fetch**: decimals, symbol, name are automatically read from contract
+- ✅ **Avoid Errors**: No precision errors from manual decimals configuration
+- ✅ **Support Any Token**: Works with any ERC20 standard token
 
 ### Initialization Example
 
@@ -573,10 +573,10 @@ const amount = "10.0";
 await client.deposit(714, tokenAddress, amount, treasuryAddress);
 ```
 
-## 🔢 动态获取 Token Decimals 示例
+## 🔢 Dynamic Token Decimals Example
 
 ```javascript
-// 获取Token信息
+// Get token information
 const tokenInfo = await client.getTokenInfo(
   714,
   "0xbFBD79DbF5369D013a3D31812F67784efa6e0309"
@@ -584,28 +584,28 @@ const tokenInfo = await client.getTokenInfo(
 console.log(`Token: ${tokenInfo.symbol} (${tokenInfo.name})`);
 console.log(`Decimals: ${tokenInfo.decimals}`);
 
-// 使用动态decimals进行金额计算
+// Calculate amount using dynamic decimals
 const amount = "10.0";
 const amountWei = ethers.parseUnits(amount, tokenInfo.decimals);
 console.log(`${amount} ${tokenInfo.symbol} = ${amountWei.toString()} Wei`);
 
-// 检查余额时使用动态decimals
+// Check balance using dynamic decimals
 const balance = await client.checkTokenBalance(714, tokenInfo.address);
-console.log(`余额: ${balance.formatted} ${tokenInfo.symbol}`);
+console.log(`Balance: ${balance.formatted} ${tokenInfo.symbol}`);
 
-// 授权时使用动态decimals
+// Approve using dynamic decimals
 if (balance.balance < amountWei) {
-  console.log("余额不足，需要充值");
+  console.log("Insufficient balance, need to deposit");
 } else {
   await client.approveToken(714, tokenInfo.address, amount, treasuryAddress);
 }
 ```
 
-## 🌐 RPC URL 配置
+## 🌐 RPC URL Configuration
 
-SDK 支持从环境变量获取 RPC URL，或使用默认值：
+SDK supports fetching RPC URLs from environment variables or using default values:
 
-### 环境变量配置
+### Environment Variable Configuration
 
 ```bash
 # Set specific chain RPC URL (using SLIP44 ID, SDK will automatically convert)
@@ -617,13 +617,13 @@ export RPC_URL_966=https://polygon-rpc.com            # SLIP44 Polygon
 echo "RPC_URL_714=https://bsc-dataseed1.binance.org" >> .env
 echo "RPC_URL_60=https://eth.llamarpc.com" >> .env
 
-# 注意：环境变量使用EVM Chain ID，但SDK支持SLIP44 ID映射
-# 例如：SLIP44 714 (Tron) 会自动映射到 Chain ID 56 (BSC RPC)
+# Note: Environment variables use EVM Chain ID, but SDK supports SLIP44 ID mapping
+# Example: SLIP44 714 (Tron) will automatically map to Chain ID 56 (BSC RPC)
 ```
 
-### 支持的链和 SLIP44 映射
+### Supported Chains and SLIP44 Mapping
 
-| SLIP44 ID | EVM Chain ID | 链名称            | 默认 RPC URL                                   |
+| SLIP44 ID | EVM Chain ID | Chain Name        | Default RPC URL                                |
 | --------- | ------------ | ----------------- | ---------------------------------------------- |
 | 60        | 1            | Ethereum Mainnet  | https://eth.llamarpc.com                       |
 | 60        | 3            | Ethereum Ropsten  | https://ropsten.infura.io/v3/                  |
@@ -652,18 +652,18 @@ echo "RPC_URL_60=https://eth.llamarpc.com" >> .env
 | 195       | 195          | Tron Mainnet      | https://rpc.trongrid.io                        |
 | 195       | 2494104990   | Tron Shasta       | https://api.shasta.trongrid.io                 |
 
-### SLIP44 映射说明
+### SLIP44 Mapping Description
 
-SDK 支持 SLIP44 币种 ID 到 EVM 链 ID 的映射，主要特点：
+SDK supports mapping from SLIP44 coin ID to EVM Chain ID, key features:
 
-- **SLIP44 60** → **Chain ID 1** (Ethereum 主网)
-- **SLIP44 714** → **Chain ID 56** (BSC 主网)
-- **SLIP44 966** → **Chain ID 137** (Polygon 主网)
+- **SLIP44 60** → **Chain ID 1** (Ethereum Mainnet)
+- **SLIP44 714** → **Chain ID 56** (BSC Mainnet)
+- **SLIP44 966** → **Chain ID 137** (Polygon Mainnet)
 - **SLIP44 42161** → **Chain ID 42161** (Arbitrum One)
-- **SLIP44 10** → **Chain ID 10** (Optimism 主网)
-- **SLIP44 250** → **Chain ID 250** (Fantom 主网)
-- **SLIP44 195** → **Chain ID 195** (Tron 主网)
-- **其他链**: 大部分 SLIP44 ID 与 EVM Chain ID 相同，无需映射
+- **SLIP44 10** → **Chain ID 10** (Optimism Mainnet)
+- **SLIP44 250** → **Chain ID 250** (Fantom Mainnet)
+- **SLIP44 195** → **Chain ID 195** (Tron Mainnet)
+- **Other Chains**: Most SLIP44 IDs are identical to EVM Chain IDs, no mapping needed
 
 **Usage Example:**
 
@@ -685,11 +685,11 @@ const provider = walletManager.getProvider(195); // SLIP44 Tron ID
 const network = await provider.getNetwork(); // Returns Chain ID 195
 ```
 
-## 🔐 KMS 集成
+## 🔐 KMS Integration
 
-zksdk 支持与外部密钥管理系统(KMS)集成，实现私钥的安全管理。支持 SLIP44 标准和多种签名类型：
+zksdk supports integration with external Key Management Systems (KMS) for secure private key management. Supports SLIP44 standard and multiple signature types:
 
-### 基础 KMS 集成
+### Basic KMS Integration
 
 ```javascript
 const { ZKPayClient } = require("zksdk");
@@ -713,14 +713,14 @@ const client = new ZKPayClient(config);
 await client.loginWithSigner(kmsSigner, kmsConfig.address);
 ```
 
-### SAAS KMS 集成
+### SAAS KMS Integration
 
-对于企业级用户，支持通过 SAAS 系统的 KMS 服务进行签名：
+For enterprise users, supports signing through SAAS system's KMS service:
 
 ```javascript
 const { SaasKMSSigner } = require("zksdk/utils/saas-kms-signer");
 
-// SAAS KMS配置
+// SAAS KMS configuration
 const saasKmsConfig = {
   kmsUrl: "https://kms.your-saas.com",
   enterpriseId: "your_enterprise_id",
@@ -730,28 +730,28 @@ const saasKmsConfig = {
   k1Key: "your_k1_key",
 };
 
-// 创建SAAS KMS签名器
+// Create SAAS KMS signer
 const saasSigner = new SaasKMSSigner(saasKmsConfig);
 
-// 使用SAAS KMS签名器登录
+// Login using SAAS KMS signer
 await client.loginWithSigner(saasSigner, saasKmsConfig.userAddress);
 ```
 
-### 支持的区块链网络
+### Supported Blockchain Networks
 
-| 网络     | SLIP44 ID | 签名类型 | 说明          |
-| -------- | --------- | -------- | ------------- |
-| Ethereum | 60        | eip191   | 以太坊主网    |
-| BSC      | 714       | eip191   | 币安智能链    |
-| Tron     | 195       | tip191t  | 波场网络      |
-| Polygon  | 966       | eip191   | Polygon 网络  |
-| Arbitrum | 42161     | eip191   | Arbitrum One  |
-| Optimism | 10        | eip191   | Optimism 网络 |
+| Network  | SLIP44 ID | Signature Type | Description      |
+| -------- | --------- | -------------- | ---------------- |
+| Ethereum | 60        | eip191         | Ethereum Mainnet |
+| BSC      | 714       | eip191         | Binance Smart Chain |
+| Tron     | 195       | tip191t        | Tron Network     |
+| Polygon  | 966       | eip191         | Polygon Network  |
+| Arbitrum | 42161     | eip191         | Arbitrum One     |
+| Optimism | 10        | eip191         | Optimism Network |
 
 ### Multi-chain KMS Usage Example
 
 ```javascript
-// 多链管理器
+// Multi-chain manager
 const {
   MultiChainKMSManager,
 } = require("zksdk/examples/multi-chain-kms-example");
@@ -764,7 +764,7 @@ const manager = new MultiChainKMSManager(
   logger
 );
 
-// 添加不同链的配置
+// Add different chain configurations
 manager.addChain("bsc", {
   slip44Id: 714,
   encryptedKey: "bsc_encrypted_key",
@@ -779,23 +779,23 @@ manager.addChain("tron", {
   defaultSignatureType: "tip191t",
 });
 
-// 跨链签名
+// Cross-chain signing
 await manager.signMessage("bsc", "Hello BSC!");
 await manager.signMessage("tron", "Hello Tron!");
 ```
 
-## 🔒 安全使用指南
+## 🔒 Security Guide
 
-### 私钥管理
+### Private Key Management
 
-- ✅ 使用 KMS 系统管理私钥（推荐）
-- ✅ 使用环境变量存储私钥
-- ✅ 使用.env 文件（不要提交到代码仓库）
-- ✅ 定期轮换测试私钥
-- ❌ 绝不在代码中硬编码私钥
-- ❌ 绝不在公共仓库中暴露私钥
+- ✅ Use KMS system to manage private keys (recommended)
+- ✅ Use environment variables to store private keys
+- ✅ Use .env file (do not commit to code repository)
+- ✅ Regularly rotate test private keys
+- ❌ Never hardcode private keys in code
+- ❌ Never expose private keys in public repositories
 
-### 环境变量设置
+### Environment Variable Setup
 
 ```bash
 # Set environment variable
@@ -805,61 +805,61 @@ export TEST_USER_PRIVATE_KEY=0xYourPrivateKey
 echo "TEST_USER_PRIVATE_KEY=0xYourPrivateKey" > .env
 ```
 
-### 安全检查清单
+### Security Checklist
 
-- [ ] 所有私钥通过环境变量传递
-- [ ] 配置文件中没有硬编码的敏感信息
-- [ ] .env 文件在 .gitignore 中
-- [ ] 只使用测试网络和测试账户
-- [ ] 定期轮换测试私钥
+- [ ] All private keys passed through environment variables
+- [ ] No hardcoded sensitive information in configuration files
+- [ ] .env file is in .gitignore
+- [ ] Only use test networks and test accounts
+- [ ] Regularly rotate test private keys
 
-## 🧪 测试和示例
+## 🧪 Testing and Examples
 
-### 运行测试
+### Running Tests
 
 ```bash
-# 进入examples目录
+# Enter examples directory
 cd examples
 
-# 运行基础功能测试
+# Run basic functionality tests
 node quick-client-library-test.js
 
-# 运行完整示例
+# Run complete examples
 node zkpay-client-example.js --all
 
-# 运行特定示例
+# Run specific example
 node zkpay-client-example.js --example example1
 ```
 
-### 测试脚本
+### Test Scripts
 
-- `test-simple-commitment.js`: 简单承诺测试
-- `test-commitment-retry.js`: 承诺重试测试
-- `test-commitment-fixed.js`: 修复版承诺测试
-- `test-withdraw.js`: 提现测试
+- `test-simple-commitment.js`: Simple commitment test
+- `test-commitment-retry.js`: Commitment retry test
+- `test-commitment-fixed.js`: Fixed commitment test
+- `test-withdraw.js`: Withdrawal test
 
-## 🎯 使用建议
+## 🎯 Usage Recommendations
 
-1. **开发阶段**: 使用分步执行，便于调试
-2. **生产环境**: 使用便捷方法，简化代码
-3. **长时间操作**: 使用异步方式，避免阻塞
-4. **状态监控**: 使用 `checkStatus()`实时监控状态
+1. **Development Phase**: Use step-by-step execution for easier debugging
+2. **Production Environment**: Use convenient methods to simplify code
+3. **Long Operations**: Use async methods to avoid blocking
+4. **Status Monitoring**: Use `checkStatus()` for real-time status monitoring
 
-## 📝 注意事项
+## 📝 Important Notes
 
-- **私钥管理**: 通过 Wallet Manager 统一管理，一个私钥对应一个钱包实例
-- **数据格式**: 金额使用字符串格式，避免精度丢失
-- **超时设置**: 长时间操作有合理的超时设置
-- **错误处理**: 所有方法都有完整的错误处理和日志记录
-- **状态检查**: 操作前检查相关状态，确保流程正确
-- **API 设计统一**:
-  - 所有方法都使用 Token 合约地址，确保 API 一致性
-  - 不再依赖 config.yaml 配置文件，所有参数直接传入
-  - 支持任意 Token 合约，无需预配置
-- **动态获取 Token 信息**:
-  - 使用 `getTokenInfo()`方法动态获取 Token 的 decimals、symbol、name
-  - 不再硬编码 decimals，确保精度计算的准确性
-  - 支持任意 ERC20 Token，自动适配其精度
+- **Private Key Management**: Managed uniformly through Wallet Manager, one private key corresponds to one wallet instance
+- **Data Format**: Amounts use string format to avoid precision loss
+- **Timeout Settings**: Long operations have reasonable timeout settings
+- **Error Handling**: All methods have complete error handling and logging
+- **Status Checking**: Check related status before operations to ensure correct flow
+- **Unified API Design**:
+  - All methods use token contract address to ensure API consistency
+  - No longer dependent on config.yaml, all parameters passed directly
+  - Support any token contract without pre-configuration
+- **Dynamic Token Information**:
+  - Use `getTokenInfo()` method to dynamically fetch token decimals, symbol, name
+  - No longer hardcode decimals, ensuring precision calculation accuracy
+  - Support any ERC20 token with automatic precision adaptation
 
 ## 🔄 Relationship with Existing Code
 
