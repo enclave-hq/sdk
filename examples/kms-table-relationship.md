@@ -8,10 +8,10 @@
 CREATE TABLE encrypted_private_keys (
     id UUID PRIMARY KEY,
     key_alias VARCHAR(100) NOT NULL,
-    slip44_id INTEGER NOT NULL,           -- Chain ID (SLIP44标准)
+    slip44_id INTEGER NOT NULL,           -- Chain ID (SLIP44 standard)
     evm_chain_id INTEGER,                 -- EVM Chain ID
-    encrypted_data TEXT NOT NULL,         -- K2Encryption的Private Key
-    public_address VARCHAR(42) NOT NULL,  -- ✅ 明文Storage的Address
+    encrypted_data TEXT NOT NULL,         -- Private key encrypted with K2
+    public_address VARCHAR(42) NOT NULL,  -- ✅ Plaintext stored address
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
     status VARCHAR(20) DEFAULT 'active'
@@ -25,83 +25,83 @@ CREATE TABLE dual_layer_encrypted_keys (
     id UUID PRIMARY KEY,
     key_alias VARCHAR(100) NOT NULL,
     slip44_id INTEGER NOT NULL,
-    encrypted_key TEXT NOT NULL,          -- Dual-layerEncryption的Private Key (K1+K2)
-    public_address VARCHAR(42) NOT NULL,  -- ✅ 明文Storage的Address
+    encrypted_key TEXT NOT NULL,          -- Private key with dual-layer encryption (K1+K2)
+    public_address VARCHAR(42) NOT NULL,  -- ✅ Plaintext stored address
     created_at TIMESTAMP,
     updated_at TIMESTAMP,
     status VARCHAR(20) DEFAULT 'active'
 );
 ```
 
-## 🔄 两Table关系
+## 🔄 Table Relationship
 
-### **并行Storage，不同用途**
+### **Parallel Storage, Different Purposes**
 
-1. **LegacyEncryptionTable** - 单层 K2 Encryption
+1. **Legacy Encryption Table** - Single-layer K2 Encryption
 
-   - Use 场景：标准 KMS Operation
-   - Encryption方式：`Private Key --[K2]--> encrypted_data`
-   - DecryptionNeed：仅Need K2 主 Key
-   - API Interface：`/api/v1/encrypt`, `/api/v1/sign`
+   - Use case: Standard KMS operations
+   - Encryption method: `Private Key --[K2]--> encrypted_data`
+   - Decryption requirement: Only need K2 master key
+   - API Interface: `/api/v1/encrypt`, `/api/v1/sign`
 
-2. **Dual-layerEncryptionTable** - K1+K2 Dual-layerEncryption
-   - Use 场景：高Security性要求
-   - Encryption方式：`Private Key --[K1]--> EncPK --[K2]--> encrypted_key`
-   - DecryptionNeed：Need K1 传输 Key + K2 Storage Key
-   - API Interface：`/api/v1/dual-layer/encrypt`, `/api/v1/dual-layer/sign`
+2. **Dual-layer Encryption Table** - K1+K2 Dual-layer Encryption
+   - Use case: High security requirements
+   - Encryption method: `Private Key --[K1]--> EncPK --[K2]--> encrypted_key`
+   - Decryption requirement: Need K1 transport key + K2 storage key
+   - API Interface: `/api/v1/dual-layer/encrypt`, `/api/v1/dual-layer/sign`
 
-## 📋 FunctionCompare
+## 📋 Function Comparison
 
-| 特性           | LegacyEncryptionTable    | Dual-layerEncryptionTable        |
+| Feature           | Legacy Encryption Table    | Dual-layer Encryption Table        |
 | -------------- | ------------- | ----------------- |
-| Security级别       | 高 (K2 Encryption)  | 极高 (K1+K2 Dual-layer) |
-| Query Address   | ✅ 不Need Key | ✅ 不Need Key     |
+| Security Level       | High (K2 encryption)  | Very High (K1+K2 dual-layer) |
+| Query Address   | ✅ No key needed | ✅ No key needed     |
 | Signature Operation | Need K2       | Need K1+K2        |
-| Storage效率       | 高            | 中等              |
-| Backend Dependencies   | 无            | NeedStorage K1       |
-| 适用场景       | 标准Business      | 高价值资产        |
+| Storage Efficiency       | High            | Medium              |
+| Backend Dependencies   | None            | Need to store K1       |
+| Suitable Scenario       | Standard business      | High-value assets        |
 
-## 🎯 实际 Use 策略
+## 🎯 Practical Usage Strategy
 
-### **当前 KMS 实现**
+### **Current KMS Implementation**
 
 ```go
-// QueryKey时 - 优先查LegacyTable
+// When querying key - prioritize legacy table
 func (k *KMSService) GetStoredKey(keyAlias string, chainID int) {
-    // 从 encrypted_private_keys Query
+    // Query from encrypted_private_keys
     SELECT public_address FROM encrypted_private_keys
     WHERE key_alias = ? AND slip44_id = ?
 }
 
-// GetKeyList - 分别Query两个Table
+// Get key list - query both tables separately
 func (k *KMSService) GetStoredKeys() {
-    // 从 dual_layer_encrypted_keys Query（不返回EncryptionData）
+    // Query from dual_layer_encrypted_keys (don't return encryption data)
     SELECT id, key_alias, slip44_id, public_address
     FROM dual_layer_encrypted_keys
 }
 ```
 
-## 💡 关键发现
+## 💡 Key Findings
 
-### **两个Table都Storage明文 Address**
+### **Both Tables Store Plaintext Addresses**
 
 - ✅ `encrypted_private_keys.public_address`
 - ✅ `dual_layer_encrypted_keys.public_address`
 
-### **Query Address 不NeedDecryption Key**
+### **Querying Address Does Not Require Decryption Keys**
 
-- 两个Table都在StoragePrivate Key时Calculate并SaveTo应的公钥 Address
-- Query时直接返回明文 Address，无需 K1 或 K2 Decryption
-- 只有 Signature Operation才NeedDecryptionPrivate Key
+- Both tables calculate and save corresponding public key addresses when storing private keys
+- When querying, plaintext addresses are returned directly without K1 or K2 decryption
+- Only signature operations require decrypting private keys
 
-### **Use 场景Recommend**
+### **Usage Scenario Recommendations**
 
-- **标准Business**: Use LegacyEncryptionTable，简单高效
-- **高Security场景**: Use Dual-layerEncryptionTable，Backend Management K1
-- **混合部署**: 两个Table可以并存，根据BusinessNeedSelect
+- **Standard Business**: Use legacy encryption table, simple and efficient
+- **High Security Scenarios**: Use dual-layer encryption table, backend manages K1
+- **Hybrid Deployment**: Both tables can coexist, select based on business needs
 
-## 🔍 回答原Issue
+## 🔍 Answering the Original Question
 
-**"没有 K1，能够得到 Address 么？"**
+**"Can I get the address without K1?"**
 
-✅ **能够！** 因为两个Table都明文Storage了 `public_address` 字段，Query Address 时不Need任何DecryptionOperation。
+✅ **Yes!** Because both tables store the `public_address` field in plaintext, querying addresses does not require any decryption operations.
