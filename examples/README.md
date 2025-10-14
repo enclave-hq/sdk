@@ -34,98 +34,98 @@ This directory contains core usage examples and test code for ZKPay Client Libra
 - **`bsc-testnet-config.env`** - BSC testnet configuration environment variables
 - **`logger.js`** - Log manager (provides unified logging functionality)
 
-## 🔧 UseMethod
+## 🔧 Usage
 
-### 1. 运行完整示例
+### 1. Run Complete Example
 
 ```bash
 cd zksdk/examples
 node zkpay-client-example.js --all
 ```
 
-### 2. 运行快速测试
+### 2. Run Quick Test
 
 ```bash
 cd zksdk/examples
 ./run-client-library-test.sh quick
 ```
 
-### 3. 运行异步Function测试
+### 3. Run Async Function Test
 
 ```bash
 cd zksdk/examples
 node test-async-features.js
 ```
 
-### 4. 运行 KMS 集成示例
+### 4. Run KMS Integration Example
 
 ```bash
 cd zksdk/examples
 node zkpay-kms-integration-example.js
 ```
 
-### 5. 运行 KMS 完整流程示例
+### 5. Run KMS Complete Flow Example
 
 ```bash
 cd zksdk/examples
-# Use自动生成的Private Key
+# Use auto-generated private key
 node kms-full-flow-example.js --amount 10.0
 
-# Use客户端Provide的Private Key
+# Use client provided private key
 node kms-full-flow-example.js --use-provided-key --private-key 0x1234... --amount 10.0
 ```
 
-### 6. 运行 Ready CheckBook 测试
+### 6. Run Ready CheckBook Test
 
 ```bash
 cd zksdk/examples
 node ready-checkbook-test.js
 ```
 
-## 📋 测试覆盖
+## 📋 Test Coverage
 
-### 完整Function测试包括：
+### Complete Function Tests Include:
 
-- ✅ 客户端初始化
-- ✅ User登录
-- ✅ Token Operation（余额Query、授权Check）
-- ✅ CheckBook Query和Details
-- ✅ DepositOperation（授权 → Deposit）
-- ✅ Deposit检测（后端确认）
-- ✅ Wait checkbook 准备
-- ✅ 分配和Signature（Commitment Execute）
-- ✅ Commitment Status验证
-- ✅ 提现证明生成
-- ✅ 提现完成确认
+- ✅ Client initialization
+- ✅ User login
+- ✅ Token operations (balance query, authorization check)
+- ✅ CheckBook query and details
+- ✅ Deposit operations (authorization → deposit)
+- ✅ Deposit detection (backend confirmation)
+- ✅ Wait for checkbook ready
+- ✅ Allocation and signature (commitment execution)
+- ✅ Commitment status verification
+- ✅ Withdrawal proof generation
+- ✅ Withdrawal completion confirmation
 
-### 异步Function测试包括：
+### Async Function Tests Include:
 
-- 🔄 Commitment 异步提交和Wait
-- 🔄 Withdraw 异步提交和Wait
-- 🔄 Status轮询和监控
-- 🔄 超时Process
+- 🔄 Commitment async submission and wait
+- 🔄 Withdraw async submission and wait
+- 🔄 Status polling and monitoring
+- 🔄 Timeout handling
 
-## 💡 提示
+## 💡 Tips
 
-- 确保在运行测试前已经设置了正确的Environment变量（如`TEST_USER_PRIVATE_KEY`）
-- 测试需要连接到 ZKPay 后端Service
-- 完整Function测试会Execute实际的区块链交易，需要消耗少量 gas 费用
+- Ensure correct environment variables are set before running tests (such as `TEST_USER_PRIVATE_KEY`)
+- Tests need to connect to ZKPay backend service
+- Complete function tests will execute actual blockchain transactions, requiring small gas fees
 
-## 📊 Directory结构
+## 📊 Directory Structure
 
 ```
 examples/
-├── README.md                           # 本File
-├── logger.js                           # LogManagement器
-├── zkpay-client-example.js             # 完整Use示例
-├── async-usage-example.js              # 异步Method示例
-├── kms-key-initialization-example.js   # KMSKey初始化示例
-├── zkpay-kms-integration-example.js    # KMS集成示例
-├── kms-full-flow-example.js            # KMS完整流程示例
-├── quick-client-library-test.js        # 快速Function测试
-├── test-async-features.js              # 异步Function测试
-├── ready-checkbook-test.js             # Ready CheckBook测试
-├── run-client-library-test.sh          # 运行脚本
-├── setup-test-env.sh                   # Environment设置脚本
-└── bsc-testnet-config.env              # BSC测试网Configuration
+├── README.md                           # This file
+├── logger.js                           # Log manager
+├── zkpay-client-example.js             # Complete usage example
+├── async-usage-example.js              # Async method example
+├── kms-key-initialization-example.js   # KMS key initialization example
+├── zkpay-kms-integration-example.js    # KMS integration example
+├── kms-full-flow-example.js            # KMS complete flow example
+├── quick-client-library-test.js        # Quick function test
+├── test-async-features.js              # Async function test
+├── ready-checkbook-test.js             # Ready CheckBook test
+├── run-client-library-test.sh          # Run script
+├── setup-test-env.sh                   # Environment setup script
+└── bsc-testnet-config.env              # BSC testnet configuration
 ```
