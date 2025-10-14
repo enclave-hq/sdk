@@ -32,58 +32,58 @@ Need to delete the following methods:
 - `GetStoredKey()` - Method to query legacy table
 - `GetStoredKeysWithEncryptedData()` - Get legacy table data
 
-### 4. **Process器Cleanup**
+### 4. **Handler Cleanup**
 
-- `internal/handlers/encrypt_handler.go` - DeleteLegacyEncryptionProcess器
-- `internal/handlers/sign_handler.go` - DeleteLegacySignatureProcess器
+- `internal/handlers/encrypt_handler.go` - Delete legacy encryption handler
+- `internal/handlers/sign_handler.go` - Delete legacy signature handler
 
-### 5. **Data库TableCleanup**
+### 5. **Database Table Cleanup**
 
-- Delete `encrypted_private_keys` Table的建TableStatement
-- UpdateMigrationScript，RemoveToLegacyTable的Reference
+- Delete `encrypted_private_keys` table creation statement
+- Update migration scripts, remove references to legacy table
 
-### 6. **Document和TestCleanup**
+### 6. **Documentation and Test Cleanup**
 
-- Update API Document，RemoveLegacyInterface说明
-- UpdateTestScript，Change to useDual-layerEncryptionInterface
+- Update API documentation, remove legacy interface descriptions
+- Update test scripts, switch to use dual-layer encryption interface
 - Update Postman Collection
 
-## 🎯 Cleanup后的 KMS Architecture
+## 🎯 KMS Architecture After Cleanup
 
-### **Keep的Function**
-
-```
-✅ HealthCheck:     GET  /api/v1/health
-✅ KeyGenerate:     POST /api/v1/generate-key
-✅ Dual-layerEncryption:     POST /api/v1/dual-layer/encrypt
-✅ Dual-layerSignature:     POST /api/v1/dual-layer/sign
-✅ BusinessKey:     POST /api/v1/business/keys/*
-✅ Data加Decryption:   POST /api/v1/data/encrypt|decrypt
-```
-
-### **Delete的Function**
+### **Functions to Keep**
 
 ```
-❌ LegacyEncryption:     POST /api/v1/encrypt
-❌ LegacySignature:     POST /api/v1/sign
-❌ LegacyAddress:     POST /api/v1/get-address
-❌ Legacy交易:     POST /api/v1/sign/transaction
+✅ HealthCheck:            GET  /api/v1/health
+✅ KeyGenerate:            POST /api/v1/generate-key
+✅ Dual-layer Encryption:  POST /api/v1/dual-layer/encrypt
+✅ Dual-layer Signature:   POST /api/v1/dual-layer/sign
+✅ Business Keys:          POST /api/v1/business/keys/*
+✅ Data Encrypt/Decrypt:   POST /api/v1/data/encrypt|decrypt
 ```
 
-## 💡 下一步行动
+### **Functions to Delete**
 
-1. **完成ServiceMethodCleanup** - Delete KMSService 中的LegacyMethod
-2. **添加Dual-layerEncryptionRoute** - 在 router 中启用Dual-layerEncryption API
-3. **CleanupProcess器File** - Delete不Need的 handler File
-4. **UpdateData库Script** - RemoveLegacyTableRelated SQL
-5. **Test验证** - 确保Dual-layerEncryptionFunctionNormal工作
+```
+❌ Legacy Encryption:   POST /api/v1/encrypt
+❌ Legacy Signature:    POST /api/v1/sign
+❌ Legacy Address:      POST /api/v1/get-address
+❌ Legacy Transaction:  POST /api/v1/sign/transaction
+```
 
-## 🚨 注意事项
+## 💡 Next Steps
 
-- 确保Dual-layerEncryptionFunction完整可用后再DeleteLegacyMethod
-- Keep必要的审计Log和StatisticsFunction
-- Update所有RelatedDocument和Test用例
+1. **Complete Service Method Cleanup** - Delete legacy methods in KMS Service
+2. **Add Dual-layer Encryption Routes** - Enable dual-layer encryption API in router
+3. **Cleanup Handler Files** - Delete unnecessary handler files
+4. **Update Database Scripts** - Remove legacy table related SQL
+5. **Test Verification** - Ensure dual-layer encryption functions work properly
+
+## 🚨 Important Notes
+
+- Ensure dual-layer encryption functions are fully available before deleting legacy methods
+- Keep necessary audit logs and statistics functions
+- Update all related documentation and test cases
 
 ---
 
-**Cleanup进度**: 30% 完成 ✅ 模型Cleanup ✅ RouteCleanup 🚧 ServiceCleanup ⏳ DocumentUpdate
+**Cleanup Progress**: 30% Complete ✅ Model Cleanup ✅ Route Cleanup 🚧 Service Cleanup ⏳ Documentation Update
