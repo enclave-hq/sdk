@@ -3,7 +3,7 @@
  * @module platforms/react/EnclaveProvider
  */
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { EnclaveClient } from '../../client/EnclaveClient';
 import type { EnclaveConfig } from '../../types/config';
 
@@ -74,6 +74,7 @@ export function EnclaveProvider({
           });
       }
 
+      // Return cleanup function
       return () => {
         // Disconnect on unmount
         enclaveClient.disconnect();
@@ -81,6 +82,8 @@ export function EnclaveProvider({
     } catch (err) {
       setError(err as Error);
       setIsConnecting(false);
+      // Return empty cleanup function
+      return () => {};
     }
   }, []);
 

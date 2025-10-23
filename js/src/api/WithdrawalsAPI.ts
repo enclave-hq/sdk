@@ -18,7 +18,6 @@ import type {
   CancelWithdrawRequestResponse,
   GetWithdrawStatsRequest,
   GetWithdrawStatsResponse,
-  APIResponse,
 } from '../types/api';
 import type { WithdrawRequest, WithdrawRequestDetail } from '../types/models';
 import {
@@ -26,7 +25,6 @@ import {
   validateNonEmptyArray,
   validatePagination,
   validateSignature,
-  validatePositiveNumber,
   validateChainId,
 } from '../utils/validation';
 
@@ -58,7 +56,7 @@ export class WithdrawalsAPI {
       validateChainId(request.targetChain, 'targetChain');
     }
 
-    const response = await this.client.get<APIResponse<ListWithdrawRequestsResponse>>(
+    const response = await this.client.get<ListWithdrawRequestsResponse>(
       '/api/withdrawals',
       {
         params: {
@@ -72,11 +70,7 @@ export class WithdrawalsAPI {
       }
     );
 
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'Failed to list withdrawal requests');
-    }
-
-    return response.data;
+    return response;
   }
 
   /**
@@ -89,15 +83,11 @@ export class WithdrawalsAPI {
   ): Promise<WithdrawRequestDetail> {
     validateNonEmptyString(request.id, 'id');
 
-    const response = await this.client.get<APIResponse<GetWithdrawRequestResponse>>(
+    const response = await this.client.get<GetWithdrawRequestResponse>(
       `/api/withdrawals/${request.id}`
     );
 
-    if (!response.success || !response.data?.withdrawRequest) {
-      throw new Error(response.error || 'Failed to get withdrawal request');
-    }
-
-    return response.data.withdrawRequest;
+    return response.withdrawRequest;
   }
 
   /**
@@ -110,15 +100,11 @@ export class WithdrawalsAPI {
   ): Promise<WithdrawRequestDetail> {
     validateNonEmptyString(request.nullifier, 'nullifier');
 
-    const response = await this.client.get<APIResponse<GetWithdrawRequestResponse>>(
+    const response = await this.client.get<GetWithdrawRequestResponse>(
       `/api/withdrawals/nullifier/${request.nullifier}`
     );
 
-    if (!response.success || !response.data?.withdrawRequest) {
-      throw new Error(response.error || 'Failed to get withdrawal request');
-    }
-
-    return response.data.withdrawRequest;
+    return response.withdrawRequest;
   }
 
   /**
@@ -138,7 +124,7 @@ export class WithdrawalsAPI {
     validateSignature(request.signature, 'signature');
     validateNonEmptyString(request.nullifier, 'nullifier');
 
-    const response = await this.client.post<APIResponse<CreateWithdrawRequestResponse>>(
+    const response = await this.client.post<CreateWithdrawRequestResponse>(
       '/api/withdrawals',
       {
         allocationIds: request.allocationIds,
@@ -153,11 +139,7 @@ export class WithdrawalsAPI {
       }
     );
 
-    if (!response.success || !response.data?.withdrawRequest) {
-      throw new Error(response.error || 'Failed to create withdrawal request');
-    }
-
-    return response.data.withdrawRequest;
+    return response.withdrawRequest;
   }
 
   /**
@@ -170,15 +152,11 @@ export class WithdrawalsAPI {
   ): Promise<WithdrawRequest> {
     validateNonEmptyString(request.id, 'id');
 
-    const response = await this.client.post<APIResponse<RetryWithdrawRequestResponse>>(
+    const response = await this.client.post<RetryWithdrawRequestResponse>(
       `/api/withdrawals/${request.id}/retry`
     );
 
-    if (!response.success || !response.data?.withdrawRequest) {
-      throw new Error(response.error || 'Failed to retry withdrawal request');
-    }
-
-    return response.data.withdrawRequest;
+    return response.withdrawRequest;
   }
 
   /**
@@ -191,15 +169,11 @@ export class WithdrawalsAPI {
   ): Promise<WithdrawRequest> {
     validateNonEmptyString(request.id, 'id');
 
-    const response = await this.client.post<APIResponse<CancelWithdrawRequestResponse>>(
+    const response = await this.client.post<CancelWithdrawRequestResponse>(
       `/api/withdrawals/${request.id}/cancel`
     );
 
-    if (!response.success || !response.data?.withdrawRequest) {
-      throw new Error(response.error || 'Failed to cancel withdrawal request');
-    }
-
-    return response.data.withdrawRequest;
+    return response.withdrawRequest;
   }
 
   /**
@@ -210,7 +184,7 @@ export class WithdrawalsAPI {
   async getWithdrawStats(
     request: GetWithdrawStatsRequest = {}
   ): Promise<GetWithdrawStatsResponse> {
-    const response = await this.client.get<APIResponse<GetWithdrawStatsResponse>>(
+    const response = await this.client.get<GetWithdrawStatsResponse>(
       '/api/withdrawals/stats',
       {
         params: {
@@ -220,11 +194,7 @@ export class WithdrawalsAPI {
       }
     );
 
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'Failed to get withdrawal stats');
-    }
-
-    return response.data;
+    return response;
   }
 }
 

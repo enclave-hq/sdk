@@ -53,18 +53,55 @@ export enum WithdrawRequestStatus {
 // ============ Universal Address ============
 
 /**
- * Universal address representation supporting multiple blockchain formats
+ * Universal address with chain ID
  */
 export interface UniversalAddress {
-  /** Chain ID */
+  /** Chain ID (1=Ethereum, 56=BSC, 137=Polygon, etc.) */
   chainId: number;
-  /** Chain name (e.g., 'ethereum', 'bsc', 'tron') */
-  chainName: string;
-  /** Address in chain-specific format */
+  /** Chain name (e.g., 'ethereum', 'bsc', 'polygon') */
+  chainName?: string;
+  /** Address string */
   address: string;
-  /** Unified format address (e.g., EVM: 0x..., Tron: base58) */
-  universalFormat: string;
+  /** Universal format representation */
+  universalFormat?: string;
+  /** SLIP-44 ID (optional) */
+  slip44?: number;
+  /** Address data (20 bytes for EVM, variable for other chains) - legacy field */
+  data?: string;
 }
+
+/**
+ * Raw Token Intent - Direct native token transfer
+ * For standard tokens like USDT, USDC, ETH, etc.
+ */
+export interface RawTokenIntent {
+  /** Intent type identifier */
+  type: 'RawToken';
+  /** Beneficiary address with chain ID */
+  beneficiary: UniversalAddress;
+  /** ERC20/TRC20 token contract address (20 bytes, hex string) */
+  tokenContract: string;
+}
+
+/**
+ * Asset Token Intent - Derived/wrapped token transfer
+ * For derivative tokens like aUSDT (Aave), stETH (Lido), jUSDT (Jupiter), etc.
+ */
+export interface AssetTokenIntent {
+  /** Intent type identifier */
+  type: 'AssetToken';
+  /** Asset Token ID (bytes32, encoded as AdapterID || TokenID || Reserved) */
+  assetId: string;
+  /** Beneficiary address with chain ID */
+  beneficiary: UniversalAddress;
+  /** Optional preferred chain for multi-chain asset routing */
+  preferredChain?: number;
+}
+
+/**
+ * Union type for all Intent variants
+ */
+export type Intent = RawTokenIntent | AssetTokenIntent;
 
 // ============ Token & Pool ============
 
@@ -317,8 +354,8 @@ export interface WithdrawalParams {
   targetChain: number;
   /** Target address for receiving funds */
   targetAddress: string;
-  /** Intent type ('withdraw', 'transfer', etc.) */
-  intent: string;
+  /** ⭐ Intent specification (RawToken or AssetToken) */
+  intent: Intent;
   /** Additional metadata (optional) */
   metadata?: Record<string, any>;
 }
@@ -333,8 +370,8 @@ export interface WithdrawalSignData {
   targetChain: number;
   /** Target address */
   targetAddress: string;
-  /** Intent type */
-  intent: string;
+  /** ⭐ Intent specification (RawToken or AssetToken) */
+  intent: Intent;
   /** Message to sign (formatted according to spec) */
   message: string;
   /** Message hash (keccak256) */

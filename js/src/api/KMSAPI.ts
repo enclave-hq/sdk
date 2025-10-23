@@ -32,7 +32,7 @@ export class KMSAPI {
     validateNonEmptyString(request.data, 'data');
     validateHex(request.data, 'data');
 
-    const response = await this.client.post<APIResponse<KMSSignResponse>>(
+    const response = await this.client.post<KMSSignResponse>(
       '/api/kms/sign',
       {
         data: request.data,
@@ -40,11 +40,7 @@ export class KMSAPI {
       }
     );
 
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'KMS signing failed');
-    }
-
-    return response.data;
+    return response;
   }
 
   /**
@@ -55,7 +51,7 @@ export class KMSAPI {
   async getPublicKey(
     request: KMSPublicKeyRequest = {}
   ): Promise<KMSPublicKeyResponse> {
-    const response = await this.client.get<APIResponse<KMSPublicKeyResponse>>(
+    const response = await this.client.get<KMSPublicKeyResponse>(
       '/api/kms/public-key',
       {
         params: {
@@ -64,11 +60,7 @@ export class KMSAPI {
       }
     );
 
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'Failed to get KMS public key');
-    }
-
-    return response.data;
+    return response;
   }
 }
 

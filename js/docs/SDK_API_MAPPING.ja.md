@@ -29,7 +29,7 @@
 ### SDK初期化
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',
@@ -68,7 +68,7 @@ import {
   CheckbookStatus,
   AllocationStatus,
   WithdrawRequestStatus,
-} from '@enclave/sdk';
+} from '@enclave-hq/sdk';
 
 // 1. 型安全なステータス比較
 const checkbook = client.stores.checkbooks.get(checkbookId);

@@ -22,6 +22,7 @@ Enclave 官方软件开发工具包（SDK），用于集成基于零知识证明
 - ✅ **Next.js** - 支持 SSR 的全栈应用
 
 **核心特性**:
+
 - 🔄 基于 MobX 的响应式状态管理
 - 🔌 实时 WebSocket 数据同步
 - 🔐 灵活的签名接口（私钥、Web3 钱包、硬件钱包、远程签名）
@@ -29,12 +30,14 @@ Enclave 官方软件开发工具包（SDK），用于集成基于零知识证明
 - 🌍 多语言文档（英语、中文、日语、韩语）
 
 **快速开始**:
+
 ```bash
 cd js/
 npm install
 ```
 
 **文档**:
+
 - [SDK 概览](./js/docs/SDK_OVERVIEW.zh-CN.md)
 - [技术设计](./js/docs/SDK_JS_DESIGN.zh-CN.md)
 - [API 参考](./js/docs/SDK_API_MAPPING.zh-CN.md)
@@ -105,7 +108,7 @@ npm install
 ```
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',
@@ -124,12 +127,15 @@ const allocations = client.stores.allocations.all;
 ## 文档
 
 ### 通用文档
+
 - [SDK 概览](./js/docs/SDK_OVERVIEW.zh-CN.md) - 高层次介绍
 - [API 文档](../backend/API_DOCUMENTATION.md) - 后端 API 参考
 - [WebSocket 集成](../backend/WEBSOCKET_INTEGRATION.md) - 实时数据指南
 
 ### 特定语言文档
+
 每个 SDK 目录包含：
+
 - `README.md` - SDK 特定的设置和使用说明
 - `docs/` - 技术设计和 API 参考
 - `examples/` - 使用示例和教程
@@ -156,7 +162,6 @@ const allocations = client.stores.allocations.all;
 
 ---
 
-**版本**: 2.0.0  
-**最后更新**: 2025-01-17  
+**版本**: 2.0.0
+**最后更新**: 2025-01-17
 **状态**: 生产就绪（JavaScript SDK）
-

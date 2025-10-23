@@ -8,8 +8,8 @@ import type {
   Allocation,
   WithdrawRequest,
   TokenPrice,
-  ConnectionInfo,
 } from './models';
+import type { ConnectionInfo } from './config';
 
 // ============ Event Names ============
 

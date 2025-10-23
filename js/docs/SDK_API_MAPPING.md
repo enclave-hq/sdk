@@ -34,7 +34,7 @@ This document provides detailed mapping between Enclave JavaScript SDK API metho
 ### SDK Initialization
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',
@@ -73,7 +73,7 @@ import {
   CheckbookStatus,
   AllocationStatus,
   WithdrawRequestStatus,
-} from '@enclave/sdk';
+} from '@enclave-hq/sdk';
 
 // 1. Type-safe status comparisons
 const checkbook = client.stores.checkbooks.get(checkbookId);

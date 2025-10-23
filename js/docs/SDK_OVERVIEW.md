@@ -171,7 +171,7 @@ EnclaveClient
 **Tech Stack**: React + Next.js + TypeScript
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import { observer } from 'mobx-react-lite';
 
 // Create global client instance
@@ -211,7 +211,7 @@ const CheckbooksView = observer(() => {
 
 ```typescript
 // app/api/checkbooks/route.ts
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 // Server-side singleton instance
 const serverClient = new EnclaveClient({
@@ -257,7 +257,7 @@ export async function POST(request: Request) {
 **Tech Stack**: React Native + TypeScript
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import { observer } from 'mobx-react-lite';
 import { View, Text, FlatList } from 'react-native';
 
@@ -375,7 +375,7 @@ UI Response
 ### npm Package Publishing
 
 ```bash
-@enclave/sdk
+@enclave-hq/sdk
 ├── dist/
 │   ├── index.js         # CommonJS
 │   ├── index.mjs        # ES Module
@@ -391,16 +391,16 @@ UI Response
 
 ```typescript
 // Core client
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 // React Hooks
-import { useEnclave, useCheckbooks } from '@enclave/sdk/react';
+import { useEnclave, useCheckbooks } from '@enclave-hq/sdk/react';
 
 // Next.js Utils
-import { createServerClient } from '@enclave/sdk/nextjs';
+import { createServerClient } from '@enclave-hq/sdk/nextjs';
 
 // Vue Composables
-import { useEnclave } from '@enclave/sdk/vue';
+import { useEnclave } from '@enclave-hq/sdk/vue';
 ```
 
 ## 🔐 Security Considerations

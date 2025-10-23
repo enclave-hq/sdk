@@ -13,7 +13,6 @@ import type {
   ListTokensResponse,
   GetTokenRequest,
   GetTokenResponse,
-  APIResponse,
 } from '../types/api';
 import type { Pool, Token } from '../types/models';
 import { validateNonEmptyString, validateChainId } from '../utils/validation';
@@ -34,7 +33,7 @@ export class PoolsAPI {
    * @returns List of pools
    */
   async listPools(request: ListPoolsRequest = {}): Promise<Pool[]> {
-    const response = await this.client.get<APIResponse<ListPoolsResponse>>(
+    const response = await this.client.get<ListPoolsResponse>(
       '/api/pools',
       {
         params: {
@@ -43,11 +42,7 @@ export class PoolsAPI {
       }
     );
 
-    if (!response.success || !response.data?.pools) {
-      throw new Error(response.error || 'Failed to list pools');
-    }
-
-    return response.data.pools;
+    return response.pools;
   }
 
   /**
@@ -58,15 +53,11 @@ export class PoolsAPI {
   async getPoolById(request: GetPoolRequest): Promise<Pool> {
     validateNonEmptyString(request.id, 'id');
 
-    const response = await this.client.get<APIResponse<GetPoolResponse>>(
+    const response = await this.client.get<GetPoolResponse>(
       `/api/pools/${request.id}`
     );
 
-    if (!response.success || !response.data?.pool) {
-      throw new Error(response.error || 'Failed to get pool');
-    }
-
-    return response.data.pool;
+    return response.pool;
   }
 
   /**
@@ -86,16 +77,12 @@ export class PoolsAPI {
       params.chainId = request.chainId;
     }
 
-    const response = await this.client.get<APIResponse<ListTokensResponse>>(
+    const response = await this.client.get<ListTokensResponse>(
       '/api/tokens',
       { params }
     );
 
-    if (!response.success || !response.data?.tokens) {
-      throw new Error(response.error || 'Failed to list tokens');
-    }
-
-    return response.data.tokens;
+    return response.tokens;
   }
 
   /**
@@ -106,15 +93,11 @@ export class PoolsAPI {
   async getTokenById(request: GetTokenRequest): Promise<Token> {
     validateNonEmptyString(request.id, 'id');
 
-    const response = await this.client.get<APIResponse<GetTokenResponse>>(
+    const response = await this.client.get<GetTokenResponse>(
       `/api/tokens/${request.id}`
     );
 
-    if (!response.success || !response.data?.token) {
-      throw new Error(response.error || 'Failed to get token');
-    }
-
-    return response.data.token;
+    return response.token;
   }
 
   /**

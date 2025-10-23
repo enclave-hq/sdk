@@ -7,7 +7,6 @@ import type { APIClient } from './APIClient';
 import type {
   GetTokenPricesRequest,
   GetTokenPricesResponse,
-  APIResponse,
 } from '../types/api';
 import type { TokenPrice } from '../types/models';
 
@@ -35,16 +34,12 @@ export class PricesAPI {
       params.symbols = request.symbols.join(',');
     }
 
-    const response = await this.client.get<APIResponse<GetTokenPricesResponse>>(
+    const response = await this.client.get<GetTokenPricesResponse>(
       '/api/prices',
       { params }
     );
 
-    if (!response.success || !response.data?.prices) {
-      throw new Error(response.error || 'Failed to get token prices');
-    }
-
-    return response.data.prices;
+    return response.prices;
   }
 
   /**

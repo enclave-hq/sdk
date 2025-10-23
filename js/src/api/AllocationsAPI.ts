@@ -9,7 +9,6 @@ import type {
   ListAllocationsResponse,
   CreateAllocationsRequest,
   CreateAllocationsResponse,
-  APIResponse,
 } from '../types/api';
 import type { Allocation } from '../types/models';
 import {
@@ -42,7 +41,7 @@ export class AllocationsAPI {
       validatePagination(request.page, request.limit);
     }
 
-    const response = await this.client.get<APIResponse<ListAllocationsResponse>>(
+    const response = await this.client.get<ListAllocationsResponse>(
       '/api/allocations',
       {
         params: {
@@ -56,11 +55,7 @@ export class AllocationsAPI {
       }
     );
 
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'Failed to list allocations');
-    }
-
-    return response.data;
+    return response;
   }
 
   /**
@@ -83,7 +78,7 @@ export class AllocationsAPI {
       validateNonEmptyString(amount, `amounts[${index}]`);
     });
 
-    const response = await this.client.post<APIResponse<CreateAllocationsResponse>>(
+    const response = await this.client.post<CreateAllocationsResponse>(
       '/api/allocations',
       {
         checkbookId: request.checkbookId,
@@ -95,11 +90,7 @@ export class AllocationsAPI {
       }
     );
 
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'Failed to create allocations');
-    }
-
-    return response.data;
+    return response;
   }
 
   /**

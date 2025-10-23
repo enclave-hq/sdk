@@ -27,3 +27,6 @@ export * from './retry';
 // Environment detection
 export * from './environment';
 
+// Chain utilities and SLIP-44 support
+export * from './chain';
+

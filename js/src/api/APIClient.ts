@@ -9,10 +9,6 @@ import axios, {
   AxiosResponse,
   AxiosError,
 } from 'axios';
-import type {
-  APIResponse,
-  APIError as APIErrorType,
-} from '../types/api';
 import {
   APIError,
   NetworkError,
@@ -191,7 +187,7 @@ export class APIClient {
         },
         {
           maxAttempts: this.maxRetries,
-          shouldRetry: (error, attempt) => {
+          shouldRetry: (error, _attempt) => {
             // Don't retry auth errors
             if (error instanceof AuthError) return false;
 

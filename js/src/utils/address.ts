@@ -5,30 +5,12 @@
 
 import { getAddress as ethersGetAddress } from 'ethers';
 import { ValidationError } from './errors';
-import { isValidAddress, ensureHexPrefix } from './crypto';
+import { isValidAddress } from './crypto';
+import { getChainName, getSlip44FromChainId } from './chain';
 import type { UniversalAddress } from '../types/models';
 
-/**
- * Chain name mapping
- */
-const CHAIN_NAMES: Record<number, string> = {
-  1: 'ethereum',
-  56: 'bsc',
-  137: 'polygon',
-  42161: 'arbitrum',
-  10: 'optimism',
-  8453: 'base',
-  195: 'x-layer', // Example chain ID for X Layer
-};
-
-/**
- * Get chain name by chain ID
- * @param chainId - Chain ID
- * @returns Chain name
- */
-export function getChainName(chainId: number): string {
-  return CHAIN_NAMES[chainId] || `chain-${chainId}`;
-}
+// Re-export for backward compatibility
+export { getChainName };
 
 /**
  * Normalize Ethereum address to checksum format
@@ -94,12 +76,14 @@ export function createUniversalAddress(
   }
 
   const checksumAddress = toChecksumAddress(address);
+  const slip44 = getSlip44FromChainId(chainId);
 
   return {
     chainId,
     chainName: getChainName(chainId),
     address: checksumAddress,
     universalFormat: checksumAddress,
+    slip44: slip44 ?? undefined,
   };
 }
 
@@ -121,20 +105,29 @@ export function parseUniversalAddress(
     );
   }
 
-  const chainId = parseInt(parts[0], 10);
+  const chainIdPart = parts[0];
+  const addressPart = parts[1];
+
+  if (!chainIdPart || !addressPart) {
+    throw new ValidationError(
+      'Universal address must be in format "chainId:address"',
+      'addressString'
+    );
+  }
+
+  const chainId = parseInt(chainIdPart, 10);
   if (isNaN(chainId) || chainId <= 0) {
     throw new ValidationError('Invalid chain ID in universal address', 'chainId');
   }
 
-  const address = parts[1];
-  if (!isValidAddress(address)) {
+  if (!isValidAddress(addressPart)) {
     throw new ValidationError(
       'Invalid address in universal address',
       'address'
     );
   }
 
-  return createUniversalAddress(address, chainId);
+  return createUniversalAddress(addressPart, chainId);
 }
 
 /**

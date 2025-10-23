@@ -29,7 +29,7 @@
 ### SDK 초기화
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',
@@ -68,7 +68,7 @@ import {
   CheckbookStatus,
   AllocationStatus,
   WithdrawRequestStatus,
-} from '@enclave/sdk';
+} from '@enclave-hq/sdk';
 
 // 1. 타입 안전한 상태 비교
 const checkbook = client.stores.checkbooks.get(checkbookId);

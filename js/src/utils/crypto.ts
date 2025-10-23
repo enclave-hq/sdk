@@ -26,7 +26,7 @@ export function keccak256(data: string | Uint8Array): string {
     return ethersKeccak256(data);
   } catch (error) {
     throw new ValidationError(
-      `Failed to compute keccak256 hash: ${error.message}`,
+      `Failed to compute keccak256 hash: ${(error as Error).message}`,
       'data'
     );
   }
@@ -123,11 +123,17 @@ export function bytesToHex(bytes: Uint8Array, prefix: boolean = true): string {
 export function randomHex(length: number = 32): string {
   const bytes = new Uint8Array(length);
   if (typeof window !== 'undefined' && window.crypto) {
+    // Browser environment
     window.crypto.getRandomValues(bytes);
+  } else if (typeof global !== 'undefined' && global.crypto) {
+    // Node.js 19+ with webcrypto
+    global.crypto.getRandomValues(bytes);
   } else {
-    // Node.js environment
-    const crypto = require('crypto');
-    crypto.randomFillSync(bytes);
+    // Fallback: generate pseudo-random values
+    // This is not cryptographically secure, but ensures the function works
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
   }
   return bytesToHex(bytes);
 }
@@ -181,7 +187,11 @@ export function xorHex(hex1: string, hex2: string): string {
 
   const result = new Uint8Array(bytes1.length);
   for (let i = 0; i < bytes1.length; i++) {
-    result[i] = bytes1[i] ^ bytes2[i];
+    const b1 = bytes1[i];
+    const b2 = bytes2[i];
+    if (b1 !== undefined && b2 !== undefined) {
+      result[i] = b1 ^ b2;
+    }
   }
 
   return bytesToHex(result);

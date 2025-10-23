@@ -1,7 +1,7 @@
 /**
- * Enclave SDK v2.0 - Main Entry Point
- * @module @enclave/sdk
- * @see https://enclave-hq.com
+ * @module @enclave-hq/sdk
+ * @description Enclave SDK - Privacy-preserving multi-chain DeFi protocol client library
+ * @version 2.0.0-alpha.1
  */
 
 // ============ Core Client ============
@@ -52,7 +52,7 @@ export type {
 // ============ API Types ============
 export type {
   APIResponse,
-  APIError,
+  APIError as APIErrorResponse,
 } from './types/api';
 
 // ============ Event Types ============
@@ -141,6 +141,6 @@ export type {
 } from './stores';
 
 // ============ Version Info ============
-export const SDK_VERSION = '2.0.0-alpha.1';
-export const SDK_NAME = '@enclave/sdk';
+export const SDK_VERSION = '2.0.2';
+export const SDK_NAME = '@enclave-hq/sdk';
 

@@ -30,7 +30,7 @@ import {
   CheckbookStatus,
   AllocationStatus,
   WithdrawRequestStatus,
-} from '@enclave/sdk';
+} from '@enclave-hq/sdk';
 
 // ============ CheckbookStatus ============
 CheckbookStatus.Pending              // 'pending'
@@ -93,7 +93,7 @@ function canWithdraw(allocation: Allocation): boolean {
 }
 
 // 5. React 组件中使用
-import { AllocationStatus } from '@enclave/sdk';
+import { AllocationStatus } from '@enclave-hq/sdk';
 import { autorun } from 'mobx';
 import { useEffect, useState } from 'react';
 
@@ -2088,7 +2088,7 @@ Authorization: Bearer {JWT_TOKEN}
 #### 场景1: 浏览器应用（推荐）
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',
@@ -2112,7 +2112,7 @@ async function onPullToRefresh() {
 #### 场景2: 移动应用
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import { AppState } from 'react-native';
 
 const client = new EnclaveClient({
@@ -2149,7 +2149,7 @@ const onRefresh = async () => {
 #### 场景3: 后端服务（定时任务）
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',
@@ -2176,7 +2176,7 @@ setInterval(async () => {
 #### 场景4: WebSocket 断线恢复
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',

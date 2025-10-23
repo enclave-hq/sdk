@@ -57,12 +57,12 @@ export interface APIError {
 export interface AuthRequest {
   /** User's universal address */
   address: UniversalAddress;
+  /** Chain ID */
+  chainId: number;
   /** Signed message */
   signature: string;
   /** Message that was signed */
   message: string;
-  /** Timestamp when signature was created */
-  timestamp: number;
 }
 
 /**
@@ -71,10 +71,8 @@ export interface AuthRequest {
 export interface AuthResponse {
   /** JWT token */
   token: string;
-  /** Token expiration time (Unix timestamp) */
-  expiresAt: number;
   /** User's address */
-  address: UniversalAddress;
+  user_address: UniversalAddress;
 }
 
 /**

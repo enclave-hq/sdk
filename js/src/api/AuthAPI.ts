@@ -39,26 +39,22 @@ export class AuthAPI {
     validateUniversalAddress(request.address, 'address');
     validateNonEmptyString(request.message, 'message');
     validateSignature(request.signature, 'signature');
-    validatePositiveNumber(request.timestamp, 'timestamp');
+    validatePositiveNumber(request.chainId, 'chainId');
 
-    const response = await this.client.post<APIResponse<AuthResponse>>(
+    const response = await this.client.post<AuthResponse>(
       '/api/auth/login',
       {
-        address: request.address,
-        signature: request.signature,
+        user_address: request.address,
+        chain_id: request.chainId,
         message: request.message,
-        timestamp: request.timestamp,
+        signature: request.signature,
       }
     );
 
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'Authentication failed');
-    }
-
     // Store token in client
-    this.client.setAuthToken(response.data.token);
+    this.client.setAuthToken(response.token);
 
-    return response.data;
+    return response;
   }
 
   /**
@@ -71,19 +67,15 @@ export class AuthAPI {
   ): Promise<RefreshTokenResponse> {
     validateNonEmptyString(request.token, 'token');
 
-    const response = await this.client.post<APIResponse<RefreshTokenResponse>>(
+    const response = await this.client.post<RefreshTokenResponse>(
       '/api/auth/refresh',
       { token: request.token }
     );
 
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'Token refresh failed');
-    }
-
     // Update token in client
-    this.client.setAuthToken(response.data.token);
+    this.client.setAuthToken(response.token);
 
-    return response.data;
+    return response;
   }
 
   /**
@@ -104,33 +96,26 @@ export class AuthAPI {
    */
   async verifyToken(): Promise<boolean> {
     try {
-      const response = await this.client.get<APIResponse<{ valid: boolean }>>(
+      const response = await this.client.get<{ valid: boolean }>(
         '/api/auth/verify'
       );
-      return response.success && response.data?.valid === true;
+      return response.valid === true;
     } catch {
       return false;
     }
   }
 
   /**
-   * Get authentication message to sign
+   * Get authentication nonce for signing
    * @param address - User's address
-   * @returns Message to sign
+   * @returns Nonce for signing
    */
-  async getAuthMessage(address: string): Promise<string> {
-    validateNonEmptyString(address, 'address');
-
-    const response = await this.client.get<APIResponse<{ message: string }>>(
-      '/api/auth/message',
-      { params: { address } }
+  async getNonce(address?: string): Promise<{ nonce: string; timestamp: string }> {
+    const params = address ? { owner: address } : {};
+    return this.client.get<{ nonce: string; timestamp: string }>(
+      '/api/auth/nonce',
+      { params }
     );
-
-    if (!response.success || !response.data?.message) {
-      throw new Error(response.error || 'Failed to get auth message');
-    }
-
-    return response.data.message;
   }
 }
 

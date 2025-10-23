@@ -56,13 +56,13 @@ export class WithdrawalAction {
     validateNonEmptyArray(params.allocationIds, 'allocationIds');
     validateChainId(params.targetChain, 'targetChain');
     validateNonEmptyString(params.targetAddress, 'targetAddress');
-    validateNonEmptyString(params.intent, 'intent');
+    this.validateIntent(params.intent);
 
     this.logger.info('Preparing withdrawal', {
       allocationCount: params.allocationIds.length,
       targetChain: params.targetChain,
       targetAddress: params.targetAddress,
-      intent: params.intent,
+      intentType: params.intent.type,
     });
 
     // Use WithdrawFormatter to generate sign data
@@ -76,9 +76,66 @@ export class WithdrawalAction {
     this.logger.debug('Withdrawal sign data prepared', {
       messageHash: signData.messageHash,
       nullifier: signData.nullifier,
+      intentType: params.intent.type,
     });
 
     return signData;
+  }
+
+  /**
+   * Validate Intent structure
+   * @param intent - Intent to validate
+   * @throws Error if intent is invalid
+   */
+  private validateIntent(intent: any): void {
+    if (!intent || typeof intent !== 'object') {
+      throw new Error('Intent must be an object');
+    }
+
+    if (intent.type !== 'RawToken' && intent.type !== 'AssetToken') {
+      throw new Error(
+        `Invalid intent type: ${intent.type}. Must be 'RawToken' or 'AssetToken'`
+      );
+    }
+
+    // Validate beneficiary
+    if (!intent.beneficiary || typeof intent.beneficiary !== 'object') {
+      throw new Error('Intent.beneficiary must be a valid UniversalAddress');
+    }
+
+    if (typeof intent.beneficiary.chainId !== 'number' || intent.beneficiary.chainId < 0) {
+      throw new Error('Intent.beneficiary.chainId must be a non-negative number');
+    }
+
+    validateNonEmptyString(intent.beneficiary.data, 'Intent.beneficiary.data');
+
+    // Type-specific validation
+    if (intent.type === 'RawToken') {
+      validateNonEmptyString(intent.tokenContract, 'Intent.tokenContract');
+      
+      // Validate token contract address (should be 20 bytes = 40 hex chars + 0x prefix)
+      if (!intent.tokenContract.match(/^0x[0-9a-fA-F]{40}$/)) {
+        throw new Error(
+          'Intent.tokenContract must be a valid 20-byte hex address (0x + 40 chars)'
+        );
+      }
+    } else if (intent.type === 'AssetToken') {
+      validateNonEmptyString(intent.assetId, 'Intent.assetId');
+
+      // Validate asset ID (should be 32 bytes = 64 hex chars + 0x prefix)
+      if (!intent.assetId.match(/^0x[0-9a-fA-F]{64}$/)) {
+        throw new Error(
+          'Intent.assetId must be a valid 32-byte hex value (0x + 64 chars)'
+        );
+      }
+
+      // Validate preferred chain if provided
+      if (intent.preferredChain !== undefined && intent.preferredChain !== null) {
+        if (typeof intent.preferredChain !== 'number' || intent.preferredChain < 0) {
+          throw new Error('Intent.preferredChain must be a non-negative number');
+        }
+      }
+    }
   }
 
   /**
@@ -96,6 +153,7 @@ export class WithdrawalAction {
     this.logger.info('Submitting withdrawal to backend', {
       allocationCount: params.allocationIds.length,
       targetChain: params.targetChain,
+      intentType: params.intent.type,
     });
 
     // Prepare sign data
@@ -128,7 +186,7 @@ export class WithdrawalAction {
     this.logger.info('Creating withdrawal (full flow)', {
       allocationCount: params.allocationIds.length,
       targetChain: params.targetChain,
-      intent: params.intent,
+      intentType: params.intent.type,
     });
 
     // Step 1: Prepare sign data

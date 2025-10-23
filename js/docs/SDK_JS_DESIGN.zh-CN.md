@@ -133,7 +133,7 @@ import {
   CheckbookStatus,
   AllocationStatus,
   WithdrawRequestStatus,
-} from '@enclave/sdk';
+} from '@enclave-hq/sdk';
 
 // 创建客户端
 const client = new EnclaveClient({
@@ -998,7 +998,7 @@ export class EnclaveClient extends EventEmitter {
 #### 示例1: 浏览器 + MetaMask
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import { ethers } from 'ethers';
 
 const client = new EnclaveClient({
@@ -1025,7 +1025,7 @@ await client.connect({
 #### 示例2: 移动端 + 远程签名服务
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',
@@ -1050,7 +1050,7 @@ await client.connect({
 #### 示例3: Node.js 后端 + 私钥
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',
@@ -1063,7 +1063,7 @@ await client.connect(process.env.PRIVATE_KEY);
 #### 示例4: 硬件钱包（Ledger）
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import TransportWebUSB from '@ledgerhq/hw-transport-webusb';
 import Eth from '@ledgerhq/hw-app-eth';
 
@@ -1445,7 +1445,7 @@ export class EnclaveClient extends EventEmitter {
 #### 示例1: 分离模式（用户控制签名）
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',
@@ -1500,7 +1500,7 @@ const result = await client.submitCommitment({
 #### 示例2: 一步模式（私钥/自动签名）
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',

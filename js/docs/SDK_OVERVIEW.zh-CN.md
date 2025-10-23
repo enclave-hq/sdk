@@ -172,7 +172,7 @@ EnclaveClient
 **技术栈**：React + Next.js + TypeScript
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import { observer } from 'mobx-react-lite';
 
 // 创建全局客户端实例
@@ -210,7 +210,7 @@ const DepositsView = observer(() => {
 
 ```typescript
 // app/api/deposits/route.ts
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 // 服务端单例实例
 const serverClient = new EnclaveClient({
@@ -255,7 +255,7 @@ export async function POST(request: Request) {
 **技术栈**：React Native + TypeScript
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import { observer } from 'mobx-react-lite';
 import { View, Text, FlatList } from 'react-native';
 
@@ -294,7 +294,7 @@ const DepositsScreen = observer(() => {
 **技术栈**：Node.js + TypeScript（脚本/定时任务）
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: process.env.ENCLAVE_API_URL,
@@ -345,7 +345,7 @@ setInterval(() => {
 **技术栈**：Vanilla JS + Web3
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import { ethers } from 'ethers';
 
 // 使用 MetaMask
@@ -472,7 +472,7 @@ UI 响应
 ### npm 包发布
 
 ```bash
-@enclave/sdk
+@enclave-hq/sdk
 ├── dist/
 │   ├── index.js         # CommonJS
 │   ├── index.mjs        # ES Module
@@ -488,16 +488,16 @@ UI 响应
 
 ```typescript
 // 核心客户端
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 // React Hooks
-import { useEnclave, useEnclaveDeposits } from '@enclave/sdk/react';
+import { useEnclave, useEnclaveDeposits } from '@enclave-hq/sdk/react';
 
 // Next.js 工具
-import { createServerClient } from '@enclave/sdk/nextjs';
+import { createServerClient } from '@enclave-hq/sdk/nextjs';
 
 // Vue Composables
-import { useEnclave } from '@enclave/sdk/vue';
+import { useEnclave } from '@enclave-hq/sdk/vue';
 ```
 
 ## 🔐 安全考虑

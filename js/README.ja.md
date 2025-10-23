@@ -18,17 +18,17 @@ Enclave SDK は、Enclave プライバシー保護マルチチェーン DeFi プ
 ## 📦 インストール
 
 ```bash
-npm install @enclave/sdk
+npm install @enclave-hq/sdk
 
 # または
-yarn add @enclave/sdk
-pnpm add @enclave/sdk
+yarn add @enclave-hq/sdk
+pnpm add @enclave-hq/sdk
 ```
 
 ## 🚀 クイックスタート
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 // クライアントを作成
 const client = new EnclaveClient({

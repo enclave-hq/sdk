@@ -18,17 +18,17 @@ Enclave SDK 是一套现代化的 JavaScript/TypeScript 客户端库，用于与
 ## 📦 安装
 
 ```bash
-npm install @enclave/sdk
+npm install @enclave-hq/sdk
 
 # 或
-yarn add @enclave/sdk
-pnpm add @enclave/sdk
+yarn add @enclave-hq/sdk
+pnpm add @enclave-hq/sdk
 ```
 
 ## 🚀 快速开始
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 // 创建客户端
 const client = new EnclaveClient({

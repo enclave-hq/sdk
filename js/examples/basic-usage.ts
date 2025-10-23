@@ -12,8 +12,8 @@ import {
 async function main() {
   // Initialize Enclave client
   const client = new EnclaveClient({
-    apiUrl: 'https://api.enclave-hq.com',
-    wsUrl: 'wss://api.enclave-hq.com/ws',
+    apiUrl: 'http://localhost:3001',
+    wsUrl: 'ws://localhost:3001/ws',
     signer: process.env.PRIVATE_KEY!,
   });
 

@@ -9,7 +9,6 @@ import type {
   ListCheckbooksResponse,
   GetCheckbookRequest,
   GetCheckbookResponse,
-  APIResponse,
 } from '../types/api';
 import type { Checkbook } from '../types/models';
 import {
@@ -40,7 +39,7 @@ export class CheckbooksAPI {
       validatePagination(request.page, request.limit);
     }
 
-    const response = await this.client.get<APIResponse<ListCheckbooksResponse>>(
+    const response = await this.client.get<ListCheckbooksResponse>(
       '/api/checkbooks',
       {
         params: {
@@ -53,11 +52,7 @@ export class CheckbooksAPI {
       }
     );
 
-    if (!response.success || !response.data) {
-      throw new Error(response.error || 'Failed to list checkbooks');
-    }
-
-    return response.data;
+    return response;
   }
 
   /**
@@ -70,15 +65,11 @@ export class CheckbooksAPI {
   ): Promise<Checkbook> {
     validateNonEmptyString(request.id, 'id');
 
-    const response = await this.client.get<APIResponse<GetCheckbookResponse>>(
-      `/api/checkbooks/${request.id}`
+    const response = await this.client.get<GetCheckbookResponse>(
+      `/api/checkbooks/id/${request.id}`
     );
 
-    if (!response.success || !response.data?.checkbook) {
-      throw new Error(response.error || 'Failed to get checkbook');
-    }
-
-    return response.data.checkbook;
+    return response.checkbook;
   }
 
   /**
@@ -103,6 +94,19 @@ export class CheckbooksAPI {
     });
 
     return response.data;
+  }
+
+  /**
+   * Delete checkbook by ID
+   * @param id - Checkbook ID
+   * @returns Success response
+   */
+  async deleteCheckbook(id: string): Promise<{ success: boolean; message: string; checkbook_id: string }> {
+    validateNonEmptyString(id, 'id');
+
+    return this.client.delete<{ success: boolean; message: string; checkbook_id: string }>(
+      `/api/checkbooks/${id}`
+    );
   }
 }
 

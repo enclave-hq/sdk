@@ -36,7 +36,7 @@
 
 ## 🔗 Related Links
 
-- [GitHub Repository](https://github.com/enclave-hq/enclave)
+- [GitHub Repository](https://github.com/enclave-hq/sdk)
 - [Official Website](https://enclave-hq.com)
 - [API Documentation](https://docs.enclave-hq.com)
 - [Discord Community](https://discord.gg/enclave)

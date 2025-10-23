@@ -133,7 +133,7 @@ import {
   CheckbookStatus,
   AllocationStatus,
   WithdrawRequestStatus,
-} from '@enclave/sdk';
+} from '@enclave-hq/sdk';
 
 // Create client
 const client = new EnclaveClient({
@@ -840,7 +840,7 @@ class CallbackSigner implements ISigner {
 #### Example 1: Use MetaMask Signer
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import { BrowserProvider } from 'ethers';
 
 async function connectWithMetaMask() {
@@ -863,7 +863,7 @@ const client = new EnclaveClient({
 #### Example 2: Use Remote Signing Service
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 async function connectWithRemoteSigner() {
   // Custom signing function
@@ -897,7 +897,7 @@ async function connectWithRemoteSigner() {
 #### Example 3: Node.js Backend Private Key
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -920,7 +920,7 @@ const client = new EnclaveClient({
 #### Example 4: Ledger Hardware Wallet
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import TransportWebUSB from '@ledgerhq/hw-transport-webusb';
 import Eth from '@ledgerhq/hw-app-eth';
 

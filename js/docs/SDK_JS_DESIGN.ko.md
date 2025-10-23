@@ -133,7 +133,7 @@ import {
   CheckbookStatus,
   AllocationStatus,
   WithdrawRequestStatus,
-} from '@enclave/sdk';
+} from '@enclave-hq/sdk';
 
 // 클라이언트 생성
 const client = new EnclaveClient({
@@ -370,7 +370,7 @@ Enclave SDK는 개인 키를 노출하지 않고 여러 서명 방법을 지원�
 #### 예제 1: MetaMask 서명자 사용
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import { BrowserProvider } from 'ethers';
 
 async function connectWithMetaMask() {
@@ -393,7 +393,7 @@ async function connectWithMetaMask() {
 #### 예제 2: 원격 서명 서비스 사용
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 async function connectWithRemoteSigner() {
   // 사용자 정의 서명 함수
@@ -427,7 +427,7 @@ async function connectWithRemoteSigner() {
 #### 예제 3: Node.js 백엔드 개인 키
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import * as dotenv from 'dotenv';
 
 dotenv.config();

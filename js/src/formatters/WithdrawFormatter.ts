@@ -4,8 +4,8 @@
  * @module formatters/WithdrawFormatter
  */
 
-import type { WithdrawalSignData } from '../types/models';
-import { keccak256, concatHex } from '../utils/crypto';
+import type { WithdrawalSignData, Intent } from '../types/models';
+import { keccak256 } from '../utils/crypto';
 import {
   validateNonEmptyString,
   validateNonEmptyArray,
@@ -22,20 +22,24 @@ export class WithdrawFormatter {
    * @param allocationIds - Array of allocation IDs to withdraw
    * @param targetChain - Target chain ID
    * @param targetAddress - Target address for receiving funds
-   * @param intent - Intent type ('withdraw', 'transfer', etc.)
+   * @param intent - Intent object (RawTokenIntent or AssetTokenIntent)
    * @returns Withdrawal sign data ready for signing
    */
   static prepareSignData(
     allocationIds: string[],
     targetChain: number,
     targetAddress: string,
-    intent: string
+    intent: Intent
   ): WithdrawalSignData {
     // Validate inputs
     validateNonEmptyArray(allocationIds, 'allocationIds');
     validateChainId(targetChain, 'targetChain');
     validateNonEmptyString(targetAddress, 'targetAddress');
-    validateNonEmptyString(intent, 'intent');
+    
+    // Validate intent object
+    if (!intent || typeof intent !== 'object') {
+      throw new Error('Intent must be a valid object');
+    }
 
     // Validate each allocation ID
     allocationIds.forEach((id, index) => {
@@ -102,17 +106,18 @@ export class WithdrawFormatter {
    * @param allocationIds - Sorted array of allocation IDs
    * @param targetChain - Target chain ID
    * @param targetAddress - Target address
-   * @param intent - Intent type
+   * @param intent - Intent object or string
    * @returns Formatted message string
    */
   private static formatMessage(
     allocationIds: string[],
     targetChain: number,
     targetAddress: string,
-    intent: string
+    intent: Intent | string
   ): string {
     const idsStr = allocationIds.join(',');
-    return `withdraw:${idsStr}:${targetChain}:${targetAddress}:${intent}`;
+    const intentStr = typeof intent === 'string' ? intent : JSON.stringify(intent);
+    return `withdraw:${idsStr}:${targetChain}:${targetAddress}:${intentStr}`;
   }
 
   /**
@@ -153,7 +158,10 @@ export class WithdrawFormatter {
       validateNonEmptyArray(data.allocationIds, 'allocationIds');
       validateChainId(data.targetChain, 'targetChain');
       validateNonEmptyString(data.targetAddress, 'targetAddress');
-      validateNonEmptyString(data.intent, 'intent');
+      // Intent can be an object, validate it exists
+      if (!data.intent) {
+        throw new Error('Intent is required');
+      }
       validateNonEmptyString(data.message, 'message');
       validateNonEmptyString(data.messageHash, 'messageHash');
       validateNonEmptyString(data.nullifier, 'nullifier');
@@ -229,7 +237,7 @@ export class WithdrawFormatter {
     params: Record<string, string>;
   } {
     const parts = intentStr.split(':');
-    const type = parts[0];
+    const type = parts[0] || '';
     const params: Record<string, string> = {};
 
     if (parts.length > 1) {

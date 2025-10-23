@@ -1,6 +1,6 @@
 {
-  "name": "@enclave/sdk",
-  "version": "2.0.0-alpha.1",
+  "name": "@enclave-hq/sdk",
+  "version": "2.0.2",
   "description": "Enclave SDK - Privacy-preserving multi-chain DeFi protocol client library",
   "keywords": [
     "enclave",
@@ -17,36 +17,35 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/enclave-hq/enclave.git",
-    "directory": "sdk/js"
+    "url": "https://github.com/enclave-hq/sdk.git"
   },
-  "homepage": "https://github.com/enclave-hq/enclave/tree/main/sdk/js#readme",
+  "homepage": "https://github.com/enclave-hq/sdk#readme",
   "bugs": {
-    "url": "https://github.com/enclave-hq/enclave/issues"
+    "url": "https://github.com/enclave-hq/sdk/issues"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
     "./react": {
+      "types": "./dist/react.d.ts",
       "import": "./dist/react.mjs",
-      "require": "./dist/react.js",
-      "types": "./dist/react.d.ts"
+      "require": "./dist/react.js"
     },
     "./vue": {
+      "types": "./dist/vue.d.ts",
       "import": "./dist/vue.mjs",
-      "require": "./dist/vue.js",
-      "types": "./dist/vue.d.ts"
+      "require": "./dist/vue.js"
     },
     "./nextjs": {
+      "types": "./dist/nextjs.d.ts",
       "import": "./dist/nextjs.mjs",
-      "require": "./dist/nextjs.js",
-      "types": "./dist/nextjs.d.ts"
+      "require": "./dist/nextjs.js"
     }
   },
   "files": [
@@ -70,6 +69,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@enclave-hq/chain-utils": "^1.0.0",
     "mobx": "^6.12.0",
     "ethers": "^6.10.0",
     "axios": "^1.6.7",
@@ -93,6 +93,8 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.5",
+    "@types/react": "^18.2.48",
+    "@types/vue": "^2.0.0",
     "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^6.19.1",
     "@typescript-eslint/parser": "^6.19.1",
@@ -104,7 +106,8 @@
     "prettier": "^3.2.4",
     "tsup": "^8.0.1",
     "typescript": "^5.3.3",
-    "vitest": "^1.2.1"
+    "vitest": "^1.2.1",
+    "vue": "^3.4.15"
   },
   "optionalDependencies": {
     "ws": "^8.16.0"

@@ -105,7 +105,7 @@ npm install
 ```
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 const client = new EnclaveClient({
   apiUrl: 'https://api.enclave-hq.com',
@@ -157,6 +157,6 @@ We welcome contributions! Please see our [Contributing Guidelines](../CONTRIBUTI
 ---
 
 **Version**: 2.0.0  
-**Last Updated**: 2025-01-17  
-**Status**: Production Ready (JavaScript SDK)
+**Last Updated**: 2025-01-21  
+**Status**: Updated for Backend v2.0 (JavaScript SDK)
 

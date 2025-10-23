@@ -20,7 +20,7 @@ export function formatAmount(
     return formatUnits(amount, decimals);
   } catch (error) {
     throw new ValidationError(
-      `Failed to format amount: ${error.message}`,
+      `Failed to format amount: ${(error as Error).message}`,
       'amount'
     );
   }
@@ -37,7 +37,7 @@ export function parseAmount(amount: string, decimals: number = 18): string {
     return parseUnits(amount, decimals).toString();
   } catch (error) {
     throw new ValidationError(
-      `Failed to parse amount: ${error.message}`,
+      `Failed to parse amount: ${(error as Error).message}`,
       'amount'
     );
   }
@@ -56,7 +56,7 @@ export function addAmounts(a: string | bigint, b: string | bigint): string {
     return (aBig + bBig).toString();
   } catch (error) {
     throw new ValidationError(
-      `Failed to add amounts: ${error.message}`,
+      `Failed to add amounts: ${(error as Error).message}`,
       'amount'
     );
   }
@@ -85,7 +85,7 @@ export function subtractAmounts(
   } catch (error) {
     if (error instanceof ValidationError) throw error;
     throw new ValidationError(
-      `Failed to subtract amounts: ${error.message}`,
+      `Failed to subtract amounts: ${(error as Error).message}`,
       'amount'
     );
   }
@@ -107,7 +107,7 @@ export function multiplyAmount(
     return (amountBig * factorBig).toString();
   } catch (error) {
     throw new ValidationError(
-      `Failed to multiply amount: ${error.message}`,
+      `Failed to multiply amount: ${(error as Error).message}`,
       'amount'
     );
   }
@@ -135,7 +135,7 @@ export function divideAmount(
   } catch (error) {
     if (error instanceof ValidationError) throw error;
     throw new ValidationError(
-      `Failed to divide amount: ${error.message}`,
+      `Failed to divide amount: ${(error as Error).message}`,
       'amount'
     );
   }
@@ -160,7 +160,7 @@ export function compareAmounts(
     return 0;
   } catch (error) {
     throw new ValidationError(
-      `Failed to compare amounts: ${error.message}`,
+      `Failed to compare amounts: ${(error as Error).message}`,
       'amount'
     );
   }
@@ -238,10 +238,17 @@ export function maxAmount(...amounts: (string | bigint)[]): string {
     throw new ValidationError('Cannot get max of empty array', 'amounts');
   }
 
-  let max = typeof amounts[0] === 'string' ? BigInt(amounts[0]) : amounts[0];
+  const first = amounts[0];
+  if (first === undefined) {
+    throw new ValidationError('Cannot get max of empty array', 'amounts');
+  }
+
+  let max = typeof first === 'string' ? BigInt(first) : first;
 
   for (let i = 1; i < amounts.length; i++) {
-    const current = typeof amounts[i] === 'string' ? BigInt(amounts[i]) : amounts[i];
+    const item = amounts[i];
+    if (item === undefined) continue;
+    const current = typeof item === 'string' ? BigInt(item) : item;
     if (current > max) {
       max = current;
     }
@@ -260,10 +267,17 @@ export function minAmount(...amounts: (string | bigint)[]): string {
     throw new ValidationError('Cannot get min of empty array', 'amounts');
   }
 
-  let min = typeof amounts[0] === 'string' ? BigInt(amounts[0]) : amounts[0];
+  const first = amounts[0];
+  if (first === undefined) {
+    throw new ValidationError('Cannot get min of empty array', 'amounts');
+  }
+
+  let min = typeof first === 'string' ? BigInt(first) : first;
 
   for (let i = 1; i < amounts.length; i++) {
-    const current = typeof amounts[i] === 'string' ? BigInt(amounts[i]) : amounts[i];
+    const item = amounts[i];
+    if (item === undefined) continue;
+    const current = typeof item === 'string' ? BigInt(item) : item;
     if (current < min) {
       min = current;
     }

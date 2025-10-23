@@ -30,6 +30,7 @@ export default defineConfig({
     'react-dom',
     'vue',
     'ws',
+    'crypto',
   ],
   
   // 压缩（生产环境）

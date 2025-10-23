@@ -133,7 +133,7 @@ import {
   CheckbookStatus,
   AllocationStatus,
   WithdrawRequestStatus,
-} from '@enclave/sdk';
+} from '@enclave-hq/sdk';
 
 // クライアント作成
 const client = new EnclaveClient({
@@ -370,7 +370,7 @@ Enclave SDKは、秘密鍵を公開せずに複数の署名方法をサポート
 #### 例1: MetaMask署名者を使用
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import { BrowserProvider } from 'ethers';
 
 async function connectWithMetaMask() {
@@ -393,7 +393,7 @@ async function connectWithMetaMask() {
 #### 例2: リモート署名サービスを使用
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 async function connectWithRemoteSigner() {
   // カスタム署名関数
@@ -427,7 +427,7 @@ async function connectWithRemoteSigner() {
 #### 例3: Node.jsバックエンド秘密鍵
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 import * as dotenv from 'dotenv';
 
 dotenv.config();

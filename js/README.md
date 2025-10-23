@@ -18,17 +18,17 @@ Enclave SDK is a modern JavaScript/TypeScript client library for interacting wit
 ## 📦 Installation
 
 ```bash
-npm install @enclave/sdk
+npm install @enclave-hq/sdk
 
 # or
-yarn add @enclave/sdk
-pnpm add @enclave/sdk
+yarn add @enclave-hq/sdk
+pnpm add @enclave-hq/sdk
 ```
 
 ## 🚀 Quick Start
 
 ```typescript
-import { EnclaveClient } from '@enclave/sdk';
+import { EnclaveClient } from '@enclave-hq/sdk';
 
 // Create client
 const client = new EnclaveClient({

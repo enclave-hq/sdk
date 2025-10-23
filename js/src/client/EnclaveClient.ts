@@ -3,7 +3,7 @@
  * @module client/EnclaveClient
  */
 
-import { makeObservable, observable, action, computed, runInAction } from 'mobx';
+import { makeObservable, observable, action, computed } from 'mobx';
 import type {
   EnclaveConfig,
   ConnectionInfo,
@@ -46,10 +46,10 @@ import { CommitmentAction } from '../actions/CommitmentAction';
 import { WithdrawalAction } from '../actions/WithdrawalAction';
 
 // Utils
-import { getLogger, createLogger } from '../utils/logger';
+import { createLogger } from '../utils/logger';
 import type { ILogger } from '../types/config';
 import { ConfigError, AuthError } from '../utils/errors';
-import { validateRequired, validateUrl, validateNonEmptyString } from '../utils/validation';
+import { validateRequired, validateUrl } from '../utils/validation';
 
 /**
  * Main Enclave SDK client
@@ -57,7 +57,7 @@ import { validateRequired, validateUrl, validateNonEmptyString } from '../utils/
  */
 export class EnclaveClient {
   // Configuration
-  private readonly config: Required<Omit<EnclaveConfig, 'address' | 'authToken' | 'headers'>>;
+  private readonly config: Required<Omit<EnclaveConfig, 'address' | 'authToken' | 'headers' | 'storageAdapter' | 'wsAdapter'>>;
   private readonly logger: ILogger;
 
   // Core components
@@ -274,19 +274,25 @@ export class EnclaveClient {
     this.logger.info('Authenticating...');
 
     try {
-      // Get auth message from backend
+      // Get nonce from backend
       const address = await this.walletManager.getAddressString();
-      const message = await this.authAPI.getAuthMessage(address);
+      const { nonce } = await this.authAPI.getNonce(address);
+      
+      // Create auth message
+      const message = `Sign this message to authenticate with Enclave.\nNonce: ${nonce}`;
 
       // Sign message
       const signature = await this.walletManager.signAuthMessage(message);
+
+      // Get chain ID from wallet
+      const chainId = this.walletManager.getDefaultChainId();
 
       // Authenticate
       const authResponse = await this.authAPI.authenticate({
         address: this.userAddress!,
         signature,
         message,
-        timestamp: Date.now(),
+        chainId,
       });
 
       this.authenticated = true;
