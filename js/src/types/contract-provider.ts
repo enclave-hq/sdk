@@ -96,3 +96,4 @@ export interface IContractProvider {
   isConnected(): boolean;
 }
 
+

@@ -15,6 +15,8 @@ import type {
   PaginatedResponse,
   UserStats,
   TokenStats,
+  Metric,
+  MetricsMap,
 } from './models';
 
 // ============ Common API Types ============
@@ -486,5 +488,71 @@ export interface HealthCheckResponse {
   version?: string;
   /** Additional health info */
   details?: Record<string, any>;
+}
+
+// ============ Metrics API ============
+
+/**
+ * Pool metrics response
+ */
+export interface PoolMetricsResponse {
+  /** Pool ID */
+  pool_id: number;
+  /** Metrics map (metric_type -> metric) */
+  metrics: MetricsMap;
+}
+
+/**
+ * Token metrics response
+ */
+export interface TokenMetricsResponse {
+  /** Asset Token ID */
+  asset_id: string;
+  /** Metrics map (metric_type -> metric) */
+  metrics: MetricsMap;
+}
+
+/**
+ * Metrics history data point
+ */
+export interface MetricsDataPoint {
+  /** Timestamp (ISO 8601) */
+  timestamp: string;
+  /** Metric value */
+  value: string;
+}
+
+/**
+ * Metrics history response
+ */
+export interface MetricsHistoryResponse {
+  /** Pool ID (if pool metrics) */
+  pool_id?: number;
+  /** Asset ID (if token metrics) */
+  asset_id?: string;
+  /** Metric type */
+  metric_type: string;
+  /** Metric display name */
+  metric_name: string;
+  /** Unit */
+  unit: string;
+  /** Time-series data points */
+  data: MetricsDataPoint[];
+}
+
+/**
+ * Batch pool metrics response
+ */
+export interface BatchPoolMetricsResponse {
+  /** Map of pool ID to metrics */
+  metrics: Record<number, MetricsMap>;
+}
+
+/**
+ * Batch token metrics response
+ */
+export interface BatchTokenMetricsResponse {
+  /** Map of asset ID to metrics */
+  metrics: Record<string, MetricsMap>;
 }
 

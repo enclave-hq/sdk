@@ -8,6 +8,7 @@ import { BaseStore } from './BaseStore';
 import type { WithdrawRequest, WithdrawRequestStatus } from '../types/models';
 import type { WithdrawalsAPI } from '../api/WithdrawalsAPI';
 import type { ILogger } from '../types/config';
+import { mapToFrontendStatus } from '../utils/withdraw-status';
 
 /**
  * Withdrawals store configuration
@@ -48,31 +49,42 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   }
 
   /**
-   * Get pending withdrawal requests
+   * Get pending withdrawal requests (in progress)
    */
   @computed get pending(): WithdrawRequest[] {
-    return this.filter((w) => w.status === 'pending');
+    return this.filter((w) => 
+      w.frontendStatus === 'proving' ||
+      w.frontendStatus === 'submitting' ||
+      w.frontendStatus === 'pending' ||
+      w.frontendStatus === 'processing'
+    );
   }
 
   /**
    * Get completed withdrawal requests
    */
   @computed get completed(): WithdrawRequest[] {
-    return this.filter((w) => w.status === 'completed');
+    return this.filter((w) => w.frontendStatus === 'completed');
   }
 
   /**
    * Get failed withdrawal requests
    */
   @computed get failed(): WithdrawRequest[] {
-    return this.filter((w) => w.status === 'failed');
+    return this.filter((w) => 
+      w.frontendStatus === 'failed' ||
+      w.frontendStatus === 'failed_permanent'
+    );
   }
 
   /**
    * Get withdrawal requests by token ID
+   * Note: Token info should be derived from intent or queried separately
+   * @deprecated Use intent-based filtering instead
    */
-  getByTokenId(tokenId: string): WithdrawRequest[] {
-    return this.filter((w) => w.token.id === tokenId);
+  getByTokenId(_tokenId: string): WithdrawRequest[] {
+    // TODO: Implement token filtering based on intent
+    return [];
   }
 
   /**
@@ -92,16 +104,16 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * @returns Array of withdrawal requests
    */
   getByTargetChain(targetChain: number): WithdrawRequest[] {
-    return this.filter((w) => w.targetChain === targetChain);
+    return this.filter((w) => w.beneficiary.chainId === targetChain);
   }
 
   /**
-   * Get withdrawal request by nullifier
-   * @param nullifier - Nullifier hash
+   * Get withdrawal request by on-chain request ID (first nullifier)
+   * @param requestId - On-chain request ID
    * @returns Withdrawal request or undefined
    */
-  getByNullifier(nullifier: string): WithdrawRequest | undefined {
-    return this.find((w) => w.nullifier === nullifier);
+  getByOnChainRequestId(requestId: string): WithdrawRequest | undefined {
+    return this.find((w) => w.onChainRequestId === requestId);
   }
 
   /**
@@ -119,8 +131,13 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   }): Promise<WithdrawRequest[]> {
     return this.executeAction(async () => {
       const response = await this.api.listWithdrawRequests(filters);
-      this.updateItems(response.data, (w) => w.id);
-      return response.data;
+      // Compute frontend status for each item
+      const items = response.data.map(w => ({
+        ...w,
+        frontendStatus: mapToFrontendStatus(w.status),
+      }));
+      this.updateItems(items, (w) => w.id);
+      return items;
     }, 'Failed to fetch withdrawal requests list');
   }
 
@@ -132,6 +149,7 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   async fetchById(id: string): Promise<WithdrawRequest> {
     return this.executeAction(async () => {
       const withdrawal = await this.api.getWithdrawRequestById({ id });
+      withdrawal.frontendStatus = mapToFrontendStatus(withdrawal.status);
       this.set(withdrawal.id, withdrawal);
       return withdrawal;
     }, 'Failed to fetch withdrawal request by ID');
@@ -145,6 +163,7 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   async fetchByNullifier(nullifier: string): Promise<WithdrawRequest> {
     return this.executeAction(async () => {
       const withdrawal = await this.api.getWithdrawRequestByNullifier({ nullifier });
+      withdrawal.frontendStatus = mapToFrontendStatus(withdrawal.status);
       this.set(withdrawal.id, withdrawal);
       return withdrawal;
     }, 'Failed to fetch withdrawal request by nullifier');
@@ -168,6 +187,7 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   }): Promise<WithdrawRequest> {
     return this.executeAction(async () => {
       const withdrawal = await this.api.createWithdrawRequest(params);
+      withdrawal.frontendStatus = mapToFrontendStatus(withdrawal.status);
       this.set(withdrawal.id, withdrawal);
       this.logger.info(`Created withdrawal request: ${withdrawal.id}`);
       return withdrawal;
@@ -182,6 +202,7 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   async retry(id: string): Promise<WithdrawRequest> {
     return this.executeAction(async () => {
       const withdrawal = await this.api.retryWithdrawRequest({ id });
+      withdrawal.frontendStatus = mapToFrontendStatus(withdrawal.status);
       this.set(withdrawal.id, withdrawal);
       this.logger.info(`Retrying withdrawal request: ${id}`);
       return withdrawal;
@@ -196,6 +217,7 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   async cancel(id: string): Promise<WithdrawRequest> {
     return this.executeAction(async () => {
       const withdrawal = await this.api.cancelWithdrawRequest({ id });
+      withdrawal.frontendStatus = mapToFrontendStatus(withdrawal.status);
       this.set(withdrawal.id, withdrawal);
       this.logger.info(`Cancelled withdrawal request: ${id}`);
       return withdrawal;
@@ -219,6 +241,8 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * @param withdrawal - Updated withdrawal request data
    */
   updateWithdrawal(withdrawal: WithdrawRequest): void {
+    // Compute frontend status
+    withdrawal.frontendStatus = mapToFrontendStatus(withdrawal.status);
     this.set(withdrawal.id, withdrawal);
     this.logger.debug(`Updated withdrawal request: ${withdrawal.id}`);
   }
@@ -228,7 +252,12 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * @param withdrawals - Array of withdrawal requests
    */
   updateWithdrawals(withdrawals: WithdrawRequest[]): void {
-    this.updateItems(withdrawals, (w) => w.id);
+    // Compute frontend status for each
+    const items = withdrawals.map(w => ({
+      ...w,
+      frontendStatus: mapToFrontendStatus(w.status),
+    }));
+    this.updateItems(items, (w) => w.id);
     this.logger.debug(`Updated ${withdrawals.length} withdrawal requests`);
   }
 
@@ -257,21 +286,21 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   }
 
   /**
-   * Get total amount by token
+   * Get total amount by chain
    * @param status - Optional status filter
    */
-  getTotalByToken(status?: WithdrawRequestStatus): Map<string, string> {
+  getTotalByChain(status?: WithdrawRequestStatus): Map<number, string> {
     const withdrawals = status ? this.filter((w) => w.status === status) : this.all;
-    const totals = new Map<string, bigint>();
+    const totals = new Map<number, bigint>();
 
     withdrawals.forEach((withdrawal) => {
-      const tokenId = withdrawal.token.id;
-      const current = totals.get(tokenId) || 0n;
-      totals.set(tokenId, current + BigInt(withdrawal.amount));
+      const chainId = withdrawal.beneficiary.chainId;
+      const current = totals.get(chainId) || 0n;
+      totals.set(chainId, current + BigInt(withdrawal.amount));
     });
 
     // Convert to string map
-    const result = new Map<string, string>();
+    const result = new Map<number, string>();
     totals.forEach((value, key) => {
       result.set(key, value.toString());
     });
@@ -280,13 +309,13 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   }
 
   /**
-   * Get withdrawal requests grouped by target chain
+   * Get withdrawal requests grouped by owner chain
    */
-  @computed get byTargetChain(): Map<number, WithdrawRequest[]> {
+  @computed get byOwnerChain(): Map<number, WithdrawRequest[]> {
     const grouped = new Map<number, WithdrawRequest[]>();
     
     this.all.forEach((withdrawal) => {
-      const chainId = withdrawal.targetChain;
+      const chainId = withdrawal.owner.chainId;
       if (!grouped.has(chainId)) {
         grouped.set(chainId, []);
       }
@@ -297,17 +326,17 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   }
 
   /**
-   * Get withdrawal requests grouped by token
+   * Get withdrawal requests grouped by beneficiary chain
    */
-  @computed get byToken(): Map<string, WithdrawRequest[]> {
-    const grouped = new Map<string, WithdrawRequest[]>();
+  @computed get byBeneficiaryChain(): Map<number, WithdrawRequest[]> {
+    const grouped = new Map<number, WithdrawRequest[]>();
     
     this.all.forEach((withdrawal) => {
-      const tokenId = withdrawal.token.id;
-      if (!grouped.has(tokenId)) {
-        grouped.set(tokenId, []);
+      const chainId = withdrawal.beneficiary.chainId;
+      if (!grouped.has(chainId)) {
+        grouped.set(chainId, []);
       }
-      grouped.get(tokenId)!.push(withdrawal);
+      grouped.get(chainId)!.push(withdrawal);
     });
 
     return grouped;

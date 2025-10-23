@@ -30,3 +30,6 @@ export * from './environment';
 // Chain utilities and SLIP-44 support
 export * from './chain';
 
+// Withdraw status utilities
+export * from './withdraw-status';
+

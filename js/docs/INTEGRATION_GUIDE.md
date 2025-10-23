@@ -465,3 +465,4 @@ walletManager.on('chainChanged', async (chainId) => {
 - SDK handles **business logic** and **backend communication**
 - Contract Provider **bridges** the two
 
+

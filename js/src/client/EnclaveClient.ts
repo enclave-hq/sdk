@@ -26,6 +26,7 @@ import { AllocationsAPI } from '../api/AllocationsAPI';
 import { WithdrawalsAPI } from '../api/WithdrawalsAPI';
 import { PoolsAPI } from '../api/PoolsAPI';
 import { PricesAPI } from '../api/PricesAPI';
+import { MetricsAPI } from '../api/MetricsAPI';
 
 // Stores
 import { CheckbooksStore } from '../stores/CheckbooksStore';
@@ -72,6 +73,7 @@ export class EnclaveClient {
   private readonly withdrawalsAPI: WithdrawalsAPI;
   private readonly poolsAPI: PoolsAPI;
   private readonly pricesAPI: PricesAPI;
+  private readonly metricsAPI: MetricsAPI;
 
   // Stores
   public readonly stores: {
@@ -142,6 +144,7 @@ export class EnclaveClient {
     this.withdrawalsAPI = new WithdrawalsAPI(this.apiClient);
     this.poolsAPI = new PoolsAPI(this.apiClient);
     this.pricesAPI = new PricesAPI(this.apiClient);
+    this.metricsAPI = new MetricsAPI(this.apiClient);
 
     // Initialize wallet manager
     this.walletManager = new WalletManager({

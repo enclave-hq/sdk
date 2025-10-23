@@ -10,5 +10,6 @@ export * from './AllocationsAPI';
 export * from './WithdrawalsAPI';
 export * from './PoolsAPI';
 export * from './PricesAPI';
+export * from './MetricsAPI';
 export * from './KMSAPI';
 

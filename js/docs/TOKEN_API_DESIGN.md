@@ -880,3 +880,4 @@ await client.contracts.read({
 - **业务功能**：使用 `client.deposit()` 等高层 API
 - **特殊需求**：使用 `client.contracts.*` 或直接使用 `walletManager`
 
+

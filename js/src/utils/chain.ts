@@ -151,3 +151,4 @@ export function getAllSupportedChains(): SDKChainInfo[] {
     .filter((info): info is SDKChainInfo => info !== null);
 }
 
+

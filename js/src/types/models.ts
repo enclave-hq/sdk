@@ -3,6 +3,37 @@
  * @module types/models
  */
 
+// ============ Metrics ============
+
+/**
+ * Single metric value
+ * Used for dynamic metrics like APY, TVL, Yield, Price Changes, etc.
+ */
+export interface Metric {
+  /** Display name (e.g., "年化收益率", "APY", "24h 涨跌幅") */
+  name: string;
+  /** Metric value (as string for precision) */
+  value: string;
+  /** Unit (e.g., "%", "USD", "ETH") */
+  unit: string;
+  /** When this metric was recorded (ISO 8601 timestamp) */
+  recorded_at?: string;
+  /** Data source (e.g., "api", "contract", "oracle", "manual") */
+  source?: string;
+}
+
+/**
+ * Map of metric types to metric values
+ * @example
+ * ```typescript
+ * const metrics: MetricsMap = {
+ *   apy: { name: "年化收益率", value: "4.25", unit: "%" },
+ *   tvl: { name: "总锁仓价值", value: "1250000000", unit: "USD" }
+ * };
+ * ```
+ */
+export type MetricsMap = Record<string, Metric>;
+
 // ============ Status Enums ============
 
 /**
@@ -38,15 +69,98 @@ export enum AllocationStatus {
 }
 
 /**
- * WithdrawRequest status enumeration
- * Two-stage architecture: Stage 1 (on-chain request), Stage 2 (cross-chain conversion)
+ * WithdrawRequest Backend Status - Complete 18-state system
+ * Four-stage architecture: Proof Generation → On-chain Verification → Payout Execution → Hook Purchase
  */
 export enum WithdrawRequestStatus {
-  /** On-chain withdrawal request is pending */
-  Pending = 'pending',
-  /** Stage 1 completed (on-chain request done), Stage 2 may be in progress for cross-chain */
+  // Stage 1: Proof Generation
+  Created = 'created',
+  Proving = 'proving',
+  ProofFailed = 'proof_failed',
+  ProofGenerated = 'proof_generated',
+  
+  // Stage 2: On-chain Verification
+  Submitting = 'submitting',
+  SubmitFailed = 'submit_failed',        // RPC/Network error - Can retry
+  VerifyFailed = 'verify_failed',        // Proof invalid/Nullifier used - Cannot retry, must cancel
+  Submitted = 'submitted',
+  ExecuteConfirmed = 'execute_confirmed',
+  
+  // Stage 3: Intent Execution (Payout)
+  WaitingForPayout = 'waiting_for_payout',
+  PayoutProcessing = 'payout_processing',
+  PayoutFailed = 'payout_failed',
+  PayoutCompleted = 'payout_completed',
+  
+  // Stage 4: Hook Purchase (Optional)
+  HookProcessing = 'hook_processing',
+  HookFailed = 'hook_failed',
+  
+  // Terminal States
   Completed = 'completed',
-  /** Withdrawal request failed */
+  CompletedWithHookFailed = 'completed_with_hook_failed',
+  FailedPermanent = 'failed_permanent',
+  Cancelled = 'cancelled',
+}
+
+/**
+ * WithdrawRequest Frontend Status - Simplified 7-state system for UI
+ */
+export enum WithdrawRequestFrontendStatus {
+  /** Generating proof */
+  Proving = 'proving',
+  /** Submitting to blockchain */
+  Submitting = 'submitting',
+  /** Waiting for on-chain confirmation */
+  Pending = 'pending',
+  /** Processing payout/hook */
+  Processing = 'processing',
+  /** Successfully completed */
+  Completed = 'completed',
+  /** Failed (can retry or cancel) */
+  Failed = 'failed',
+  /** Permanently failed (cannot retry) */
+  FailedPermanent = 'failed_permanent',
+}
+
+/**
+ * Proof generation sub-status
+ */
+export enum ProofStatus {
+  Pending = 'pending',
+  InProgress = 'in_progress',
+  Completed = 'completed',
+  Failed = 'failed',
+}
+
+/**
+ * On-chain execution sub-status
+ */
+export enum ExecuteStatus {
+  Pending = 'pending',
+  Submitted = 'submitted',
+  Success = 'success',
+  SubmitFailed = 'submit_failed',    // Can retry
+  VerifyFailed = 'verify_failed',    // Cannot retry
+}
+
+/**
+ * Payout execution sub-status
+ */
+export enum PayoutStatus {
+  Pending = 'pending',
+  Processing = 'processing',
+  Completed = 'completed',
+  Failed = 'failed',
+}
+
+/**
+ * Hook purchase sub-status
+ */
+export enum HookStatus {
+  NotRequired = 'not_required',
+  Processing = 'processing',
+  Completed = 'completed',
   Failed = 'failed',
 }
 
@@ -125,6 +239,8 @@ export interface Token {
   iconUrl?: string;
   /** Is token active */
   isActive: boolean;
+  /** Dynamic metrics (Yield, Price Change, etc.) */
+  metrics?: MetricsMap;
 }
 
 /**
@@ -145,6 +261,8 @@ export interface Pool {
   apy?: number;
   /** Is pool active */
   isActive: boolean;
+  /** Dynamic metrics (APY, TVL, Volume, etc.) */
+  metrics?: MetricsMap;
 }
 
 // ============ Token Price ============
@@ -248,49 +366,77 @@ export interface Allocation {
 // ============ WithdrawRequest ============
 
 /**
- * WithdrawRequest represents a withdrawal request that can include multiple allocations
- * Previously called "Withdraw" - renamed to clarify it's a request with two-stage process
- * Stage 1: On-chain withdrawal request (pending -> completed/failed)
- * Stage 2: Cross-chain conversion (handled by separate service)
+ * WithdrawRequest represents a withdrawal request with four-stage process
+ * Stage 1: Proof Generation → Stage 2: On-chain Verification → Stage 3: Payout → Stage 4: Hook (optional)
  */
 export interface WithdrawRequest {
   /** Unique withdraw request ID */
   id: string;
+  
+  // ============ Main Status ============
+  /** Backend status (18 states) */
+  status: WithdrawRequestStatus;
+  /** Frontend display status (7 states, computed from backend status) */
+  frontendStatus: WithdrawRequestFrontendStatus;
+  
+  // ============ Stage 1: Proof Generation ============
+  proofStatus: ProofStatus;
+  proof?: string;
+  publicValues?: string;
+  commitmentRoot?: string;
+  proofGeneratedAt?: number;
+  
+  // ============ Stage 2: On-chain Verification ============
+  executeStatus: ExecuteStatus;
+  executeTxHash?: string;
+  executeBlockNumber?: number;
+  executeConfirmedAt?: number;
+  
+  // ============ Stage 3: Intent Execution (Payout) ============
+  payoutStatus: PayoutStatus;
+  payoutTxHash?: string;
+  payoutMethod?: 'direct' | 'lifi' | 'adapter';
+  payoutCompletedAt?: number;
+  
+  // ============ Stage 4: Hook Purchase (Optional) ============
+  hookStatus: HookStatus;
+  hookTxHash?: string;
+  hookCompletedAt?: number;
+  
+  // ============ Retry Mechanism ============
+  proofRetryCount: number;
+  executeRetryCount: number;
+  payoutRetryCount: number;
+  hookRetryCount: number;
+  maxRetries: number;
+  lastRetryAt?: number;
+  nextRetryAfter?: number;
+  
+  // ============ Related Data ============
+  /** On-chain request ID (first nullifier) */
+  onChainRequestId?: string;
+  
+  /** Intent information */
+  intent: Intent;
+  
+  /** Beneficiary address */
+  beneficiary: UniversalAddress;
+  
   /** Owner's universal address */
   owner: UniversalAddress;
-  /** Target chain for withdrawal */
-  targetChain: number;
-  /** Target address for receiving funds */
-  targetAddress: string;
-  /** Associated token */
-  token: Token;
-  /** Total withdrawal amount (sum of all allocations) */
+  
+  /** Total withdrawal amount */
   amount: string;
-  /** Withdraw request status (two-stage) */
-  status: WithdrawRequestStatus;
-  /** Intent type ('withdraw', 'transfer', etc.) */
-  intent: string;
+  
   /** Array of allocation IDs included in this request */
   allocationIds: string[];
-  /** Root hash for the merkle tree of allocations */
-  root?: string;
-  /** Nullifier hash for this withdraw request */
-  nullifier?: string;
-  /** ZK proof for this withdrawal */
-  proof?: string;
-  /** On-chain transaction hash (Stage 1) */
-  txHash?: string;
-  /** Transaction block number */
-  blockNumber?: number;
-  /** Cross-chain conversion status (Stage 2, optional) */
-  conversionStatus?: 'pending' | 'completed' | 'failed';
-  /** Error message if failed */
-  errorMessage?: string;
+  
+  // ============ Timestamps ============
   /** Request creation timestamp */
   createdAt: number;
   /** Last update timestamp */
   updatedAt: number;
-  /** Stage 1 completion timestamp */
+  /** Completion timestamp */
   completedAt?: number;
 }
 
