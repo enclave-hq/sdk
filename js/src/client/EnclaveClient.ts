@@ -27,6 +27,8 @@ import { WithdrawalsAPI } from '../api/WithdrawalsAPI';
 import { PoolsAPI } from '../api/PoolsAPI';
 import { PricesAPI } from '../api/PricesAPI';
 import { MetricsAPI } from '../api/MetricsAPI';
+import { QuoteAPI } from '../api/QuoteAPI';
+import { ChainConfigAPI } from '../api/ChainConfigAPI';
 
 // Stores
 import { CheckbooksStore } from '../stores/CheckbooksStore';
@@ -74,6 +76,8 @@ export class EnclaveClient {
   private readonly poolsAPI: PoolsAPI;
   private readonly pricesAPI: PricesAPI;
   private readonly metricsAPI: MetricsAPI;
+  private readonly quoteAPI: QuoteAPI;
+  private readonly chainConfigAPI: ChainConfigAPI;
 
   // Stores
   public readonly stores: {
@@ -145,6 +149,8 @@ export class EnclaveClient {
     this.poolsAPI = new PoolsAPI(this.apiClient);
     this.pricesAPI = new PricesAPI(this.apiClient);
     this.metricsAPI = new MetricsAPI(this.apiClient);
+    this.quoteAPI = new QuoteAPI(this.apiClient);
+    this.chainConfigAPI = new ChainConfigAPI(this.apiClient);
 
     // Initialize wallet manager
     this.walletManager = new WalletManager({
@@ -573,6 +579,33 @@ export class EnclaveClient {
    */
   async cancelWithdraw(withdrawalId: string): Promise<WithdrawRequest> {
     return this.withdrawalAction.cancelWithdraw(withdrawalId);
+  }
+
+  /**
+   * Get Quote API for route and asset queries
+   */
+  get quote(): QuoteAPI {
+    return this.quoteAPI;
+  }
+
+  /**
+   * Get Metrics API for metrics queries
+   */
+  get metrics(): MetricsAPI {
+    return this.metricsAPI;
+  }
+
+  /**
+   * Get Chain Config API for querying chain configurations and contract addresses
+   * Use this to get Treasury addresses, RPC endpoints, and other chain-specific configuration
+   * @example
+   * ```typescript
+   * const treasuryAddress = await client.chainConfig.getTreasuryAddress(195); // TRON
+   * const config = await client.chainConfig.getChainConfig(714); // BSC
+   * ```
+   */
+  get chainConfig(): ChainConfigAPI {
+    return this.chainConfigAPI;
   }
 }
 
