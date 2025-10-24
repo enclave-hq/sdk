@@ -15,7 +15,6 @@ import type {
   PaginatedResponse,
   UserStats,
   TokenStats,
-  Metric,
   MetricsMap,
 } from './models';
 
@@ -554,5 +553,183 @@ export interface BatchPoolMetricsResponse {
 export interface BatchTokenMetricsResponse {
   /** Map of asset ID to metrics */
   metrics: Record<string, MetricsMap>;
+}
+
+// ============ Quote & Preview API ============
+
+/**
+ * Route and fees query request
+ */
+export interface RouteAndFeesRequest {
+  /** Owner data (source chain and address) */
+  ownerData: UniversalAddress;
+  /** Deposit token address */
+  depositToken: string;
+  /** Withdrawal intent */
+  intent: {
+    type: 'RawToken' | 'AssetToken';
+    beneficiary: UniversalAddress;
+    tokenContract?: string;  // For RawToken
+    assetId?: string;        // For AssetToken
+  };
+  /** Amount to withdraw */
+  amount: string;
+  /** Include Hook execution cost */
+  includeHook: boolean;
+}
+
+/**
+ * Route step information
+ */
+export interface RouteStep {
+  step: number;
+  chain: string;
+  action: string;
+  estimatedTime: string;
+}
+
+/**
+ * Gas fee information
+ */
+export interface GasFee {
+  chain: string;
+  estimatedGas: string;
+  currentGasPrice: string;
+  gasCostInNative: string;
+  gasCostInUSD: string;
+  recommendation?: string;
+}
+
+/**
+ * Bridge fee information
+ */
+export interface BridgeFee {
+  bridgeName: string;
+  feeType: string;
+  feeInSourceToken: string;
+  feeInUSD: string;
+  slippage: string;
+  minReceived: string;
+}
+
+/**
+ * Fee summary
+ */
+export interface FeeSummary {
+  totalGasCostUSD: string;
+  totalBridgeFeeUSD: string;
+  totalCostUSD: string;
+  estimatedReceived: string;
+}
+
+/**
+ * Route and fees response
+ */
+export interface RouteQuoteResponse {
+  route: {
+    bridge: string;
+    bridgeProtocol: string;
+    estimatedTime: string;
+    steps: RouteStep[];
+  };
+  fees: {
+    proofGeneration: GasFee;
+    executeWithdraw: GasFee;
+    bridge: BridgeFee;
+    hookExecution?: GasFee;
+    summary: FeeSummary;
+  };
+  timeline: {
+    total: string;
+    breakdown: Array<{
+      stage: string;
+      time: string;
+    }>;
+  };
+  warnings: string[];
+  meta: {
+    quoteId: string;
+    validUntil: string;
+    timestamp: string;
+  };
+}
+
+/**
+ * Hook asset query request
+ */
+export interface HookAssetRequest {
+  chain: number;
+  protocol: 'aave' | 'compound' | 'yearn' | 'lido';
+  baseToken: string;
+  amount: string;
+}
+
+/**
+ * Hook asset response
+ */
+export interface HookAssetResponse {
+  asset: {
+    protocol: string;
+    baseToken: string;
+    yieldToken: string;
+    tokenAddress: string;
+    yield: {
+      currentAPY: string;
+      apy7d: string;
+      apy30d: string;
+      source: string;
+      lastUpdated: string;
+    };
+    price: {
+      baseTokenPrice: string;
+      yieldTokenPrice: string;
+      exchangeRate: string;
+      priceImpact: string;
+    };
+    fees: {
+      depositFee: string;
+      withdrawalFee: string;
+      performanceFee: string;
+      estimatedFees: {
+        inputAmount: string;
+        fees: string;
+        netReceived: string;
+      };
+    };
+    conversion: {
+      input: {
+        token: string;
+        amount: string;
+      };
+      output: {
+        token: string;
+        expectedAmount: string;
+        minAmount: string;
+        valueInUSD: string;
+      };
+    };
+    protocolHealth: {
+      status: 'healthy' | 'warning' | 'critical';
+      tvl: string;
+      utilizationRate: string;
+      available: string;
+    };
+    risks: Array<{
+      type: string;
+      level: string;
+      description: string;
+    }>;
+  };
+  alternatives?: Array<{
+    protocol: string;
+    yieldToken: string;
+    currentAPY: string;
+    reason: string;
+  }>;
+  meta: {
+    dataSource: string;
+    lastUpdated: string;
+    cacheValidUntil: string;
+  };
 }
 

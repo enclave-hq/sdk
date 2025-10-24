@@ -89,7 +89,7 @@ export class MetricsAPI {
   ): Promise<MetricsHistoryResponse> {
     return this.client.get<MetricsHistoryResponse>(
       `/pools/${poolId}/metrics/history`,
-      { metric_type: metricType, days: days.toString() }
+      { params: { metric_type: metricType, days: days.toString() } }
     );
   }
 
@@ -108,7 +108,7 @@ export class MetricsAPI {
   ): Promise<MetricsHistoryResponse> {
     return this.client.get<MetricsHistoryResponse>(
       `/tokens/${assetId}/metrics/history`,
-      { metric_type: metricType, days: days.toString() }
+      { params: { metric_type: metricType, days: days.toString() } }
     );
   }
 
