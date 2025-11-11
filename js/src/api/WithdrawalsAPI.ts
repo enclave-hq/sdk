@@ -24,7 +24,6 @@ import {
   validateNonEmptyString,
   validateNonEmptyArray,
   validatePagination,
-  validateSignature,
   validateChainId,
 } from '../utils/validation';
 
@@ -56,8 +55,9 @@ export class WithdrawalsAPI {
       validateChainId(request.targetChain, 'targetChain');
     }
 
+    // Unified API endpoint
     const response = await this.client.get<ListWithdrawRequestsResponse>(
-      '/api/withdrawals',
+      '/api/my/withdraw-requests',
       {
         params: {
           owner: request.owner,
@@ -65,7 +65,7 @@ export class WithdrawalsAPI {
           tokenId: request.tokenId,
           targetChain: request.targetChain,
           page: request.page || 1,
-          limit: request.limit || 20,
+          page_size: request.limit || 20,
         },
       }
     );
@@ -83,8 +83,9 @@ export class WithdrawalsAPI {
   ): Promise<WithdrawRequestDetail> {
     validateNonEmptyString(request.id, 'id');
 
+    // Unified API endpoint
     const response = await this.client.get<GetWithdrawRequestResponse>(
-      `/api/withdrawals/${request.id}`
+      `/api/my/withdraw-requests/${request.id}`
     );
 
     return response.withdrawRequest;
@@ -100,8 +101,9 @@ export class WithdrawalsAPI {
   ): Promise<WithdrawRequestDetail> {
     validateNonEmptyString(request.nullifier, 'nullifier');
 
+    // Unified API endpoint
     const response = await this.client.get<GetWithdrawRequestResponse>(
-      `/api/withdrawals/nullifier/${request.nullifier}`
+      `/api/my/withdraw-requests/by-nullifier/${request.nullifier}`
     );
 
     return response.withdrawRequest;
@@ -116,20 +118,22 @@ export class WithdrawalsAPI {
     request: CreateWithdrawRequestRequest
   ): Promise<WithdrawRequestDetail> {
     // Validate request
+    validateNonEmptyString(request.checkbookId, 'checkbookId');
     validateNonEmptyArray(request.allocationIds, 'allocationIds');
-    validateChainId(request.targetChain, 'targetChain');
-    validateNonEmptyString(request.targetAddress, 'targetAddress');
-    validateNonEmptyString(request.intent, 'intent');
-    validateNonEmptyString(request.message, 'message');
-    validateSignature(request.signature, 'signature');
-    validateNonEmptyString(request.nullifier, 'nullifier');
+    
+    // Validate intent
+    if (!request.intent) {
+      throw new Error('intent is required');
+    }
+    validateChainId(request.intent.beneficiaryChainId, 'intent.beneficiaryChainId');
+    validateNonEmptyString(request.intent.beneficiaryAddress, 'intent.beneficiaryAddress');
 
+    // Unified API endpoint
     const response = await this.client.post<CreateWithdrawRequestResponse>(
-      '/api/withdrawals',
+      '/api/withdraws/submit',
       {
-        allocationIds: request.allocationIds,
-        targetChain: request.targetChain,
-        targetAddress: request.targetAddress,
+        checkbook_id: request.checkbookId,
+        allocations: request.allocationIds,
         intent: request.intent,
         signature: request.signature,
         message: request.message,
@@ -139,11 +143,25 @@ export class WithdrawalsAPI {
       }
     );
 
-    return response.withdrawRequest;
+    // Backend v2 returns { success: true, data: { id, status, ... } }
+    // We need to fetch the full withdraw request detail
+    if (response.data?.id) {
+      const fullRequest = await this.getWithdrawRequestById({ id: response.data.id });
+      return fullRequest;
+    }
+
+    // Fallback to legacy format if available
+    if (response.withdrawRequest) {
+      return response.withdrawRequest;
+    }
+
+    throw new Error('Failed to create withdraw request: invalid response format');
   }
 
   /**
    * Retry failed withdrawal request
+   * Note: According to simplified design, Payout/Hook/Fallback failures are not retried automatically.
+   * This API will return an error if the request is in a state that cannot be retried.
    * @param request - Retry request with withdrawal ID
    * @returns Updated withdrawal request
    */
@@ -152,8 +170,9 @@ export class WithdrawalsAPI {
   ): Promise<WithdrawRequest> {
     validateNonEmptyString(request.id, 'id');
 
+    // Unified API endpoint
     const response = await this.client.post<RetryWithdrawRequestResponse>(
-      `/api/withdrawals/${request.id}/retry`
+      `/api/my/withdraw-requests/${request.id}/retry`
     );
 
     return response.withdrawRequest;
@@ -161,6 +180,7 @@ export class WithdrawalsAPI {
 
   /**
    * Cancel pending withdrawal request
+   * Note: Only cancellable during Stage 1 (proof phase)
    * @param request - Cancel request with withdrawal ID
    * @returns Cancelled withdrawal request
    */
@@ -169,11 +189,16 @@ export class WithdrawalsAPI {
   ): Promise<WithdrawRequest> {
     validateNonEmptyString(request.id, 'id');
 
-    const response = await this.client.post<CancelWithdrawRequestResponse>(
-      `/api/withdrawals/${request.id}/cancel`
+    // Unified API endpoint
+    const response = await this.client.delete<CancelWithdrawRequestResponse>(
+      `/api/my/withdraw-requests/${request.id}`
     );
 
-    return response.withdrawRequest;
+    if (!response.withdrawRequest && !response.data) {
+      throw new Error('Invalid response: missing withdraw request data');
+    }
+
+    return response.withdrawRequest || response.data!;
   }
 
   /**

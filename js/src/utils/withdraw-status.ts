@@ -43,6 +43,7 @@ export function mapToFrontendStatus(
     [WithdrawRequestStatus.Completed]: WithdrawRequestFrontendStatus.Completed,
     [WithdrawRequestStatus.CompletedWithHookFailed]: WithdrawRequestFrontendStatus.Completed,
     [WithdrawRequestStatus.FailedPermanent]: WithdrawRequestFrontendStatus.FailedPermanent,
+    [WithdrawRequestStatus.ManuallyResolved]: WithdrawRequestFrontendStatus.Completed, // ⭐ Manually resolved = completed
     [WithdrawRequestStatus.Cancelled]: WithdrawRequestFrontendStatus.Failed,
   };
   
@@ -123,12 +124,15 @@ export function canRetry(wr: WithdrawRequest): boolean {
     return false;
   }
   
-  // Stage 3-4: Payout or Hook failed - can retry if within limits
+  // ⭐ Simplified design: Payout/Hook/Fallback failures are not retried automatically
+  // They are marked as failed_permanent and require manual resolution
+  // Stage 3-4: Payout or Hook failed - cannot retry (waiting for manual resolution)
   if (
     wr.status === WithdrawRequestStatus.PayoutFailed ||
-    wr.status === WithdrawRequestStatus.HookFailed
+    wr.status === WithdrawRequestStatus.HookFailed ||
+    wr.status === WithdrawRequestStatus.FailedPermanent
   ) {
-    return wr.payoutRetryCount < wr.maxRetries;
+    return false; // ⭐ No automatic retry, waiting for manual resolution
   }
   
   return false;
@@ -163,7 +167,8 @@ export function canCancel(wr: WithdrawRequest): boolean {
 export function isCompleted(wr: WithdrawRequest): boolean {
   return (
     wr.status === WithdrawRequestStatus.Completed ||
-    wr.status === WithdrawRequestStatus.CompletedWithHookFailed
+    wr.status === WithdrawRequestStatus.CompletedWithHookFailed ||
+    wr.status === WithdrawRequestStatus.ManuallyResolved // ⭐ Manually resolved = completed
   );
 }
 
@@ -189,6 +194,7 @@ export function isTerminal(wr: WithdrawRequest): boolean {
     wr.status === WithdrawRequestStatus.Completed ||
     wr.status === WithdrawRequestStatus.CompletedWithHookFailed ||
     wr.status === WithdrawRequestStatus.FailedPermanent ||
+    wr.status === WithdrawRequestStatus.ManuallyResolved || // ⭐ Terminal state
     wr.status === WithdrawRequestStatus.Cancelled
   );
 }
@@ -216,6 +222,7 @@ export function getCurrentStage(wr: WithdrawRequest): 1 | 2 | 3 | 4 {
     [WithdrawRequestStatus.Completed]: 4,
     [WithdrawRequestStatus.CompletedWithHookFailed]: 4,
     [WithdrawRequestStatus.FailedPermanent]: 3,
+    [WithdrawRequestStatus.ManuallyResolved]: 4, // ⭐ Terminal state
     [WithdrawRequestStatus.Cancelled]: 1,
   };
   
@@ -288,16 +295,22 @@ export function getErrorDescription(
       ko: '증명 검증 실패. 취소하고 새 요청을 생성해주세요.',
     },
     payout_failed: {
-      en: 'Payout failed. Please retry.',
-      zh: '转账失败，请重试。',
-      ja: '支払いに失敗しました。再試行してください。',
-      ko: '지급 실패. 다시 시도해주세요.',
+      en: 'Payout failed. Waiting for manual resolution by admin.',
+      zh: '转账失败，等待管理员人工处理。',
+      ja: '支払いに失敗しました。管理者による手動解決を待っています。',
+      ko: '지급 실패. 관리자의 수동 해결을 기다리는 중입니다.',
     },
     hook_failed: {
-      en: 'Hook purchase failed, but your funds have been successfully transferred.',
-      zh: 'Hook 购买失败，但您的资金已成功转账。',
-      ja: 'Hook購入に失敗しましたが、資金の送金は成功しました。',
-      ko: 'Hook 구매 실패, 하지만 자금은 성공적으로 전송되었습니다.',
+      en: 'Hook purchase failed. Waiting for manual resolution by admin.',
+      zh: 'Hook 购买失败，等待管理员人工处理。',
+      ja: 'Hook購入に失敗しました。管理者による手動解決を待っています。',
+      ko: 'Hook 구매 실패. 관리자의 수동 해결을 기다리는 중입니다.',
+    },
+    failed_permanent: {
+      en: 'Permanently failed. Waiting for manual resolution by admin.',
+      zh: '永久失败，等待管理员人工处理。',
+      ja: '永久的に失敗しました。管理者による手動解決を待っています。',
+      ko: '영구 실패. 관리자의 수동 해결을 기다리는 중입니다.',
     },
   };
 
@@ -318,11 +331,14 @@ export function getRetryAction(wr: WithdrawRequest): 'retry_execute' | 'retry_pa
   if (wr.status === WithdrawRequestStatus.VerifyFailed) {
     return 'cancel'; // MUST cancel, cannot retry
   }
-  if (wr.status === WithdrawRequestStatus.PayoutFailed) {
-    return 'retry_payout';
-  }
-  if (wr.status === WithdrawRequestStatus.HookFailed) {
-    return 'retry_hook';
+  // ⭐ Simplified design: Payout/Hook/Fallback failures are not retried automatically
+  // They are marked as failed_permanent and require manual resolution
+  if (
+    wr.status === WithdrawRequestStatus.PayoutFailed ||
+    wr.status === WithdrawRequestStatus.HookFailed ||
+    wr.status === WithdrawRequestStatus.FailedPermanent
+  ) {
+    return null; // ⭐ No retry action, waiting for manual resolution
   }
   return null;
 }

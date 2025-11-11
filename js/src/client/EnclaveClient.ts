@@ -29,6 +29,8 @@ import { PricesAPI } from '../api/PricesAPI';
 import { MetricsAPI } from '../api/MetricsAPI';
 import { QuoteAPI } from '../api/QuoteAPI';
 import { ChainConfigAPI } from '../api/ChainConfigAPI';
+import { BeneficiaryAPI } from '../api/BeneficiaryAPI';
+import { TokenRoutingAPI } from '../api/TokenRoutingAPI';
 
 // Stores
 import { CheckbooksStore } from '../stores/CheckbooksStore';
@@ -78,6 +80,8 @@ export class EnclaveClient {
   private readonly metricsAPI: MetricsAPI;
   private readonly quoteAPI: QuoteAPI;
   private readonly chainConfigAPI: ChainConfigAPI;
+  private readonly beneficiaryAPI: BeneficiaryAPI;
+  private readonly tokenRoutingAPI: TokenRoutingAPI;
 
   // Stores
   public readonly stores: {
@@ -151,6 +155,8 @@ export class EnclaveClient {
     this.metricsAPI = new MetricsAPI(this.apiClient);
     this.quoteAPI = new QuoteAPI(this.apiClient);
     this.chainConfigAPI = new ChainConfigAPI(this.apiClient);
+    this.beneficiaryAPI = new BeneficiaryAPI(this.apiClient);
+    this.tokenRoutingAPI = new TokenRoutingAPI(this.apiClient);
 
     // Initialize wallet manager
     this.walletManager = new WalletManager({
@@ -195,6 +201,7 @@ export class EnclaveClient {
     this.withdrawalAction = new WithdrawalAction({
       api: this.withdrawalsAPI,
       store: this.stores.withdrawals,
+      allocationsStore: this.stores.allocations,
       wallet: this.walletManager,
       logger: this.logger,
     });
@@ -606,6 +613,35 @@ export class EnclaveClient {
    */
   get chainConfig(): ChainConfigAPI {
     return this.chainConfigAPI;
+  }
+
+  /**
+   * Get Beneficiary API for managing withdraw requests where the user is the beneficiary
+   * Use this to view and manage withdraw requests where you are the recipient
+   * @example
+   * ```typescript
+   * const requests = await client.beneficiary.listBeneficiaryWithdrawRequests();
+   * await client.beneficiary.requestPayoutExecution({ id: 'request-id' });
+   * ```
+   */
+  get beneficiary(): BeneficiaryAPI {
+    return this.beneficiaryAPI;
+  }
+
+  /**
+   * Get Token Routing API for querying token routing rules and allowed targets
+   * Use this to query which chains and tokens are available for cross-chain operations
+   * @example
+   * ```typescript
+   * // Get all pools and tokens
+   * const allPools = await client.tokenRouting.getAllPoolsAndTokens();
+   * 
+   * // Get allowed targets for specific source
+   * const targets = await client.tokenRouting.getTargetsForSource(714, '0x...');
+   * ```
+   */
+  get tokenRouting(): TokenRoutingAPI {
+    return this.tokenRoutingAPI;
   }
 }
 

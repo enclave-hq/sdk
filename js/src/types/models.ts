@@ -100,6 +100,7 @@ export enum WithdrawRequestStatus {
   Completed = 'completed',
   CompletedWithHookFailed = 'completed_with_hook_failed',
   FailedPermanent = 'failed_permanent',
+  ManuallyResolved = 'manually_resolved',  // ⭐ Manually resolved by admin
   Cancelled = 'cancelled',
 }
 

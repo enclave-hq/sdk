@@ -175,18 +175,35 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * @returns Created withdrawal request
    */
   async create(params: {
+    checkbookId: string;
     allocationIds: string[];
-    targetChain: number;
-    targetAddress: string;
-    intent: string;
-    signature: string;
-    message: string;
-    nullifier: string;
+    intent: {
+      type: number; // 0=RawToken, 1=AssetToken
+      beneficiaryChainId: number;
+      beneficiaryAddress: string;
+      tokenIdentifier?: string; // For RawToken
+      assetId?: string; // For AssetToken
+      preferredChain?: number;
+    };
+    signature?: string;
+    message?: string;
+    nullifier?: string;
     proof?: string;
     metadata?: Record<string, any>;
   }): Promise<WithdrawRequest> {
     return this.executeAction(async () => {
-      const withdrawal = await this.api.createWithdrawRequest(params);
+      const request: import('../types/api').CreateWithdrawRequestRequest = {
+        checkbookId: params.checkbookId,
+        allocationIds: params.allocationIds,
+        intent: params.intent,
+        signature: params.signature,
+        message: params.message,
+        nullifier: params.nullifier,
+        proof: params.proof,
+        metadata: params.metadata,
+      };
+
+      const withdrawal = await this.api.createWithdrawRequest(request);
       withdrawal.frontendStatus = mapToFrontendStatus(withdrawal.status);
       this.set(withdrawal.id, withdrawal);
       this.logger.info(`Created withdrawal request: ${withdrawal.id}`);

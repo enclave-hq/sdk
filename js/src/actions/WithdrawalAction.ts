@@ -3,9 +3,10 @@
  * @module actions/WithdrawalAction
  */
 
-import type { WithdrawalParams, WithdrawRequest } from '../types/models';
+import type { WithdrawalParams, WithdrawRequest, Intent } from '../types/models';
 import type { WithdrawalsAPI } from '../api/WithdrawalsAPI';
 import type { WithdrawalsStore } from '../stores/WithdrawalsStore';
+import type { AllocationsStore } from '../stores/AllocationsStore';
 import type { WalletManager } from '../blockchain/WalletManager';
 import { WithdrawFormatter } from '../formatters/WithdrawFormatter';
 import type { ILogger } from '../types/config';
@@ -24,6 +25,8 @@ export interface WithdrawalActionConfig {
   api: WithdrawalsAPI;
   /** Withdrawals store */
   store: WithdrawalsStore;
+  /** Allocations store (to get checkbookId from allocations) */
+  allocationsStore: AllocationsStore;
   /** Wallet manager */
   wallet: WalletManager;
   /** Logger instance */
@@ -36,12 +39,14 @@ export interface WithdrawalActionConfig {
 export class WithdrawalAction {
   private readonly api: WithdrawalsAPI;
   private readonly store: WithdrawalsStore;
+  private readonly allocationsStore: AllocationsStore;
   private readonly wallet: WalletManager;
   private readonly logger: ILogger;
 
   constructor(config: WithdrawalActionConfig) {
     this.api = config.api;
     this.store = config.store;
+    this.allocationsStore = config.allocationsStore;
     this.wallet = config.wallet;
     this.logger = config.logger || getLogger();
   }
@@ -159,12 +164,21 @@ export class WithdrawalAction {
     // Prepare sign data
     const signData = this.prepareWithdraw(params);
 
+    // Get checkbookId from first allocation
+    const firstAllocation = this.allocationsStore.get(signData.allocationIds[0]);
+    if (!firstAllocation) {
+      throw new Error(`Allocation ${signData.allocationIds[0]} not found`);
+    }
+    const checkbookId = firstAllocation.checkbookId;
+
+    // Convert Intent to backend v2 format
+    const backendIntent = this.convertIntentToBackendFormat(params.intent);
+
     // Submit to API
     const withdrawal = await this.store.create({
+      checkbookId,
       allocationIds: signData.allocationIds,
-      targetChain: params.targetChain,
-      targetAddress: params.targetAddress,
-      intent: params.intent,
+      intent: backendIntent,
       signature,
       message: signData.message,
       nullifier: signData.nullifier,
@@ -292,6 +306,39 @@ export class WithdrawalAction {
    */
   formatIntent(intent: string, params?: Record<string, any>): string {
     return WithdrawFormatter.formatIntent(intent, params);
+  }
+
+  /**
+   * Convert SDK Intent to backend v2 API format
+   * @param intent - SDK Intent object
+   * @returns Backend v2 intent format
+   */
+  private convertIntentToBackendFormat(intent: Intent): {
+    type: number;
+    beneficiaryChainId: number;
+    beneficiaryAddress: string;
+    tokenIdentifier?: string;
+    assetId?: string;
+    preferredChain?: number;
+  } {
+    if (intent.type === 'RawToken') {
+      return {
+        type: 0, // RawToken
+        beneficiaryChainId: intent.beneficiary.chainId,
+        beneficiaryAddress: intent.beneficiary.data,
+        tokenIdentifier: intent.tokenContract,
+      };
+    } else if (intent.type === 'AssetToken') {
+      return {
+        type: 1, // AssetToken
+        beneficiaryChainId: intent.beneficiary.chainId,
+        beneficiaryAddress: intent.beneficiary.data,
+        assetId: intent.assetId,
+        preferredChain: intent.preferredChain,
+      };
+    } else {
+      throw new Error(`Unknown intent type: ${(intent as any).type}`);
+    }
   }
 }
 

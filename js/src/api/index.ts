@@ -14,4 +14,6 @@ export * from './MetricsAPI';
 export * from './KMSAPI';
 export * from './QuoteAPI';
 export * from './ChainConfigAPI';
+export * from './BeneficiaryAPI';
+export * from './TokenRoutingAPI';
 

@@ -29,7 +29,7 @@ export class QuoteAPI {
    */
   async getRouteAndFees(request: RouteAndFeesRequest): Promise<RouteQuoteResponse> {
     const response = await this.client.post<RouteQuoteResponse>(
-      '/api/v2/quote/route-and-fees',
+      '/api/quote/route-and-fees',
       request
     );
     return response;
@@ -42,9 +42,10 @@ export class QuoteAPI {
    */
   async getHookAsset(request: HookAssetRequest): Promise<HookAssetResponse> {
     const response = await this.client.post<HookAssetResponse>(
-      '/api/v2/quote/hook-asset',
+      '/api/quote/hook-asset',
       request
     );
     return response;
   }
 }
+
