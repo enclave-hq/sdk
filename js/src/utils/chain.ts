@@ -85,16 +85,32 @@ export function isChainSupported(chainId: number): boolean {
 
 /**
  * Get chain name by chain ID
+ * Supports both native chain ID and SLIP-44 ID
  */
 export function getChainName(chainId: number): string {
+  // First check native chain ID mappings
   const mapping = CHAIN_MAPPINGS[chainId];
   if (mapping) {
     return mapping.name;
   }
   
+  // Check if it's a SLIP-44 ID by looking through mappings
+  for (const [nativeId, mapping] of Object.entries(CHAIN_MAPPINGS)) {
+    if (mapping.slip44 === chainId) {
+      return mapping.name;
+    }
+  }
+  
+  // Fall back to chain-utils
   const info = getChainInfoByNative(chainId);
   if (info) {
     return info.name;
+  }
+  
+  // Try SLIP-44 lookup
+  const slip44Info = getChainInfoBySlip44(chainId);
+  if (slip44Info) {
+    return slip44Info.name;
   }
   
   return `Chain ${chainId}`;

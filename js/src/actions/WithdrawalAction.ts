@@ -3,12 +3,12 @@
  * @module actions/WithdrawalAction
  */
 
-import type { WithdrawalParams, WithdrawRequest, Intent } from '../types/models';
+import type { WithdrawalParams, WithdrawRequest, Intent, Allocation } from '../types/models';
 import type { WithdrawalsAPI } from '../api/WithdrawalsAPI';
 import type { WithdrawalsStore } from '../stores/WithdrawalsStore';
 import type { AllocationsStore } from '../stores/AllocationsStore';
 import type { WalletManager } from '../blockchain/WalletManager';
-import { WithdrawFormatter } from '../formatters/WithdrawFormatter';
+import { WithdrawFormatter, LANG_EN } from '../formatters/WithdrawFormatter';
 import type { ILogger } from '../types/config';
 import { getLogger } from '../utils/logger';
 import {
@@ -54,9 +54,13 @@ export class WithdrawalAction {
   /**
    * Prepare withdrawal data for signing (Step 1)
    * @param params - Withdrawal parameters
+   * @param lang - Language code (default: LANG_EN)
    * @returns Withdrawal sign data
    */
-  prepareWithdraw(params: WithdrawalParams) {
+  async prepareWithdraw(
+    params: WithdrawalParams,
+    lang: number = LANG_EN
+  ) {
     // Validate params
     validateNonEmptyArray(params.allocationIds, 'allocationIds');
     validateChainId(params.targetChain, 'targetChain');
@@ -70,12 +74,37 @@ export class WithdrawalAction {
       intentType: params.intent.type,
     });
 
-    // Use WithdrawFormatter to generate sign data
+    // Get allocations from store
+    const allocations: Allocation[] = [];
+    for (const allocationId of params.allocationIds) {
+      let allocation = this.allocationsStore.get(allocationId);
+      if (!allocation) {
+        // Fetch from API if not in store
+        allocation = await this.allocationsStore.fetchById(allocationId);
+      }
+      if (!allocation) {
+        throw new Error(`Allocation ${allocationId} not found`);
+      }
+      allocations.push(allocation);
+    }
+
+    // Get token symbol from first allocation's token
+    const firstAllocation = allocations[0];
+    if (!firstAllocation || !firstAllocation.token) {
+      throw new Error('Allocation must have token information');
+    }
+    const tokenSymbol = firstAllocation.token.symbol;
+
+    // Get chain name for better user experience in wallet signatures
+    const chainName = params.intent.beneficiary.chainName || undefined;
+
+    // Use WithdrawFormatter to generate sign data (matching lib.rs)
     const signData = WithdrawFormatter.prepareSignData(
-      params.allocationIds,
-      params.targetChain,
-      params.targetAddress,
-      params.intent
+      allocations,
+      params.intent,
+      tokenSymbol,
+      lang,
+      chainName // chainName for better user experience
     );
 
     this.logger.debug('Withdrawal sign data prepared', {
@@ -161,13 +190,14 @@ export class WithdrawalAction {
       intentType: params.intent.type,
     });
 
-    // Prepare sign data
-    const signData = this.prepareWithdraw(params);
+    // Prepare sign data (this also fetches allocations)
+    const signData = await this.prepareWithdraw(params);
 
-    // Get checkbookId from first allocation
-    const firstAllocation = this.allocationsStore.get(signData.allocationIds[0]);
+    // Get checkbookId from first allocation (already fetched in prepareWithdraw)
+    const firstAllocationId = signData.allocationIds[0];
+    const firstAllocation = this.allocationsStore.get(firstAllocationId);
     if (!firstAllocation) {
-      throw new Error(`Allocation ${signData.allocationIds[0]} not found`);
+      throw new Error(`Allocation ${firstAllocationId} not found`);
     }
     const checkbookId = firstAllocation.checkbookId;
 
@@ -194,9 +224,13 @@ export class WithdrawalAction {
   /**
    * Create withdrawal (full flow: prepare + sign + submit) (Step 3)
    * @param params - Withdrawal parameters
+   * @param lang - Language code (default: LANG_EN)
    * @returns Created withdrawal request
    */
-  async withdraw(params: WithdrawalParams): Promise<WithdrawRequest> {
+  async withdraw(
+    params: WithdrawalParams,
+    lang: number = LANG_EN
+  ): Promise<WithdrawRequest> {
     this.logger.info('Creating withdrawal (full flow)', {
       allocationCount: params.allocationIds.length,
       targetChain: params.targetChain,
@@ -204,7 +238,7 @@ export class WithdrawalAction {
     });
 
     // Step 1: Prepare sign data
-    const signData = this.prepareWithdraw(params);
+    const signData = await this.prepareWithdraw(params, lang);
 
     // Step 2: Sign message
     this.logger.debug('Signing withdrawal message');
@@ -267,15 +301,17 @@ export class WithdrawalAction {
    * Verify withdrawal signature
    * @param params - Withdrawal parameters
    * @param signature - Signature to verify
+   * @param lang - Language code (default: LANG_EN)
    * @returns True if signature is valid
    */
   async verifyWithdrawSignature(
     params: WithdrawalParams,
-    signature: string
+    signature: string,
+    lang: number = LANG_EN
   ): Promise<boolean> {
     try {
       // Prepare sign data
-      const signData = this.prepareWithdraw(params);
+      const signData = await this.prepareWithdraw(params, lang);
 
       // TODO: Implement signature verification using ethers.js
       // This would verify that the signature matches the message hash

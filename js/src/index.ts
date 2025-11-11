@@ -131,6 +131,15 @@ export {
   WithdrawFormatter,
 } from './formatters';
 
+// ============ Commitment Core ============
+export {
+  CommitmentCore,
+} from './utils/CommitmentCore';
+export type {
+  Allocation as CommitmentAllocation,
+  Credential as CommitmentCredential,
+} from './utils/CommitmentCore';
+
 // ============ Stores (for advanced usage) ============
 export type {
   CheckbooksStore,

@@ -194,6 +194,7 @@ export class EnclaveClient {
     this.commitmentAction = new CommitmentAction({
       api: this.allocationsAPI,
       store: this.stores.allocations,
+      checkbooksStore: this.stores.checkbooks,
       wallet: this.walletManager,
       logger: this.logger,
     });
@@ -519,19 +520,27 @@ export class EnclaveClient {
   /**
    * Create commitment (full flow)
    * @param params - Commitment parameters
+   * @param lang - Language code (default: LANG_EN)
    * @returns Created allocations
    */
-  async createCommitment(params: CommitmentParams): Promise<Allocation[]> {
-    return this.commitmentAction.createCommitment(params);
+  async createCommitment(
+    params: CommitmentParams,
+    lang: number = 1 // LANG_EN
+  ): Promise<Allocation[]> {
+    return this.commitmentAction.createCommitment(params, lang);
   }
 
   /**
    * Prepare commitment for signing
    * @param params - Commitment parameters
+   * @param lang - Language code (default: LANG_EN)
    * @returns Sign data
    */
-  prepareCommitment(params: CommitmentParams) {
-    return this.commitmentAction.prepareCommitment(params);
+  async prepareCommitment(
+    params: CommitmentParams,
+    lang: number = 1 // LANG_EN
+  ) {
+    return this.commitmentAction.prepareCommitment(params, lang);
   }
 
   /**
@@ -547,19 +556,27 @@ export class EnclaveClient {
   /**
    * Create withdrawal (full flow)
    * @param params - Withdrawal parameters
+   * @param lang - Language code (default: LANG_EN)
    * @returns Created withdrawal request
    */
-  async withdraw(params: WithdrawalParams): Promise<WithdrawRequest> {
-    return this.withdrawalAction.withdraw(params);
+  async withdraw(
+    params: WithdrawalParams,
+    lang: number = 1 // LANG_EN
+  ): Promise<WithdrawRequest> {
+    return this.withdrawalAction.withdraw(params, lang);
   }
 
   /**
    * Prepare withdrawal for signing
    * @param params - Withdrawal parameters
+   * @param lang - Language code (default: LANG_EN)
    * @returns Sign data
    */
-  prepareWithdraw(params: WithdrawalParams) {
-    return this.withdrawalAction.prepareWithdraw(params);
+  async prepareWithdraw(
+    params: WithdrawalParams,
+    lang: number = 1 // LANG_EN
+  ) {
+    return this.withdrawalAction.prepareWithdraw(params, lang);
   }
 
   /**

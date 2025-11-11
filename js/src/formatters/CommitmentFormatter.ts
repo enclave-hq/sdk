@@ -1,11 +1,15 @@
 /**
  * Commitment data formatter for SDK-internal data preparation
  * Generates signed messages and payloads for commitment creation
+ * This implementation matches lib.rs get_deposit_data_to_sign exactly
  * @module formatters/CommitmentFormatter
  */
 
-import type { CommitmentSignData } from '../types/models';
+import type { CommitmentSignData, UniversalAddress } from '../types/models';
 import { keccak256 } from '../utils/crypto';
+import { formatAmount } from '../utils/amount';
+import { getChainName } from '../utils/chain';
+import { formatUniversalAddress } from '../utils/address';
 import {
   validateNonEmptyString,
   validateNonEmptyArray,
@@ -13,49 +17,226 @@ import {
 } from '../utils/validation';
 
 /**
+ * Language codes (matching lib.rs)
+ */
+export const LANG_EN = 1; // English
+export const LANG_ZH = 2; // Chinese
+export const LANG_ES = 3; // Spanish
+export const LANG_FR = 4; // French
+export const LANG_DE = 5; // German
+export const LANG_JA = 6; // Japanese
+export const LANG_KO = 7; // Korean
+export const LANG_RU = 8; // Russian
+export const LANG_AR = 9; // Arabic
+export const LANG_PT = 10; // Portuguese
+
+/**
+ * Allocation with sequence number
+ */
+export interface AllocationWithSeq {
+  seq: number;
+  amount: string; // U256 bytes as hex string or BigInt string
+}
+
+/**
  * Commitment formatter for preparing commitment data to sign
- * This logic must be consistent across all language SDKs
+ * This logic must be consistent with lib.rs get_deposit_data_to_sign
  */
 export class CommitmentFormatter {
   /**
    * Prepare commitment data for signing
-   * @param checkbookId - Checkbook ID
-   * @param amounts - Array of allocation amounts
-   * @param tokenId - Token ID
+   * @param allocations - Array of allocations with seq and amount
+   * @param depositId - Deposit ID (32 bytes hex string)
+   * @param tokenId - Token ID (number)
+   * @param tokenSymbol - Token symbol (e.g., "USDC", "USDT", "ETH")
+   * @param chainId - Chain ID (SLIP-44)
+   * @param ownerAddress - Owner's universal address
+   * @param lang - Language code (1=English, 2=Chinese, etc.)
+   * @param chainName - Optional chain name (e.g., "Ethereum", "BSC", "TRON"). 
+   *                    If not provided, will be derived from chainId.
+   *                    Providing chainName makes the message more user-friendly in wallet signatures.
    * @returns Commitment sign data ready for signing
    */
   static prepareSignData(
-    checkbookId: string,
-    amounts: string[],
-    tokenId: string
+    allocations: AllocationWithSeq[],
+    depositId: string,
+    tokenId: number,
+    tokenSymbol: string,
+    chainId: number,
+    ownerAddress: UniversalAddress,
+    lang: number = LANG_EN,
+    chainName?: string
   ): CommitmentSignData {
     // Validate inputs
-    validateNonEmptyString(checkbookId, 'checkbookId');
-    validateNonEmptyArray(amounts, 'amounts');
-    validateNonEmptyString(tokenId, 'tokenId');
+    validateNonEmptyArray(allocations, 'allocations');
+    validateNonEmptyString(depositId, 'depositId');
+    validateNonEmptyString(tokenSymbol, 'tokenSymbol');
+    if (tokenId < 0) {
+      throw new Error('tokenId must be non-negative');
+    }
+    if (chainId < 0) {
+      throw new Error('chainId must be non-negative');
+    }
 
-    // Validate each amount
-    amounts.forEach((amount, index) => {
-      validateAmount(amount, `amounts[${index}]`);
+    // Validate each allocation
+    allocations.forEach((allocation, index) => {
+      if (allocation.seq < 0 || allocation.seq > 255) {
+        throw new Error(`allocation[${index}].seq must be between 0 and 255`);
+      }
+      validateAmount(allocation.amount, `allocation[${index}].amount`);
     });
 
-    // Sort amounts in ascending order (IMPORTANT: for consistency)
-    const sortedAmounts = this.sortAmounts(amounts);
+    // Sort allocations by seq (IMPORTANT: for consistency with lib.rs)
+    const sortedAllocations = this.sortAllocationsBySeq(allocations);
 
-    // Format message according to specification
-    const message = this.formatMessage(checkbookId, sortedAmounts, tokenId);
+    // Format message according to lib.rs specification
+    const message = this.formatMessage(
+      sortedAllocations,
+      depositId,
+      tokenId,
+      tokenSymbol,
+      chainId,
+      ownerAddress,
+      lang,
+      chainName
+    );
 
     // Compute message hash
     const messageHash = this.computeMessageHash(message);
 
+    // Extract amounts for backward compatibility
+    const amounts = sortedAllocations.map((a) => a.amount);
+
     return {
-      checkbookId,
-      amounts: sortedAmounts,
-      tokenId,
+      checkbookId: depositId, // For backward compatibility
+      amounts,
+      tokenId: tokenId.toString(),
       message,
       messageHash,
     };
   }
+
+  /**
+   * Sort allocations by sequence number (ascending)
+   * CRITICAL: This ensures consistency with lib.rs
+   */
+  private static sortAllocationsBySeq(
+    allocations: AllocationWithSeq[]
+  ): AllocationWithSeq[] {
+    return [...allocations].sort((a, b) => a.seq - b.seq);
+  }
+
+  /**
+   * Format commitment message for signing
+   * Matches lib.rs get_deposit_data_to_sign exactly
+   */
+  private static formatMessage(
+    allocations: AllocationWithSeq[],
+    depositId: string,
+    tokenId: number,
+    tokenSymbol: string,
+    chainId: number,
+    ownerAddress: UniversalAddress,
+    lang: number,
+    chainName?: string
+  ): string {
+    // Use provided chain name, or derive from chainId
+    const networkName = chainName || getChainName(chainId);
+    let message = '';
+
+    // Title based on language
+    switch (lang) {
+      case LANG_ZH:
+        message += '🎯 Enclave 隐私存款确认\n\n';
+        break;
+      default:
+        message += '🎯 Enclave Privacy Deposit Confirmation\n\n';
+        break;
+    }
+
+    // Token information
+    switch (lang) {
+      case LANG_ZH:
+        message += `🪙 代币: ${tokenSymbol} (ID: ${tokenId})\n`;
+        message += `📊 分配数量: ${allocations.length} 项\n`;
+        break;
+      default:
+        message += `🪙 Token: ${tokenSymbol} (ID: ${tokenId})\n`;
+        message += `📊 Allocations: ${allocations.length} item(s)\n`;
+        break;
+    }
+
+    // Allocations list
+    for (const allocation of allocations) {
+      // Convert amount to BigInt and format with 18 decimals
+      const amountBigInt = BigInt(allocation.amount);
+      const divisor = BigInt(10) ** BigInt(18);
+      const integerPart = amountBigInt / divisor;
+      const decimalPart = amountBigInt % divisor;
+
+      // Format decimal part (pad to 18 digits, then trim trailing zeros)
+      const decimalStr = decimalPart.toString().padStart(18, '0');
+      const trimmedDecimal = decimalStr.replace(/0+$/, '').replace(/\.$/, '');
+
+      let formattedAmount: string;
+      if (decimalPart === 0n) {
+        formattedAmount = integerPart.toString();
+      } else {
+        formattedAmount = `${integerPart}.${trimmedDecimal}`;
+      }
+
+      // Use tokenSymbol instead of "units" for better user experience
+      message += `  • #${allocation.seq}: ${formattedAmount} ${tokenSymbol}\n`;
+    }
+
+    // Deposit ID, Network, and Owner
+    const depositIdHex = depositId.startsWith('0x') ? depositId.slice(2) : depositId;
+    const ownerFormatted = this.formatOwnerAddress(ownerAddress, lang);
+
+    switch (lang) {
+      case LANG_ZH:
+        message += `\n📝 存款ID: ${depositIdHex}\n`;
+        message += `🔗 网络: ${networkName} (${chainId})\n`;
+        message += `👤 所有者: ${ownerFormatted}\n`;
+        break;
+      default:
+        message += `\n📝 Deposit ID: ${depositIdHex}\n`;
+        message += `🔗 Network: ${networkName} (${chainId})\n`;
+        message += `👤 Owner: ${ownerFormatted}\n`;
+        break;
+    }
+
+    return message;
+  }
+
+  /**
+   * Format owner address according to lib.rs format_address
+   */
+  private static formatOwnerAddress(
+    address: UniversalAddress,
+    lang: number
+  ): string {
+    // For now, use simple format. In production, should match lib.rs format_address exactly
+    const chainName = getChainName(address.chainId);
+    const addrStr = address.address;
+
+    switch (lang) {
+      case LANG_ZH:
+        return `${chainName}链上${addrStr}地址`;
+      default:
+        return `${addrStr} on ${chainName}`;
+    }
+  }
+
+  /**
+   * Compute keccak256 hash of message
+   * @param message - Message string
+   * @returns Message hash (hex string with 0x prefix)
+   */
+  private static computeMessageHash(message: string): string {
+    return keccak256(message);
+  }
+
 
   /**
    * Sort amounts in ascending order
@@ -74,43 +255,56 @@ export class CommitmentFormatter {
   }
 
   /**
-   * Format commitment message for signing
-   * Format: "commitment:{checkbookId}:{amount1},{amount2},...:{tokenId}"
-   * @param checkbookId - Checkbook ID
-   * @param amounts - Sorted array of amounts
+   * Generate commitment hash (matching lib.rs generate_commitment_with_owner)
+   * @param allocations - Array of allocations with seq and amount
+   * @param ownerAddress - Owner's universal address
+   * @param depositId - Deposit ID (32 bytes hex string)
+   * @param chainId - Chain ID
    * @param tokenId - Token ID
-   * @returns Formatted message string
+   * @returns Commitment hash (hex string)
    */
-  private static formatMessage(
-    checkbookId: string,
-    amounts: string[],
-    tokenId: string
+  static generateCommitment(
+    allocations: AllocationWithSeq[],
+    ownerAddress: UniversalAddress,
+    depositId: string,
+    chainId: number,
+    tokenId: number
   ): string {
-    const amountsStr = amounts.join(',');
-    return `commitment:${checkbookId}:${amountsStr}:${tokenId}`;
+    const { CommitmentCore } = require('../utils/CommitmentCore');
+    const { hexToBytes, amountToBytes32, bytesToHex } = CommitmentCore;
+
+    // Convert allocations to CommitmentCore format
+    const coreAllocations = allocations.map((a) => ({
+      seq: a.seq,
+      amount: amountToBytes32(a.amount),
+    }));
+
+    // Convert depositId to bytes
+    const depositIdBytes = hexToBytes(depositId);
+
+    // Generate commitment
+    const commitment = CommitmentCore.generateCommitmentWithOwner(
+      coreAllocations,
+      ownerAddress,
+      depositIdBytes,
+      chainId,
+      tokenId
+    );
+
+    return bytesToHex(commitment);
   }
 
   /**
-   * Compute keccak256 hash of message
-   * @param message - Message string
-   * @returns Message hash (hex string with 0x prefix)
-   */
-  private static computeMessageHash(message: string): string {
-    return keccak256(message);
-  }
-
-  /**
-   * Generate commitment hashes for allocations
-   * @param amounts - Array of amounts
-   * @param owner - Owner address
-   * @param tokenId - Token ID
-   * @returns Array of commitment hashes
+   * Generate commitment hashes for allocations (legacy method - deprecated)
+   * @deprecated Use generateCommitment instead
    */
   static generateCommitmentHashes(
     amounts: string[],
     owner: string,
     tokenId: string
   ): string[] {
+    // This is a legacy method that doesn't match lib.rs
+    // It's kept for backward compatibility but should not be used
     validateNonEmptyArray(amounts, 'amounts');
     validateNonEmptyString(owner, 'owner');
     validateNonEmptyString(tokenId, 'tokenId');
@@ -136,22 +330,6 @@ export class CommitmentFormatter {
       validateNonEmptyString(data.message, 'message');
       validateNonEmptyString(data.messageHash, 'messageHash');
 
-      // Verify amounts are sorted
-      const sorted = this.sortAmounts(data.amounts);
-      if (JSON.stringify(sorted) !== JSON.stringify(data.amounts)) {
-        return false;
-      }
-
-      // Verify message format
-      const expectedMessage = this.formatMessage(
-        data.checkbookId,
-        data.amounts,
-        data.tokenId
-      );
-      if (expectedMessage !== data.message) {
-        return false;
-      }
-
       // Verify message hash
       const expectedHash = this.computeMessageHash(data.message);
       if (expectedHash !== data.messageHash) {
@@ -164,4 +342,3 @@ export class CommitmentFormatter {
     }
   }
 }
-

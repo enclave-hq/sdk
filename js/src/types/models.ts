@@ -344,6 +344,8 @@ export interface Allocation {
   id: string;
   /** Associated checkbook ID */
   checkbookId: string;
+  /** Sequence number (0-255, unique within checkbook) - matching lib.rs Allocation.seq */
+  seq: number;
   /** Owner's universal address */
   owner: UniversalAddress;
   /** Associated token */
