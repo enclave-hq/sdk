@@ -261,6 +261,7 @@ export class CommitmentFormatter {
    * @param amounts - Array of amount strings
    * @returns Sorted array of amounts
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static sortAmounts(amounts: string[]): string[] {
     return [...amounts].sort((a, b) => {
       const aBig = BigInt(a);

@@ -170,6 +170,7 @@ export class WithdrawFormatter {
    * Generate nullifier from allocation IDs (legacy method - requires commitment)
    * @deprecated Use generateNullifier with commitment instead
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private static generateNullifierLegacy(
     sortedAllocationIds: string[],
     targetAddress: string
