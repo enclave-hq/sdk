@@ -7,8 +7,6 @@
 
 import type { WithdrawalSignData, Intent, UniversalAddress, Allocation } from '../types/models';
 import { keccak256 } from '../utils/crypto';
-import { formatAmount } from '../utils/amount';
-import { formatUniversalAddress } from '../utils/address';
 import {
   validateNonEmptyString,
   validateNonEmptyArray,
