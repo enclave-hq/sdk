@@ -95,7 +95,7 @@ export function getChainName(chainId: number): string {
   }
   
   // Check if it's a SLIP-44 ID by looking through mappings
-  for (const [nativeId, mapping] of Object.entries(CHAIN_MAPPINGS)) {
+  for (const mapping of Object.values(CHAIN_MAPPINGS)) {
     if (mapping.slip44 === chainId) {
       return mapping.name;
     }
