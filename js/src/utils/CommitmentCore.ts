@@ -45,7 +45,8 @@ export class CommitmentCore {
 
     // Check that seq must start from 0 and be consecutive
     for (let i = 0; i < sorted.length; i++) {
-      if (sorted[i].seq !== i) {
+      const allocation = sorted[i];
+      if (!allocation || allocation.seq !== i) {
         return false;
       }
     }
