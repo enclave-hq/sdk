@@ -190,17 +190,33 @@ export class CommitmentFormatter {
     }
 
     // Deposit ID, Network, and Owner
+    // Format deposit_id (display first 8 bytes as decimal, matching lib.rs)
     const depositIdHex = depositId.startsWith('0x') ? depositId.slice(2) : depositId;
+    const depositIdBytes = Buffer.from(depositIdHex, 'hex');
+    
+    // Convert first 8 bytes to u64 (big-endian) and then to decimal string
+    let depositIdDecimal = '0';
+    if (depositIdBytes.length >= 8) {
+      // Read first 8 bytes as big-endian u64
+      const first8Bytes = depositIdBytes.slice(0, 8);
+      // Convert to BigInt (big-endian)
+      let u64Value = BigInt(0);
+      for (let i = 0; i < 8; i++) {
+        u64Value = (u64Value << BigInt(8)) | BigInt(first8Bytes[i]);
+      }
+      depositIdDecimal = u64Value.toString();
+    }
+    
     const ownerFormatted = this.formatOwnerAddress(ownerAddress, lang);
 
     switch (lang) {
       case LANG_ZH:
-        message += `\n📝 存款ID: ${depositIdHex}\n`;
+        message += `\n📝 存款ID: ${depositIdDecimal}\n`;
         message += `🔗 网络: ${networkName} (${chainId})\n`;
         message += `👤 所有者: ${ownerFormatted}\n`;
         break;
       default:
-        message += `\n📝 Deposit ID: ${depositIdHex}\n`;
+        message += `\n📝 Deposit ID: ${depositIdDecimal}\n`;
         message += `🔗 Network: ${networkName} (${chainId})\n`;
         message += `👤 Owner: ${ownerFormatted}\n`;
         break;
