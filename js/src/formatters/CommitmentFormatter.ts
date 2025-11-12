@@ -202,7 +202,10 @@ export class CommitmentFormatter {
       // Convert to BigInt (big-endian)
       let u64Value = BigInt(0);
       for (let i = 0; i < 8; i++) {
-        u64Value = (u64Value << BigInt(8)) | BigInt(first8Bytes[i]);
+        const byte = first8Bytes[i];
+        if (byte !== undefined) {
+          u64Value = (u64Value << BigInt(8)) | BigInt(byte);
+        }
       }
       depositIdDecimal = u64Value.toString();
     }
