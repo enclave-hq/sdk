@@ -198,6 +198,9 @@ export class WithdrawalAction {
 
     // Get checkbookId from first allocation (already fetched in prepareWithdraw)
     const firstAllocationId = signData.allocationIds[0];
+    if (!firstAllocationId) {
+      throw new Error('At least one allocation ID is required');
+    }
     const firstAllocation = this.allocationsStore.get(firstAllocationId);
     if (!firstAllocation) {
       throw new Error(`Allocation ${firstAllocationId} not found`);
@@ -252,7 +255,7 @@ export class WithdrawalAction {
 
     this.logger.info('Withdrawal created successfully', {
       withdrawalId: withdrawal.id,
-      nullifier: withdrawal.nullifier,
+      onChainRequestId: withdrawal.onChainRequestId,
     });
 
     return withdrawal;
