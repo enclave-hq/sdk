@@ -7,9 +7,7 @@
 
 import type { CommitmentSignData, UniversalAddress } from '../types/models';
 import { keccak256 } from '../utils/crypto';
-import { formatAmount } from '../utils/amount';
 import { getChainName } from '../utils/chain';
-import { formatUniversalAddress } from '../utils/address';
 import {
   validateNonEmptyString,
   validateNonEmptyArray,

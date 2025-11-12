@@ -77,6 +77,9 @@ export class WithdrawFormatter {
     
     if (sortedAllocations.length > 0) {
       const firstAllocation = sortedAllocations[0];
+      if (!firstAllocation) {
+        throw new Error('First allocation is missing');
+      }
 
       // If commitment is available, generate proper nullifier (matching lib.rs)
       if (firstAllocation.commitment) {
