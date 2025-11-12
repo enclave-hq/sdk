@@ -63,14 +63,20 @@ export class WithdrawalAction {
   ) {
     // Validate params
     validateNonEmptyArray(params.allocationIds, 'allocationIds');
-    validateChainId(params.targetChain, 'targetChain');
-    validateNonEmptyString(params.targetAddress, 'targetAddress');
     this.validateIntent(params.intent);
+    
+    // Validate beneficiary from intent
+    validateChainId(params.intent.beneficiary.chainId, 'intent.beneficiary.chainId');
+    const beneficiaryAddress = params.intent.beneficiary.address || params.intent.beneficiary.data;
+    if (!beneficiaryAddress) {
+      throw new Error('intent.beneficiary.address or intent.beneficiary.data is required');
+    }
+    validateNonEmptyString(beneficiaryAddress, 'intent.beneficiary.address');
 
     this.logger.info('Preparing withdrawal', {
       allocationCount: params.allocationIds.length,
-      targetChain: params.targetChain,
-      targetAddress: params.targetAddress,
+      beneficiaryChainId: params.intent.beneficiary.chainId,
+      beneficiaryAddress: params.intent.beneficiary.address || params.intent.beneficiary.data,
       intentType: params.intent.type,
     });
 
@@ -79,8 +85,9 @@ export class WithdrawalAction {
     for (const allocationId of params.allocationIds) {
       let allocation = this.allocationsStore.get(allocationId);
       if (!allocation) {
-        // Fetch from API if not in store
-        allocation = await this.allocationsStore.fetchById(allocationId);
+        // Fetch from API if not in store - fetch list and find the allocation
+        const fetchedAllocations = await this.allocationsStore.fetchList({});
+        allocation = fetchedAllocations.find(a => a.id === allocationId);
       }
       if (!allocation) {
         throw new Error(`Allocation ${allocationId} not found`);
@@ -164,11 +171,7 @@ export class WithdrawalAction {
       }
 
       // Validate preferred chain if provided
-      if (intent.preferredChain !== undefined && intent.preferredChain !== null) {
-        if (typeof intent.preferredChain !== 'number' || intent.preferredChain < 0) {
-          throw new Error('Intent.preferredChain must be a non-negative number');
-        }
-      }
+      // preferredChain is no longer used, removed from validation
     }
   }
 
@@ -186,7 +189,7 @@ export class WithdrawalAction {
 
     this.logger.info('Submitting withdrawal to backend', {
       allocationCount: params.allocationIds.length,
-      targetChain: params.targetChain,
+      beneficiaryChainId: params.intent.beneficiary.chainId,
       intentType: params.intent.type,
     });
 
@@ -233,7 +236,7 @@ export class WithdrawalAction {
   ): Promise<WithdrawRequest> {
     this.logger.info('Creating withdrawal (full flow)', {
       allocationCount: params.allocationIds.length,
-      targetChain: params.targetChain,
+      beneficiaryChainId: params.intent.beneficiary.chainId,
       intentType: params.intent.type,
     });
 
@@ -351,26 +354,30 @@ export class WithdrawalAction {
    */
   private convertIntentToBackendFormat(intent: Intent): {
     type: number;
-    beneficiaryChainId: number;
-    beneficiaryAddress: string;
+    beneficiary: {
+      chain_id: number;
+      address: string;
+    };
     tokenIdentifier?: string;
     assetId?: string;
-    preferredChain?: number;
   } {
     if (intent.type === 'RawToken') {
       return {
         type: 0, // RawToken
-        beneficiaryChainId: intent.beneficiary.chainId,
-        beneficiaryAddress: intent.beneficiary.data,
+        beneficiary: {
+          chain_id: intent.beneficiary.chainId,
+          address: intent.beneficiary.address || intent.beneficiary.data, // Support both formats
+        },
         tokenIdentifier: intent.tokenContract,
       };
     } else if (intent.type === 'AssetToken') {
       return {
         type: 1, // AssetToken
-        beneficiaryChainId: intent.beneficiary.chainId,
-        beneficiaryAddress: intent.beneficiary.data,
+        beneficiary: {
+          chain_id: intent.beneficiary.chainId,
+          address: intent.beneficiary.address || intent.beneficiary.data, // Support both formats
+        },
         assetId: intent.assetId,
-        preferredChain: intent.preferredChain,
       };
     } else {
       throw new Error(`Unknown intent type: ${(intent as any).type}`);

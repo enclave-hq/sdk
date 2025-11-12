@@ -79,7 +79,7 @@ export class WithdrawFormatter {
     
     if (sortedAllocations.length > 0) {
       const firstAllocation = sortedAllocations[0];
-      
+
       // If commitment is available, generate proper nullifier (matching lib.rs)
       if (firstAllocation.commitment) {
         nullifier = this.generateNullifier(

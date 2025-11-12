@@ -125,8 +125,12 @@ export class WithdrawalsAPI {
     if (!request.intent) {
       throw new Error('intent is required');
     }
-    validateChainId(request.intent.beneficiaryChainId, 'intent.beneficiaryChainId');
-    validateNonEmptyString(request.intent.beneficiaryAddress, 'intent.beneficiaryAddress');
+    // Validate beneficiary UniversalAddress format
+    if (!request.intent.beneficiary) {
+      throw new Error('intent.beneficiary is required');
+    }
+    validateChainId(request.intent.beneficiary.chain_id, 'intent.beneficiary.chain_id');
+    validateNonEmptyString(request.intent.beneficiary.address, 'intent.beneficiary.address');
 
     // Unified API endpoint
     const response = await this.client.post<CreateWithdrawRequestResponse>(

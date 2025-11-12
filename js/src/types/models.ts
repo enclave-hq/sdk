@@ -209,8 +209,6 @@ export interface AssetTokenIntent {
   assetId: string;
   /** Beneficiary address with chain ID */
   beneficiary: UniversalAddress;
-  /** Optional preferred chain for multi-chain asset routing */
-  preferredChain?: number;
 }
 
 /**
@@ -499,11 +497,9 @@ export interface SignedCommitment {
 export interface WithdrawalParams {
   /** Array of allocation IDs to withdraw */
   allocationIds: string[];
-  /** Target chain ID for withdrawal */
-  targetChain: number;
-  /** Target address for receiving funds */
-  targetAddress: string;
-  /** ⭐ Intent specification (RawToken or AssetToken) */
+  /** ⭐ Intent specification (RawToken or AssetToken)
+   * Note: intent.beneficiary contains both chainId and address
+   */
   intent: Intent;
   /** Additional metadata (optional) */
   metadata?: Record<string, any>;

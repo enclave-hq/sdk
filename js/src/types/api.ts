@@ -246,11 +246,12 @@ export interface CreateWithdrawRequestRequest {
   /** Intent object (matches backend v2 format) */
   intent: {
     type: number; // 0=RawToken, 1=AssetToken
-    beneficiaryChainId: number;
-    beneficiaryAddress: string;
+    beneficiary: {
+      chain_id: number;
+      address: string;
+    };
     tokenIdentifier?: string; // For RawToken
     assetId?: string; // For AssetToken
-    preferredChain?: number;
   };
   /** User's signature */
   signature?: string;
