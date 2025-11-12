@@ -4,7 +4,7 @@
  */
 
 import type { APIClient } from './APIClient';
-import type { WithdrawRequest, WithdrawRequestDetail } from '../types/models';
+import type { WithdrawRequest } from '../types/models';
 import { validateNonEmptyString } from '../utils/validation';
 
 /**
