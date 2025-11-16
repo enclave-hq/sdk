@@ -266,7 +266,7 @@ if (sdk) {
 await client.connect()
 
 // 2. Get deposit records
-const checkbooks = await client.stores.checkbooks.getList()
+const checkbooks = await client.stores.checkbooks.fetchList()
 
 // 3. Create Commitment
 const allocations = await client.createCommitment({

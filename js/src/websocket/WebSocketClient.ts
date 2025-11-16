@@ -129,8 +129,16 @@ export class WebSocketClient {
       // Set up event handlers
       this.setupAdapterHandlers();
 
+      // Build WebSocket URL with auth token if available
+      let wsUrl = this.config.url;
+      if (this.authToken) {
+        // Add token as query parameter or in URL
+        const separator = wsUrl.includes('?') ? '&' : '?';
+        wsUrl = `${wsUrl}${separator}token=${encodeURIComponent(this.authToken)}`;
+      }
+
       // Connect
-      await this.adapter.connect(this.config.url);
+      await this.adapter.connect(wsUrl);
 
       // Mark as connected
       this.setState(WebSocketState.CONNECTED);
@@ -210,15 +218,27 @@ export class WebSocketClient {
 
     this.logger.info(`Subscribing to channel: ${channel}`);
 
-    const message: WSClientMessage = {
-      type: 'subscribe' as WSMessageType.SUBSCRIBE,
-      data: {
-        channel,
-        filters: options,
-      },
+    // Backend expects: { action: "subscribe", type: "checkbooks", address: "0x...", timestamp: 1234567890 }
+    // Map SDK channel names to backend subscription types
+    const backendTypeMap: Record<WSChannel, string> = {
+      [WSChannel.CHECKBOOKS]: 'checkbooks',
+      [WSChannel.ALLOCATIONS]: 'allocations',
+      [WSChannel.WITHDRAWALS]: 'withdraw_requests',
+      [WSChannel.PRICES]: 'prices',
     };
 
-    this.send(message);
+    const backendType = backendTypeMap[channel] || channel;
+    
+    // Send message in backend format
+    const message = {
+      action: 'subscribe',
+      type: backendType,
+      address: options?.owner || '',
+      asset_ids: options?.tokenId ? [options.tokenId] : undefined,
+      timestamp: Date.now(),
+    };
+
+    this.send(message as any);
     this.subscriptionManager.addSubscription(channel, options);
   }
 
@@ -233,14 +253,24 @@ export class WebSocketClient {
 
     this.logger.info(`Unsubscribing from channel: ${channel}`);
 
-    const message: WSClientMessage = {
-      type: 'unsubscribe' as WSMessageType.UNSUBSCRIBE,
-      data: {
-        channel,
-      },
+    // Backend expects: { action: "unsubscribe", type: "checkbooks", timestamp: 1234567890 }
+    const backendTypeMap: Record<WSChannel, string> = {
+      [WSChannel.CHECKBOOKS]: 'checkbooks',
+      [WSChannel.ALLOCATIONS]: 'allocations',
+      [WSChannel.WITHDRAWALS]: 'withdraw_requests',
+      [WSChannel.PRICES]: 'prices',
     };
 
-    this.send(message);
+    const backendType = backendTypeMap[channel] || channel;
+    
+    // Send message in backend format
+    const message = {
+      action: 'unsubscribe',
+      type: backendType,
+      timestamp: Date.now(),
+    };
+
+    this.send(message as any);
     this.subscriptionManager.removeSubscription(channel);
   }
 

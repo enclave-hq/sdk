@@ -29,17 +29,17 @@ async function main() {
 
     const routeRequest: RouteAndFeesRequest = {
       ownerData: {
-        chainId: 56,  // BSC
+        chainId: 714,  // BSC (SLIP-44)
         data: '0x1234567890123456789012345678901234567890',
       },
       depositToken: '0x55d398326f99059fF775485246999027B3197955', // BSC USDT
       intent: {
         type: 'RawToken',
         beneficiary: {
-          chainId: 1,  // Ethereum
+          chainId: 60,  // Ethereum (SLIP-44)
           data: '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0',
         },
-        tokenContract: '0xdAC17F958D2ee523a2206206994597C13D831ec7', // ETH USDT
+        tokenSymbol: 'USDT', // ETH USDT
       },
       amount: '100000000000',  // 100 USDT (6 decimals)
       includeHook: false,
@@ -91,7 +91,7 @@ async function main() {
     console.log('-'.repeat(50));
 
     const aaveRequest: HookAssetRequest = {
-      chain: 1,           // Ethereum
+      chain: 60,           // Ethereum (SLIP-44)
       protocol: 'aave',
       baseToken: 'USDT',
       amount: '100000000000',  // 100 USDT
@@ -135,7 +135,7 @@ async function main() {
     console.log('-'.repeat(50));
 
     const compoundRequest: HookAssetRequest = {
-      chain: 1,
+      chain: 60,  // Ethereum (SLIP-44)
       protocol: 'compound',
       baseToken: 'USDT',
       amount: '100000000000',

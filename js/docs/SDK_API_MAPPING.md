@@ -54,8 +54,8 @@ await client.connect();
 | `client.connect()` | `POST /api/auth/login` | Authenticate and establish connection |
 | `client.disconnect()` | `POST /api/auth/logout` | Disconnect and clean up |
 | `client.stores.checkbooks.getByOwner()` | `GET /api/checkbooks` | Get user's checkbooks |
-| `client.stores.allocations.getList()` | `GET /api/allocations` | Get allocations with filters |
-| `client.stores.withdrawals.getList()` | `GET /api/withdrawals` | Get withdrawal requests |
+| `client.stores.allocations.fetchList()` | `GET /api/allocations` | Get allocations with filters |
+| `client.stores.withdrawals.fetchList()` | `GET /api/withdrawals` | Get withdrawal requests |
 | `client.prepareCommitment()` | None (SDK internal) | Prepare commitment signing data |
 | `client.submitCommitment()` | `POST /api/commitments` | Submit signed commitment |
 | `client.prepareWithdraw()` | None (SDK internal) | Prepare withdrawal signing data |
@@ -391,14 +391,14 @@ await client.stores.allocations.getById(allocationId);
 await client.stores.withdrawals.getById(withdrawalId);
 
 // Query with filters
-await client.stores.allocations.getList({
+await client.stores.allocations.fetchList({
   token_id: 1,
   status: AllocationStatus.Idle,
   page: 1,
   page_size: 20,
 });
 
-await client.stores.withdrawals.getList({
+await client.stores.withdrawals.fetchList({
   status: WithdrawRequestStatus.Pending,
   page: 1,
   page_size: 10,
@@ -417,7 +417,7 @@ await client.stores.withdrawals.getList({
 ✅ Use explicit query methods instead:
 - `getByOwner()` - Fetch all user data
 - `getById(id)` - Fetch specific item
-- `getList(filters)` - Fetch with filters
+- `fetchList(filters)` - Fetch with filters
 
 ---
 
@@ -465,14 +465,14 @@ await client.stores.allocations.getById(allocationId);
 await client.stores.withdrawals.getById(withdrawalId);
 
 // Fetch with filters and pagination
-await client.stores.allocations.getList({
+await client.stores.allocations.fetchList({
   token_id: 1,
   status: AllocationStatus.Idle,
   page: 1,
   page_size: 20,
 });
 
-await client.stores.withdrawals.getList({
+await client.stores.withdrawals.fetchList({
   status: WithdrawRequestStatus.Pending,
   page: 1,
   page_size: 10,
@@ -552,7 +552,7 @@ const checkbook = await client.stores.checkbooks.getById(123);
 console.log('Checkbook status:', checkbook.status);
 ```
 
-### `client.stores.checkbooks.getList(filters)`
+### `client.stores.checkbooks.fetchList(filters)`
 
 **Description**: Query checkbooks with filters
 
@@ -572,7 +572,7 @@ console.log('Checkbook status:', checkbook.status);
 **Usage**:
 ```typescript
 // Get all ETH checkbooks that are active
-const ethCheckbooks = await client.stores.checkbooks.getList({
+const ethCheckbooks = await client.stores.checkbooks.fetchList({
   token_id: 1,
   status: CheckbookStatus.WithCheckbook,
 });
@@ -659,7 +659,7 @@ const checkbookAllocations = await client.stores.allocations.getByCheckbookIdAnd
 );
 ```
 
-### `client.stores.allocations.getList(filters)`
+### `client.stores.allocations.fetchList(filters)`
 
 **Description**: Query allocations with advanced filters
 
@@ -680,7 +680,7 @@ const checkbookAllocations = await client.stores.allocations.getByCheckbookIdAnd
 **Usage**:
 ```typescript
 // Get page 1 of idle ETH allocations
-const result = await client.stores.allocations.getList({
+const result = await client.stores.allocations.fetchList({
   token_id: 1,
   status: AllocationStatus.Idle,
   page: 1,
@@ -887,7 +887,7 @@ const result = await client.withdraw(allocations, intent);
 console.log('✅ Withdrawal request created');
 ```
 
-### `client.stores.withdrawals.getList(filters)`
+### `client.stores.withdrawals.fetchList(filters)`
 
 **Description**: Query withdrawal requests with filters and pagination
 
@@ -906,7 +906,7 @@ console.log('✅ Withdrawal request created');
 **Usage**:
 ```typescript
 // Get pending withdrawals
-const pending = await client.stores.withdrawals.getList({
+const pending = await client.stores.withdrawals.fetchList({
   status: WithdrawRequestStatus.Pending,
   page: 1,
   page_size: 10,
@@ -1089,21 +1089,30 @@ console.log('✅ Withdrawal cancelled');
 | Pending | `'pending'` | Proof generation in progress | ❌ | ❌ |
 | ReadyForCommitment | `'ready_for_commitment'` | Proof ready, waiting for commitment | ✅ | ✅ |
 | WithCheckbook | `'with_checkbook'` | Checkbook activated (commitment done) | ✅ | ❌ (already committed) |
-| ProofFailed | `'proof_failed'` | Proof generation failed | ❌ | ❌ |
+| ProofFailed | `'proof_failed'` | Proof generation failed | ❌ | ✅ (can retry) |
+| SubmissionFailed | `'submission_failed'` | Commitment submission failed | ❌ | ✅ (can retry) |
 
 **Usage**:
 ```typescript
+import { canCreateCommitment, canCreateAllocations, isRetryableFailure } from '@enclave-hq/sdk';
+
 const checkbook = client.stores.checkbooks.get(id);
 
+// Check if can create commitment (including retry after failure)
+if (canCreateCommitment(checkbook.status)) {
+  // Can create commitment (includes ready_for_commitment, submission_failed, proof_failed, etc.)
+  await client.createCommitment({ ... });
+}
+
 // Check if can create allocations
-if (checkbook.status === CheckbookStatus.ReadyForCommitment ||
-    checkbook.status === CheckbookStatus.WithCheckbook) {
+if (canCreateAllocations(checkbook.status)) {
   // Can create allocations
 }
 
-// Check if needs commitment
-if (checkbook.status === CheckbookStatus.ReadyForCommitment) {
-  // User needs to create commitment
+// Check if status indicates a retryable failure
+if (isRetryableFailure(checkbook.status)) {
+  // Show retry button to user
+  // Status is either proof_failed or submission_failed
 }
 ```
 

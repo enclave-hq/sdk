@@ -10,7 +10,7 @@ import {
   validateNonEmptyString,
   validateHex,
 } from '../utils/validation';
-import { ensureHexPrefix } from '../utils/crypto';
+import { ensureHexPrefix, keccak256 } from '../utils/crypto';
 
 /**
  * Signer adapter that unifies different signing methods
@@ -66,26 +66,35 @@ export class SignerAdapter implements ISigner {
   }
 
   /**
-   * Sign a message hash
-   * @param messageHash - Hash to sign (hex string with 0x prefix)
+   * Sign a message (raw message string, not hash)
+   * @param message - Raw message string to sign (ethers.js will add EIP-191 prefix and hash it)
    * @returns Signature (hex string with 0x prefix)
    */
-  async signMessage(messageHash: string): Promise<string> {
-    validateNonEmptyString(messageHash, 'messageHash');
-    validateHex(messageHash, 'messageHash');
-
-    const formattedHash = ensureHexPrefix(messageHash);
+  async signMessage(message: string): Promise<string> {
+    validateNonEmptyString(message, 'message');
 
     try {
       // Use callback if available
       if (this.callback) {
+        // For callback, we need to compute the EIP-191 hash ourselves
+        // EIP-191: "\x19Ethereum Signed Message:\n" + len(message) + message
+        const prefix = `\x19Ethereum Signed Message:\n${message.length}`;
+        const fullMessage = prefix + message;
+        const messageHash = keccak256(fullMessage);
+        const formattedHash = ensureHexPrefix(messageHash);
+        validateHex(formattedHash, 'messageHash');
         const signature = await this.callback(formattedHash);
         return ensureHexPrefix(signature);
       }
 
-      // Use Signer object
+      // Use Signer object (ethers.js Wallet or compatible)
       if (this.signer) {
-        const signature = await this.signer.signMessage(formattedHash);
+        // ethers.js Wallet.signMessage() expects raw message string, not hash
+        // It will automatically add EIP-191 prefix ("\x19Ethereum Signed Message:\n" + len + message)
+        // and then hash it using keccak256
+        // This matches ZKVM's generate_message_hash() which expects raw message and adds EIP-191 prefix
+        // So we pass the message as-is (raw message string, not pre-hashed)
+        const signature = await this.signer.signMessage(message);
         return ensureHexPrefix(signature);
       }
 

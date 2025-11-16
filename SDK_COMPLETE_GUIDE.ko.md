@@ -266,7 +266,7 @@ if (sdk) {
 await client.connect()
 
 // 2. 예금 기록 가져오기
-const checkbooks = await client.stores.checkbooks.getList()
+const checkbooks = await client.stores.checkbooks.fetchList()
 
 // 3. Commitment 생성
 const allocations = await client.createCommitment({

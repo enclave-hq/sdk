@@ -13,6 +13,7 @@ import {
   validateNonEmptyArray,
   validateAmount,
 } from '../utils/validation';
+import { CommitmentCore } from '../utils/CommitmentCore';
 
 /**
  * Language codes (matching lib.rs)
@@ -53,6 +54,7 @@ export class CommitmentFormatter {
    * @param chainName - Optional chain name (e.g., "Ethereum", "BSC", "TRON"). 
    *                    If not provided, will be derived from chainId.
    *                    Providing chainName makes the message more user-friendly in wallet signatures.
+   * @param localDepositId - Optional local deposit ID (uint64) for display. If provided, will be used directly instead of converting from depositId hex.
    * @returns Commitment sign data ready for signing
    */
   static prepareSignData(
@@ -63,7 +65,8 @@ export class CommitmentFormatter {
     chainId: number,
     ownerAddress: UniversalAddress,
     lang: number = LANG_EN,
-    chainName?: string
+    chainName?: string,
+    localDepositId?: number | string
   ): CommitmentSignData {
     // Validate inputs
     validateNonEmptyArray(allocations, 'allocations');
@@ -96,7 +99,8 @@ export class CommitmentFormatter {
       chainId,
       ownerAddress,
       lang,
-      chainName
+      chainName,
+      localDepositId
     );
 
     // Compute message hash
@@ -131,12 +135,13 @@ export class CommitmentFormatter {
   private static formatMessage(
     allocations: AllocationWithSeq[],
     depositId: string,
-    tokenId: number,
+    _tokenId: number, // tokenId is not displayed in message but kept for API compatibility
     tokenSymbol: string,
     chainId: number,
     ownerAddress: UniversalAddress,
     lang: number,
-    chainName?: string
+    chainName?: string,
+    localDepositId?: number | string
   ): string {
     // Use provided chain name, or derive from chainId
     const networkName = chainName || getChainName(chainId);
@@ -152,16 +157,23 @@ export class CommitmentFormatter {
         break;
     }
 
-    // Token information
+    // Token information (matching lib.rs exactly - no tokenId in display)
     switch (lang) {
       case LANG_ZH:
-        message += `🪙 代币: ${tokenSymbol} (ID: ${tokenId})\n`;
+        message += `🪙 代币: ${tokenSymbol}\n`;
         message += `📊 分配数量: ${allocations.length} 项\n`;
         break;
       default:
-        message += `🪙 Token: ${tokenSymbol} (ID: ${tokenId})\n`;
+        message += `🪙 Token: ${tokenSymbol}\n`;
         message += `📊 Allocations: ${allocations.length} item(s)\n`;
         break;
+    }
+
+    // Calculate total amount (matching lib.rs)
+    let totalAmountBigInt = BigInt(0);
+    for (const allocation of allocations) {
+      const amountBigInt = BigInt(allocation.amount);
+      totalAmountBigInt += amountBigInt;
     }
 
     // Allocations list
@@ -187,13 +199,43 @@ export class CommitmentFormatter {
       message += `  • #${allocation.seq}: ${formattedAmount} ${tokenSymbol}\n`;
     }
 
+    // Total Amount (matching lib.rs - must be after allocations, before Deposit ID)
+    const totalDivisor = BigInt(10) ** BigInt(18);
+    const totalIntegerPart = totalAmountBigInt / totalDivisor;
+    const totalDecimalPart = totalAmountBigInt % totalDivisor;
+    const totalDecimalStr = totalDecimalPart.toString().padStart(18, '0');
+    const totalTrimmedDecimal = totalDecimalStr.replace(/0+$/, '').replace(/\.$/, '');
+    
+    let totalFormatted: string;
+    if (totalDecimalPart === 0n) {
+      totalFormatted = totalIntegerPart.toString();
+    } else {
+      totalFormatted = `${totalIntegerPart}.${totalTrimmedDecimal}`;
+    }
+
+    switch (lang) {
+      case LANG_ZH:
+        message += `\n💰 总金额: ${totalFormatted} ${tokenSymbol}\n`;
+        break;
+      default:
+        message += `\n💰 Total Amount: ${totalFormatted} ${tokenSymbol}\n`;
+        break;
+    }
+
     // Deposit ID, Network, and Owner
     // Format deposit_id (display first 8 bytes as decimal, matching lib.rs)
+    // If localDepositId is provided, use it directly; otherwise convert from depositId hex
+    let depositIdDecimal: string;
+    if (localDepositId !== undefined && localDepositId !== null && localDepositId !== 0) {
+      // Use localDepositId directly (uint64)
+      depositIdDecimal = localDepositId.toString();
+    } else {
+      // Fallback: convert from depositId hex (32 bytes) to u64 (first 8 bytes)
     const depositIdHex = depositId.startsWith('0x') ? depositId.slice(2) : depositId;
     const depositIdBytes = Buffer.from(depositIdHex, 'hex');
     
     // Convert first 8 bytes to u64 (big-endian) and then to decimal string
-    let depositIdDecimal = '0';
+      depositIdDecimal = '0';
     if (depositIdBytes.length >= 8) {
       // Read first 8 bytes as big-endian u64
       const first8Bytes = depositIdBytes.slice(0, 8);
@@ -206,6 +248,14 @@ export class CommitmentFormatter {
         }
       }
       depositIdDecimal = u64Value.toString();
+      }
+      
+      // Warn if localDepositId was not provided or was 0
+      if (localDepositId === undefined || localDepositId === null) {
+        console.warn('⚠️ [CommitmentFormatter] localDepositId is missing, using fallback conversion from depositId hex');
+      } else if (localDepositId === 0) {
+        console.warn('⚠️ [CommitmentFormatter] localDepositId is 0, using fallback conversion from depositId hex');
+      }
     }
     
     const ownerFormatted = this.formatOwnerAddress(ownerAddress, lang);
@@ -228,20 +278,47 @@ export class CommitmentFormatter {
 
   /**
    * Format owner address according to lib.rs format_address
+   * Matches lib.rs UniversalAddress::format_address exactly
    */
   private static formatOwnerAddress(
     address: UniversalAddress,
     lang: number
   ): string {
-    // For now, use simple format. In production, should match lib.rs format_address exactly
+    // Extract 20-byte address from 32-byte Universal Address (right-aligned)
+    // Universal Address format: [12 bytes zeros][20 bytes address]
+    // Use address.address (20-byte) if available, otherwise extract from address.data (32-byte)
+    let addrStr: string;
+    if (address.address) {
+      // Use 20-byte address directly (ensure lowercase to match lib.rs)
+      addrStr = address.address.toLowerCase();
+      if (!addrStr.startsWith('0x')) {
+        addrStr = '0x' + addrStr;
+      }
+    } else if (address.data) {
+      // Extract from 32-byte data (right-aligned, last 20 bytes)
+      const addressBytes = Buffer.from(address.data.slice(-20), 'hex');
+      addrStr = '0x' + addressBytes.toString('hex').toLowerCase();
+    } else {
+      // Fallback: use universalFormat if available
+      if (address.universalFormat) {
+        const universalHex = address.universalFormat.replace(/^0x/, '');
+        // Extract last 20 bytes (40 hex chars) from 32-byte (64 hex chars) Universal Address
+        const addressHex = universalHex.slice(-40);
+        addrStr = '0x' + addressHex.toLowerCase();
+      } else {
+        throw new Error('UniversalAddress must have either address, data, or universalFormat');
+      }
+    }
+    
     const chainName = getChainName(address.chainId);
-    const addrStr = address.address;
 
+    // Match lib.rs format_address exactly
+    // lib.rs format: English: "{address} on {chain_name}", Chinese: "{chain_name}链上{address}地址"
     switch (lang) {
       case LANG_ZH:
-        return `${chainName}链上${addrStr}地址`;
+        return `${chainName}链上${addrStr}地址`; // Match lib.rs Chinese format: "{chain_name}链上{address}地址"
       default:
-        return `${addrStr} on ${chainName}`;
+        return `${addrStr} on ${chainName}`; // Match lib.rs English format: "{address} on {chain_name}"
     }
   }
 
@@ -288,7 +365,6 @@ export class CommitmentFormatter {
     chainId: number,
     tokenId: number
   ): string {
-    const { CommitmentCore } = require('../utils/CommitmentCore');
     const { hexToBytes, amountToBytes32, bytesToHex } = CommitmentCore;
 
     // Convert allocations to CommitmentCore format

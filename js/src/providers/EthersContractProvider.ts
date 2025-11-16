@@ -103,6 +103,11 @@ export class EthersContractProvider implements IContractProvider {
     throw new Error('Address not available');
   }
 
+  /**
+   * Get current chain ID from ethers.js provider
+   * Returns EVM Chain ID (e.g., 56 for BSC, 1 for Ethereum) as provided by the RPC
+   * This is used for RPC operations and differs from SLIP-44 chain ID used in API calls
+   */
   async getChainId(): Promise<number> {
     let provider: Provider;
     if ('provider' in this.providerOrSigner && this.providerOrSigner.provider) {
@@ -112,7 +117,7 @@ export class EthersContractProvider implements IContractProvider {
     }
     
     const network = await provider.getNetwork();
-    return Number(network.chainId);
+    return Number(network.chainId); // Returns EVM Chain ID
   }
 
   isConnected(): boolean {

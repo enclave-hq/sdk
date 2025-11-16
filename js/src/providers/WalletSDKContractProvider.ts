@@ -124,12 +124,17 @@ export class WalletSDKContractProvider implements IContractProvider {
     return account.nativeAddress;
   }
 
+  /**
+   * Get current chain ID from wallet SDK
+   * Returns EVM Chain ID (e.g., 56 for BSC, 1 for Ethereum) as provided by the wallet
+   * This is used for RPC operations and differs from SLIP-44 chain ID used in API calls
+   */
   async getChainId(): Promise<number> {
     const account = this.walletManager.getCurrentAccount();
     if (!account) {
       throw new Error('No account connected');
     }
-    return account.chainId;
+    return account.chainId; // Returns EVM Chain ID
   }
 
   isConnected(): boolean {

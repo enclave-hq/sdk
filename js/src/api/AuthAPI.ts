@@ -41,20 +41,49 @@ export class AuthAPI {
     validateSignature(request.signature, 'signature');
     validatePositiveNumber(request.chainId, 'chainId');
 
-    const response = await this.client.post<AuthResponse>(
+    // Use Universal Address format (32-byte) for user_address - REQUIRED
+    if (!request.address.universalFormat) {
+      throw new Error('Universal Address format is required. request.address.universalFormat is missing.');
+    }
+    const userAddress = request.address.universalFormat.replace(/^0x/, '');
+    
+    const response = await this.client.post<any>(
       '/api/auth/login',
       {
-        user_address: request.address,
-        chain_id: request.chainId,
+        // Backend expects user_address as Universal Address (32-byte), chain_id as SLIP-44
+        user_address: userAddress, // 32-byte Universal Address (required)
+        chain_id: request.chainId, // SLIP-44 Chain ID
         message: request.message,
         signature: request.signature,
       }
     );
 
+    // Backend returns { success: bool, token: string, message: string }
+    // Check if authentication was successful
+    if (response.success === false || !response.token) {
+      const errorMessage = response.message || 'Authentication failed';
+      throw new Error(`Authentication failed: ${errorMessage}`);
+    }
+
+    // Validate token is present and not empty
+    if (!response.token || typeof response.token !== 'string' || response.token.trim() === '') {
+      throw new Error('Authentication response missing or invalid token');
+    }
+
     // Store token in client
     this.client.setAuthToken(response.token);
+    
+    // Verify token was set
+    const verifyToken = this.client.getAuthToken();
+    if (!verifyToken) {
+      throw new Error('Failed to set auth token in API client');
+    }
 
-    return response;
+    // Return response in expected format
+    return {
+      token: response.token,
+      user_address: request.address,
+    };
   }
 
   /**
@@ -108,14 +137,29 @@ export class AuthAPI {
   /**
    * Get authentication nonce for signing
    * @param address - User's address
-   * @returns Nonce for signing
+   * @returns Nonce for signing with message
    */
-  async getNonce(address?: string): Promise<{ nonce: string; timestamp: string }> {
+  async getNonce(address?: string): Promise<{ nonce: string; timestamp: string; message?: string }> {
     const params = address ? { owner: address } : {};
-    return this.client.get<{ nonce: string; timestamp: string }>(
+    // Backend returns { success: bool, nonce: string, message: string, timestamp: number }
+    const response = await this.client.get<any>(
       '/api/auth/nonce',
       { params }
     );
+    
+    // Handle backend response format
+    if (response.success === false || !response.nonce) {
+      throw new Error(response.message || 'Failed to get nonce from backend');
+    }
+    
+    // Convert timestamp to string if it's a number
+    return {
+      nonce: response.nonce,
+      timestamp: typeof response.timestamp === 'number' 
+        ? response.timestamp.toString() 
+        : response.timestamp || Date.now().toString(),
+      message: response.message, // Include message from backend
+    };
   }
 }
 

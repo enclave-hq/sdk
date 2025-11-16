@@ -12,6 +12,7 @@ import {
   validateNonEmptyArray,
   validateChainId,
 } from '../utils/validation';
+import { CommitmentCore } from '../utils/CommitmentCore';
 
 /**
  * Language codes (matching lib.rs)
@@ -41,6 +42,8 @@ export class WithdrawFormatter {
    * @param chainName - Optional chain name (e.g., "Ethereum", "BSC", "TRON").
    *                    If not provided, will be derived from beneficiary chainId.
    *                    Providing chainName makes the message more user-friendly in wallet signatures.
+   * @param checkbookInfo - Optional checkbook info containing localDepositId and chainId
+   * @param minOutput - Optional minimum output constraint (default: 0)
    * @returns Withdrawal sign data ready for signing
    */
   static prepareSignData(
@@ -48,7 +51,9 @@ export class WithdrawFormatter {
     intent: Intent,
     tokenSymbol: string,
     lang: number = LANG_EN,
-    chainName?: string
+    chainName?: string,
+    checkbookInfo?: { localDepositId?: number; slip44ChainId?: number },
+    minOutput: string = '0'
   ): WithdrawalSignData {
     // Validate inputs
     validateNonEmptyArray(allocations, 'allocations');
@@ -105,7 +110,9 @@ export class WithdrawFormatter {
       intent,
       tokenSymbol,
       lang,
-      chainName
+      chainName,
+      checkbookInfo,
+      minOutput
     );
 
     // Compute message hash
@@ -116,6 +123,7 @@ export class WithdrawFormatter {
       targetChain: intent.beneficiary.chainId,
       targetAddress: intent.beneficiary.address,
       intent,
+      tokenSymbol, // Include tokenSymbol in return value
       message,
       messageHash,
       nullifier,
@@ -153,7 +161,6 @@ export class WithdrawFormatter {
     commitment: string,
     allocation: { seq: number; amount: string }
   ): string {
-    const { CommitmentCore } = require('../utils/CommitmentCore');
     const { hexToBytes, amountToBytes32, bytesToHex } = CommitmentCore;
 
     const commitmentBytes = hexToBytes(commitment);
@@ -191,7 +198,9 @@ export class WithdrawFormatter {
     intent: Intent,
     tokenSymbol: string,
     lang: number,
-    chainName?: string
+    chainName?: string,
+    checkbookInfo?: { localDepositId?: number; slip44ChainId?: number },
+    minOutput: string = '0'
   ): string {
     let message = '';
 
@@ -205,77 +214,136 @@ export class WithdrawFormatter {
         break;
     }
 
-    // Beneficiary address
-    const beneficiary = intent.beneficiary;
-    const beneficiaryFormatted = this.formatBeneficiaryAddress(beneficiary, lang);
-    // Use provided chain name, or derive from beneficiary chainId
-    const beneficiaryChainName = chainName || this.getChainName(beneficiary.chainId);
+    // 1. Source Token information (from checkbook/credential)
+    // Use SLIP-44 Chain ID (unified standard, supports all chains including non-EVM chains)
+    const sourceSlip44ChainId = checkbookInfo?.slip44ChainId || allocations[0]?.owner?.chainId || 0;
+    const sourceChainName = this.getChainName(sourceSlip44ChainId);
+    const sourceTokenKey = tokenSymbol;
 
     switch (lang) {
       case LANG_ZH:
-        message += `收款地址: ${beneficiaryFormatted}\n`;
-        message += `链: ${beneficiaryChainName} (${beneficiary.chainId})\n\n`;
+        message += `提取代币: ${sourceChainName} (${sourceSlip44ChainId}) 上的${sourceTokenKey}\n\n`;
         break;
       default:
-        message += `To: ${beneficiaryFormatted}\n`;
-        message += `Chain: ${beneficiaryChainName} (${beneficiary.chainId})\n\n`;
+        message += `Source Token: ${sourceTokenKey} on ${sourceChainName} (${sourceSlip44ChainId})\n\n`;
         break;
     }
 
-    // Token information
-    if (intent.type === 'RawToken') {
-      const tokenContract = intent.tokenContract;
-      const tokenAddr = this.formatTokenContract(tokenContract);
+    // 2. Allocations - display all allocations with deposit_id and seq
+    const depositId = checkbookInfo?.localDepositId || 0;
+    const allocationsWithInfo = allocations.map(alloc => ({
+      allocation: alloc,
+      depositId,
+    }));
+
+    switch (lang) {
+      case LANG_ZH:
+        message += `📊 分配数量: ${allocationsWithInfo.length} 项\n`;
+        break;
+      default:
+        message += `📊 Allocations: ${allocationsWithInfo.length} item(s)\n`;
+        break;
+    }
+
+    // Sort allocations by seq for display (matching lib.rs behavior)
+    const sortedBySeq = [...allocationsWithInfo].sort((a, b) => a.allocation.seq - b.allocation.seq);
+
+    for (const { allocation, depositId: depId } of sortedBySeq) {
+      // Convert amount string to bytes32 format for formatting
+      const amountBytes32 = this.amountToBytes32(allocation.amount);
+      const formattedAmount = this.formatAmount(amountBytes32, 18, sourceTokenKey);
+
       switch (lang) {
         case LANG_ZH:
-          message += `代币: ${tokenSymbol} ${tokenAddr}\n\n`;
+          message += `  • ${depId} 的 #${allocation.seq}: ${formattedAmount}\n`;
           break;
         default:
-          message += `Token: ${tokenSymbol} ${tokenAddr}\n\n`;
+          message += `  • Deposit ${depId} #${allocation.seq}: ${formattedAmount}\n`;
+          break;
+      }
+    }
+
+    // 3. Total Amount
+    let totalAmount = BigInt(0);
+    for (const allocation of allocations) {
+      totalAmount += BigInt(allocation.amount);
+    }
+    const totalBytes = this.amountToBytes32(totalAmount.toString());
+    const totalFormatted = this.formatAmount(totalBytes, 18, sourceTokenKey);
+
+    switch (lang) {
+      case LANG_ZH:
+        message += `\n总金额: ${totalFormatted}\n\n`;
+        break;
+      default:
+        message += `\nTotal Amount: ${totalFormatted}\n\n`;
+        break;
+    }
+
+    // 4. Target Token information (based on Intent type)
+    const beneficiary = intent.beneficiary;
+    const beneficiaryChainId = beneficiary.chainId;
+    const beneficiaryChainName = chainName || this.getChainName(beneficiaryChainId);
+
+    switch (lang) {
+      case LANG_ZH:
+        message += `目标代币:\n`;
+        break;
+      default:
+        message += `Target Token:\n`;
+        break;
+    }
+
+    if (intent.type === 'RawToken') {
+      const targetTokenSymbol = intent.tokenSymbol || tokenSymbol;
+      switch (lang) {
+        case LANG_ZH:
+          message += `  在链: ${beneficiaryChainName} (${beneficiaryChainId}) 得到代币 ${targetTokenSymbol}\n\n`;
+          break;
+        default:
+          message += `  On chain: ${beneficiaryChainName} (${beneficiaryChainId}) get token ${targetTokenSymbol}\n\n`;
           break;
       }
     } else if (intent.type === 'AssetToken') {
       const assetId = intent.assetId;
       const adapterId = this.getAdapterId(assetId);
-      const tokenId = this.getTokenId(assetId);
-      // Use assetTokenSymbol if available, otherwise fall back to tokenSymbol
       const assetTokenSymbol = (intent as any).assetTokenSymbol || tokenSymbol;
+      const assetChainId = this.getChainIdFromAssetId(assetId);
+      const assetChainName = this.getChainName(assetChainId);
       switch (lang) {
         case LANG_ZH:
-          message += `代币: ${assetTokenSymbol} (适配器 #${adapterId}, 代币 #${tokenId})\n\n`;
+          message += `  在链: ${assetChainName} (${assetChainId}) 通过 池子: 适配器 #${adapterId} 得到代币 ${assetTokenSymbol}\n\n`;
           break;
         default:
-          message += `Token: ${assetTokenSymbol} (Adapter #${adapterId}, Token #${tokenId})\n\n`;
+          message += `  On chain: ${assetChainName} (${assetChainId}) through pool: Adapter #${adapterId} get token ${assetTokenSymbol}\n\n`;
           break;
       }
     }
 
-    // Calculate total amount from allocations
-    let totalAmount = BigInt(0);
-    for (const allocation of allocations) {
-      totalAmount += BigInt(allocation.amount);
+    // 5. Beneficiary address
+    const beneficiaryFormatted = this.formatBeneficiaryAddress(beneficiary, lang);
+    switch (lang) {
+      case LANG_ZH:
+        message += `受益人地址: ${beneficiaryFormatted}\n\n`;
+        break;
+      default:
+        message += `Beneficiary: ${beneficiaryFormatted}\n\n`;
+        break;
     }
 
-    // Format amount with 18 decimals
-    const divisor = BigInt(10) ** BigInt(18);
-    const integerPart = totalAmount / divisor;
-    const decimalPart = totalAmount % divisor;
-    const decimalStr = decimalPart.toString().padStart(18, '0');
-    const trimmedDecimal = decimalStr.replace(/0+$/, '');
-    
-    let formattedAmount: string;
-    if (decimalPart === 0n) {
-      formattedAmount = `${integerPart} ${tokenSymbol}`;
-    } else {
-      formattedAmount = `${integerPart}.${trimmedDecimal} ${tokenSymbol}`;
-    }
+    // 6. Min Output
+    const minOutputTokenSymbol = intent.type === 'RawToken' 
+      ? (intent.tokenSymbol || tokenSymbol)
+      : ((intent as any).assetTokenSymbol || tokenSymbol);
+    const minOutputBytes = this.amountToBytes32(minOutput);
+    const minOutputFormatted = this.formatAmount(minOutputBytes, 18, minOutputTokenSymbol);
 
     switch (lang) {
       case LANG_ZH:
-        message += `金额: ${formattedAmount}\n`;
+        message += `最少输出数量为： ${minOutputFormatted}\n`;
         break;
       default:
-        message += `Amount: ${formattedAmount}\n`;
+        message += `Min Output: ${minOutputFormatted}\n`;
         break;
     }
 
@@ -285,14 +353,23 @@ export class WithdrawFormatter {
 
   /**
    * Format beneficiary address according to lib.rs format_address
+   * IMPORTANT: Address must be lowercase to match Rust hex::encode behavior
    */
   private static formatBeneficiaryAddress(
     address: UniversalAddress,
     lang: number
   ): string {
-    // For now, use simple format. In production, should match lib.rs format_address exactly
+    // Normalize address to lowercase to match Rust hex::encode behavior
+    // Rust uses: format!("0x{}", hex::encode(self.to_ethereum_address()))
+    // which always produces lowercase hex
     const chainName = this.getChainName(address.chainId);
-    const addrStr = address.address;
+    let addrStr = address.address;
+    
+    // Convert to lowercase if it's an EVM address (starts with 0x)
+    // This ensures consistency with Rust's hex::encode which always produces lowercase
+    if (addrStr.startsWith('0x') || addrStr.startsWith('0X')) {
+      addrStr = '0x' + addrStr.slice(2).toLowerCase();
+    }
 
     switch (lang) {
       case LANG_ZH:
@@ -305,8 +382,9 @@ export class WithdrawFormatter {
   /**
    * Format token contract (32 bytes) as address string
    * Matches lib.rs format_token_contract
+   * @internal Reserved for future use
    */
-  private static formatTokenContract(tokenContract: string): string {
+  private static _formatTokenContract(tokenContract: string): string {
     // Remove 0x prefix if present
     const hex = tokenContract.startsWith('0x') ? tokenContract.slice(2) : tokenContract;
     
@@ -334,8 +412,9 @@ export class WithdrawFormatter {
 
   /**
    * Extract token ID from asset ID (bytes 8-9)
+   * @internal Reserved for future use
    */
-  private static getTokenId(assetId: string): number {
+  private static _getTokenId(assetId: string): number {
     const hex = assetId.startsWith('0x') ? assetId.slice(2) : assetId;
     if (hex.length < 20) {
       throw new Error('Asset ID must be at least 10 bytes (20 hex chars)');
@@ -343,6 +422,91 @@ export class WithdrawFormatter {
     // Bytes 8-9 (hex chars 16-19)
     const tokenHex = hex.slice(16, 20);
     return parseInt(tokenHex, 16);
+  }
+
+  /**
+   * Extract chain ID from asset ID (bytes 0-3)
+   * Matches lib.rs asset_id_codec::get_chain_id
+   */
+  private static getChainIdFromAssetId(assetId: string): number {
+    const hex = assetId.startsWith('0x') ? assetId.slice(2) : assetId;
+    if (hex.length < 8) {
+      throw new Error('Asset ID must be at least 4 bytes (8 hex chars)');
+    }
+    // Bytes 0-3 (hex chars 0-7)
+    const chainHex = hex.slice(0, 8);
+    return parseInt(chainHex, 16);
+  }
+
+  /**
+   * Format amount with decimals (matching lib.rs format_amount)
+   * @param amountBytes - Amount as 32-byte hex string or BigInt string
+   * @param decimals - Number of decimals (default: 18)
+   * @param symbol - Token symbol for display
+   * @returns Formatted amount string
+   */
+  private static formatAmount(amountBytes: string | Uint8Array, decimals: number = 18, symbol: string): string {
+    let amountBigInt: bigint;
+    
+    if (typeof amountBytes === 'string') {
+      // If it's already a string, try to parse as BigInt
+      if (amountBytes.startsWith('0x')) {
+        amountBigInt = BigInt(amountBytes);
+      } else {
+        // Check if it's a hex string (contains hex characters a-f, A-F)
+        // If it contains hex characters, treat it as hex and add 0x prefix
+        // Otherwise, treat it as decimal
+        const isHexString = /[a-fA-F]/.test(amountBytes);
+        if (isHexString) {
+          amountBigInt = BigInt('0x' + amountBytes);
+        } else {
+          amountBigInt = BigInt(amountBytes);
+        }
+      }
+    } else {
+      // Convert Uint8Array to hex string, then to BigInt
+      const hex = Array.from(amountBytes)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      amountBigInt = BigInt('0x' + hex);
+    }
+
+    if (decimals === 0) {
+      return `${amountBigInt} ${symbol}`;
+    }
+
+    const divisor = BigInt(10) ** BigInt(decimals);
+    const integerPart = amountBigInt / divisor;
+    const decimalPart = amountBigInt % divisor;
+    
+    // Format decimal part with padding
+    const decimalStr = decimalPart.toString().padStart(decimals, '0');
+    const trimmedDecimal = decimalStr.replace(/0+$/, '');
+    
+    if (trimmedDecimal === '') {
+      return `${integerPart} ${symbol}`;
+    } else {
+      return `${integerPart}.${trimmedDecimal} ${symbol}`;
+    }
+  }
+
+  /**
+   * Convert amount string to 32-byte hex string (right-aligned, big-endian)
+   * @param amount - Amount as string (can be decimal or hex)
+   * @returns 32-byte hex string (64 hex chars)
+   */
+  private static amountToBytes32(amount: string): string {
+    let amountBigInt: bigint;
+    
+    if (amount.startsWith('0x')) {
+      amountBigInt = BigInt(amount);
+    } else {
+      amountBigInt = BigInt(amount);
+    }
+    
+    // Convert to hex and pad to 64 chars (32 bytes)
+    const hex = amountBigInt.toString(16);
+    return hex.padStart(64, '0');
   }
 
   /**

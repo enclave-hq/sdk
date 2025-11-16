@@ -118,11 +118,10 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
 
   /**
    * Fetch withdrawal requests list from API
-   * @param filters - Optional filters
+   * @param filters - Optional filters (owner is automatically determined from JWT token)
    * @returns Array of withdrawal requests
    */
   async fetchList(filters?: {
-    owner?: string;
     status?: string;
     tokenId?: string;
     targetChain?: number;
@@ -131,8 +130,10 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   }): Promise<WithdrawRequest[]> {
     return this.executeAction(async () => {
       const response = await this.api.listWithdrawRequests(filters);
+      // Handle null or undefined data (backend may return null for empty results)
+      const data = response.data ?? [];
       // Compute frontend status for each item
-      const items = response.data.map(w => ({
+      const items = data.map(w => ({
         ...w,
         frontendStatus: mapToFrontendStatus(w.status),
       }));
@@ -186,7 +187,8 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
       tokenIdentifier?: string; // For RawToken
       assetId?: string; // For AssetToken
     };
-    signature?: string;
+    signature: string; // Required for ZKVM proof generation
+    chainId: number; // Required: Chain ID for signature (SLIP-44)
     message?: string;
     nullifier?: string;
     proof?: string;
@@ -196,8 +198,15 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
       const request: import('../types/api').CreateWithdrawRequestRequest = {
         checkbookId: params.checkbookId,
         allocationIds: params.allocationIds,
-        intent: params.intent,
+        intent: {
+          type: params.intent.type,
+          beneficiaryChainId: params.intent.beneficiary.chain_id,
+          beneficiaryAddress: params.intent.beneficiary.address,
+          tokenSymbol: params.intent.tokenIdentifier || '',
+          assetId: params.intent.assetId,
+        },
         signature: params.signature,
+        chainId: params.chainId,
         message: params.message,
         nullifier: params.nullifier,
         proof: params.proof,
@@ -244,13 +253,13 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
 
   /**
    * Fetch withdrawal statistics
-   * @param owner - Optional owner filter
    * @param tokenId - Optional token ID filter
    * @returns Withdrawal statistics
    */
-  async fetchStats(owner?: string, tokenId?: string) {
+  async fetchStats(tokenId?: string) {
     return this.executeAction(async () => {
-      return await this.api.getWithdrawStats({ owner, tokenId });
+      // Owner is now automatically determined from JWT token
+      return await this.api.getWithdrawStats({ tokenId });
     }, 'Failed to fetch withdrawal statistics');
   }
 

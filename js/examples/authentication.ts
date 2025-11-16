@@ -35,7 +35,7 @@ async function main() {
     console.log('Authenticating...');
     const authResponse = await client.auth.authenticate({
       address: wallet.address,
-      chainId: 714, // BSC chain ID
+      chainId: 714, // BSC (SLIP-44 chain ID)
       message: message,
       signature: signature,
     });

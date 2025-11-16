@@ -49,8 +49,8 @@ await client.connect();
 | `client.connect()` | `POST /api/auth/login` | 認証と接続確立 |
 | `client.disconnect()` | `POST /api/auth/logout` | 切断とクリーンアップ |
 | `client.stores.checkbooks.getByOwner()` | `GET /api/checkbooks` | ユーザーのCheckbook取得 |
-| `client.stores.allocations.getList()` | `GET /api/allocations` | フィルター付きAllocation取得 |
-| `client.stores.withdrawals.getList()` | `GET /api/withdrawals` | 出金リクエスト取得 |
+| `client.stores.allocations.fetchList()` | `GET /api/allocations` | フィルター付きAllocation取得 |
+| `client.stores.withdrawals.fetchList()` | `GET /api/withdrawals` | 出金リクエスト取得 |
 | `client.prepareCommitment()` | なし（SDK内部） | コミットメント署名データ準備 |
 | `client.submitCommitment()` | `POST /api/commitments` | 署名済みコミットメント送信 |
 | `client.prepareWithdraw()` | なし（SDK内部） | 出金署名データ準備 |
@@ -147,7 +147,7 @@ await client.stores.allocations.getById(allocationId);
 await client.stores.withdrawals.getById(withdrawalId);
 
 // フィルター付きクエリ
-await client.stores.allocations.getList({
+await client.stores.allocations.fetchList({
   token_id: 1,
   status: AllocationStatus.Idle,
   page: 1,
@@ -193,7 +193,7 @@ await client.stores.checkbooks.getById(checkbookId);
 await client.stores.allocations.getById(allocationId);
 
 // フィルターとページネーション付き取得
-await client.stores.allocations.getList({
+await client.stores.allocations.fetchList({
   token_id: 1,
   status: AllocationStatus.Idle,
   page: 1,
@@ -245,7 +245,7 @@ const idleEth = await client.stores.allocations.getByTokenIdAndStatus(
 console.log('利用可能なETH Allocation:', idleEth.length);
 ```
 
-### `client.stores.allocations.getList(filters)`
+### `client.stores.allocations.fetchList(filters)`
 
 **説明**: 高度なフィルター付きAllocationクエリ
 
@@ -327,14 +327,14 @@ const result = await client.withdraw(allocations, intent);
 console.log('✅ 出金リクエスト作成');
 ```
 
-### `client.stores.withdrawals.getList(filters)`
+### `client.stores.withdrawals.fetchList(filters)`
 
 **説明**: フィルターとページネーション付き出金リクエストクエリ
 
 **使用例**:
 ```typescript
 // 処理中の出金を取得
-const pending = await client.stores.withdrawals.getList({
+const pending = await client.stores.withdrawals.fetchList({
   status: WithdrawRequestStatus.Pending,
   page: 1,
   page_size: 10,

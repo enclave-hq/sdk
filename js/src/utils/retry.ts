@@ -35,7 +35,7 @@ const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
   initialDelay: 1000,
   maxDelay: 30000,
   backoffMultiplier: 2,
-  timeout: 30000,
+  timeout: 300000, // 300 seconds (5 minutes) for E2E tests
   shouldRetry: () => true,
   logger: getLogger(),
 };

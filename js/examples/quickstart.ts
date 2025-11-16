@@ -13,7 +13,7 @@ async function main() {
   // ========================================
   const walletManager = new WalletManager({
     enableStorage: true,
-    defaultChainId: 1, // Ethereum
+    defaultChainId: 60, // Ethereum (SLIP-44 chain ID)
   });
 
   // ========================================

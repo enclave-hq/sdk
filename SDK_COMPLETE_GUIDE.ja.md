@@ -266,7 +266,7 @@ if (sdk) {
 await client.connect()
 
 // 2. 預金記録を取得
-const checkbooks = await client.stores.checkbooks.getList()
+const checkbooks = await client.stores.checkbooks.fetchList()
 
 // 3. Commitment を作成
 const allocations = await client.createCommitment({

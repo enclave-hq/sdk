@@ -33,3 +33,6 @@ export * from './chain';
 // Withdraw status utilities
 export * from './withdraw-status';
 
+// Checkbook status utilities
+export * from './checkbook-status';
+

@@ -64,12 +64,38 @@ export function formatAddressShort(
 /**
  * Create universal address from Ethereum address
  * @param address - Ethereum address
- * @param chainId - Chain ID (default: 1 for Ethereum mainnet)
+ * @param chainId - SLIP-44 chain ID (default: 714 for BSC)
+ *                  Note: If EVM chain ID is provided, it will be converted to SLIP-44
  * @returns Universal address object
  */
+/**
+ * Convert 20-byte EVM address to 32-byte Universal Address format
+ * Right-aligns the address in 32 bytes (left-pads with zeros)
+ * @param address - 20-byte EVM address
+ * @returns 32-byte hex string (64 hex chars, no 0x prefix)
+ */
+function addressToUniversalFormat(address: string): string {
+  // Remove 0x prefix if present
+  const hex = address.startsWith('0x') ? address.slice(2) : address;
+  
+  // Convert to buffer (20 bytes for Ethereum address)
+  const addressBuf = Buffer.from(hex, 'hex');
+  
+  if (addressBuf.length !== 20) {
+    throw new ValidationError('Address must be 20 bytes', 'address');
+  }
+  
+  // Right-align in 32 bytes (left-pad with zeros)
+  const result = Buffer.allocUnsafe(32);
+  result.fill(0);
+  addressBuf.copy(result, 12); // Copy to bytes 12-31 (right-aligned)
+  
+  return result.toString('hex'); // Return as hex string without 0x prefix
+}
+
 export function createUniversalAddress(
   address: string,
-  chainId: number = 1
+  chainId: number = 714  // Default to BSC (SLIP-44: 714)
 ): UniversalAddress {
   if (!isValidAddress(address)) {
     throw new ValidationError('Invalid Ethereum address', 'address');
@@ -77,19 +103,23 @@ export function createUniversalAddress(
 
   const checksumAddress = toChecksumAddress(address);
   const slip44 = getSlip44FromChainId(chainId);
+  
+  // Convert 20-byte EVM address to 32-byte Universal Address format
+  const universalFormat = addressToUniversalFormat(checksumAddress);
 
   return {
     chainId,
     chainName: getChainName(chainId),
-    address: checksumAddress,
-    universalFormat: checksumAddress,
+    address: checksumAddress, // Keep 20-byte address for backward compatibility
+    universalFormat: '0x' + universalFormat, // 32-byte Universal Address format
     slip44: slip44 ?? undefined,
   };
 }
 
 /**
- * Parse universal address string (format: "chainId:address")
- * @param addressString - Address string to parse
+ * Parse universal address string (format: "slip44_chain_id:address")
+ * @param addressString - Address string to parse (format: "slip44_chain_id:address")
+ *                        Example: "714:0x1234..." (BSC) or "60:0x1234..." (Ethereum)
  * @returns Universal address object
  * @throws ValidationError if invalid format
  */
@@ -100,7 +130,7 @@ export function parseUniversalAddress(
 
   if (parts.length !== 2) {
     throw new ValidationError(
-      'Universal address must be in format "chainId:address"',
+      'Universal address must be in format "slip44_chain_id:address"',
       'addressString'
     );
   }
@@ -110,14 +140,14 @@ export function parseUniversalAddress(
 
   if (!chainIdPart || !addressPart) {
     throw new ValidationError(
-      'Universal address must be in format "chainId:address"',
+      'Universal address must be in format "slip44_chain_id:address"',
       'addressString'
     );
   }
 
   const chainId = parseInt(chainIdPart, 10);
   if (isNaN(chainId) || chainId <= 0) {
-    throw new ValidationError('Invalid chain ID in universal address', 'chainId');
+    throw new ValidationError('Invalid SLIP-44 chain ID in universal address', 'chainId');
   }
 
   if (!isValidAddress(addressPart)) {
@@ -131,9 +161,9 @@ export function parseUniversalAddress(
 }
 
 /**
- * Format universal address to string (format: "chainId:address")
- * @param universalAddress - Universal address object
- * @returns Formatted string
+ * Format universal address to string (format: "slip44_chain_id:address")
+ * @param universalAddress - Universal address object (chainId should be SLIP-44 chain ID)
+ * @returns Formatted string (format: "slip44_chain_id:address")
  */
 export function formatUniversalAddress(
   universalAddress: UniversalAddress

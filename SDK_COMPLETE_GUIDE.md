@@ -266,7 +266,7 @@ if (sdk) {
 await client.connect()
 
 // 2. 获取存款记录
-const checkbooks = await client.stores.checkbooks.getList()
+const checkbooks = await client.stores.checkbooks.fetchList()
 
 // 3. 创建 Commitment
 const allocations = await client.createCommitment({

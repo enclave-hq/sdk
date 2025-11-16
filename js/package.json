@@ -57,7 +57,10 @@
     "dev": "tsup --watch",
     "build": "tsup",
     "build:prod": "NODE_ENV=production tsup",
-    "test": "vitest",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:interactive": "vitest",
+    "test:it": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "type-check": "tsc --noEmit",
@@ -66,10 +69,12 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "prepublishOnly": "npm run build:prod",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "check-checkbook-status": "npx tsx scripts/check-checkbook-status.ts"
   },
   "dependencies": {
     "@enclave-hq/chain-utils": "^1.0.0",
+    "@enclave-hq/wallet-sdk": "^1.1.4",
     "mobx": "^6.12.0",
     "ethers": "^6.10.0",
     "axios": "^1.6.7",

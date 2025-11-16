@@ -39,20 +39,30 @@ export type MetricsMap = Record<string, Metric>;
 /**
  * Checkbook status enumeration
  * Represents the lifecycle of a checkbook from creation to completion
+ * Matches backend CheckbookStatus enum in backend/internal/models/models.go
+ * All status values must match backend exactly (no aliases)
  */
 export enum CheckbookStatus {
-  /** Checkbook created, waiting for backend signature */
+  /** Deposit submitted, processing */
   Pending = 'pending',
-  /** Backend signature missing, needs manual intervention */
+  /** Deposit confirmed, encrypting securely */
   Unsigned = 'unsigned',
-  /** Checkbook signed and ready, can create allocations */
+  /** Deposit recorded, ready for commitment creation (set by DepositRecorded event) */
+  ReadyForCommitment = 'ready_for_commitment',
+  /** Generating exclusive privacy transfer credential (proof) */
+  GeneratingProof = 'generating_proof',
+  /** Submitting commitment to blockchain */
+  SubmittingCommitment = 'submitting_commitment',
+  /** Commitment submitted, waiting for blockchain confirmation */
+  CommitmentPending = 'commitment_pending',
+  /** Commitment confirmed, can create allocations */
   WithCheckbook = 'with_checkbook',
-  /** All allocations created, checkbook fully allocated */
-  AllocationsDone = 'allocations_done',
-  /** All allocations withdrawn, checkbook lifecycle complete */
-  Completed = 'completed',
-  /** Checkbook creation or processing failed */
-  Failed = 'failed',
+  /** Proof generation failed */
+  ProofFailed = 'proof_failed',
+  /** Commitment submission failed */
+  SubmissionFailed = 'submission_failed',
+  /** Checkbook record deleted */
+  Deleted = 'DELETED',
 }
 
 /**
@@ -168,10 +178,13 @@ export enum HookStatus {
 // ============ Universal Address ============
 
 /**
- * Universal address with chain ID
+ * Universal address with SLIP-44 chain ID
+ * Note: chainId field stores SLIP-44 chain ID (e.g., 714 for BSC, 60 for Ethereum, 195 for TRON)
+ * For EVM chains: BSC=714, Ethereum=60, Polygon=966, etc.
+ * For non-EVM chains: TRON=195
  */
 export interface UniversalAddress {
-  /** Chain ID (1=Ethereum, 56=BSC, 137=Polygon, etc.) */
+  /** SLIP-44 chain ID (e.g., 714 for BSC, 60 for Ethereum, 195 for TRON) */
   chainId: number;
   /** Chain name (e.g., 'ethereum', 'bsc', 'polygon') */
   chainName?: string;
@@ -179,7 +192,7 @@ export interface UniversalAddress {
   address: string;
   /** Universal format representation */
   universalFormat?: string;
-  /** SLIP-44 ID (optional) */
+  /** SLIP-44 ID (deprecated, use chainId instead - kept for backward compatibility) */
   slip44?: number;
   /** Address data (20 bytes for EVM, variable for other chains) - legacy field */
   data?: string;
@@ -194,8 +207,8 @@ export interface RawTokenIntent {
   type: 'RawToken';
   /** Beneficiary address with chain ID */
   beneficiary: UniversalAddress;
-  /** ERC20/TRC20 token contract address (20 bytes, hex string) */
-  tokenContract: string;
+  /** Token symbol (e.g., "USDT", "USDC", "ETH") - used for signature display and on-chain verification */
+  tokenSymbol: string;
 }
 
 /**
@@ -205,10 +218,12 @@ export interface RawTokenIntent {
 export interface AssetTokenIntent {
   /** Intent type identifier */
   type: 'AssetToken';
-  /** Asset Token ID (bytes32, encoded as AdapterID || TokenID || Reserved) */
+  /** Asset Token ID (bytes32, encoded as ChainID || AdapterID || TokenID || Reserved) */
   assetId: string;
   /** Beneficiary address with chain ID */
   beneficiary: UniversalAddress;
+  /** Asset token symbol (e.g., "aUSDT", "stETH") - used for signature display and on-chain verification */
+  assetTokenSymbol: string;
 }
 
 /**
@@ -303,14 +318,24 @@ export interface User {
  * Previously called "Deposit" - now merged with checkbook concept
  */
 export interface Checkbook {
-  /** Unique checkbook ID (also the deposit ID) */
+  /** Unique checkbook ID (UUID) */
   id: string;
+  /** Local deposit ID (uint64, used for commitment generation) - from backend local_deposit_id */
+  localDepositId?: number;
+  /** SLIP-44 Chain ID (e.g., 714 for BSC, 60 for Ethereum) - from backend slip44_chain_id */
+  slip44ChainId?: number;
   /** Owner's universal address */
   owner: UniversalAddress;
   /** Associated token */
   token: Token;
   /** Original deposit amount (in token's smallest unit) */
   depositAmount: string;
+  /** Gross amount before fees (from DepositRecorded event) - from backend gross_amount */
+  grossAmount?: string;
+  /** Amount available for allocation (after fees) - from backend allocatable_amount */
+  allocatableAmount?: string;
+  /** Total fees locked - from backend fee_total_locked */
+  feeTotalLocked?: string;
   /** Remaining amount available for allocation */
   remainingAmount: string;
   /** Deposit transaction hash */
@@ -319,6 +344,8 @@ export interface Checkbook {
   depositBlockNumber: number;
   /** Checkbook status */
   status: CheckbookStatus;
+  /** Commitment hash (shared by all allocations in this checkbook) */
+  commitment?: string;
   /** Checkbook signature from backend (optional, present after signing) */
   signature?: string;
   /** Checkbook creation timestamp */
@@ -459,8 +486,8 @@ export interface CommitmentParams {
   checkbookId: string;
   /** Array of allocation amounts (in token's smallest unit) */
   amounts: string[];
-  /** Target token */
-  tokenId: string;
+  /** Target token key (e.g., 'USDT', 'USDC') - replaces tokenId */
+  tokenKey: string;
 }
 
 /**
@@ -517,6 +544,8 @@ export interface WithdrawalSignData {
   targetAddress: string;
   /** ⭐ Intent specification (RawToken or AssetToken) */
   intent: Intent;
+  /** Token symbol (e.g., "USDT", "aUSDT") - required for backend API */
+  tokenSymbol: string;
   /** Message to sign (formatted according to spec) */
   message: string;
   /** Message hash (keccak256) */

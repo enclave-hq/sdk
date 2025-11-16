@@ -35,6 +35,8 @@ export interface APIClientConfig {
   enableRetry?: boolean;
   /** Maximum retry attempts */
   maxRetries?: number;
+  /** Callback to re-authenticate when receiving 401 errors */
+  onAuthError?: () => Promise<void>;
 }
 
 /**
@@ -46,11 +48,14 @@ export class APIClient {
   private readonly enableRetry: boolean;
   private readonly maxRetries: number;
   private authToken?: string;
+  private onAuthError?: () => Promise<void>;
+  private isReauthenticating: boolean = false;
 
   constructor(config: APIClientConfig) {
     this.logger = config.logger || getLogger();
     this.enableRetry = config.enableRetry ?? true;
     this.maxRetries = config.maxRetries ?? 3;
+    this.onAuthError = config.onAuthError;
 
     // Create axios instance
     this.axios = axios.create({
@@ -70,6 +75,9 @@ export class APIClient {
         // Add auth token if available
         if (this.authToken) {
           config.headers.Authorization = `Bearer ${this.authToken}`;
+          this.logger.debug(`Added Authorization header: Bearer ${this.authToken.substring(0, 20)}... for ${config.method?.toUpperCase()} ${config.url}`);
+        } else {
+          this.logger.warn(`No auth token available for request: ${config.method?.toUpperCase()} ${config.url}`);
         }
 
         return config;
@@ -99,7 +107,7 @@ export class APIClient {
    */
   setAuthToken(token: string): void {
     this.authToken = token;
-    this.logger.debug('Auth token updated');
+    this.logger.debug(`Auth token updated: ${token ? token.substring(0, 20) + '...' : 'empty'}`);
   }
 
   /**
@@ -144,12 +152,24 @@ export class APIClient {
 
     // Authentication error
     if (status === 401) {
-      this.clearAuthToken();
+      // Only clear token if it's not an auth endpoint (to avoid clearing token during login)
+      const url = error.config?.url || '';
+      const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/refresh');
+      
+      if (!isAuthEndpoint) {
+        // Clear token only for non-auth endpoints (token expired or invalid)
+        this.clearAuthToken();
+        this.logger.warn(`Auth token cleared due to 401 error on ${url}`);
+      } else {
+        // For auth endpoints, log but don't clear (might not have token yet)
+        this.logger.debug(`401 error on auth endpoint ${url} - token not cleared`);
+      }
+      
       return new AuthError(
-        data?.error || 'Authentication failed',
+        data?.error || data?.message || 'Authentication required',
         {
           statusCode: status,
-          endpoint: error.config?.url,
+          endpoint: url,
         }
       );
     }
@@ -182,13 +202,60 @@ export class APIClient {
     if (this.enableRetry) {
       return retry(
         async () => {
-          const response = await requestFn();
-          return response.data;
+          try {
+            const response = await requestFn();
+            return response.data;
+          } catch (error) {
+            // If we get an AuthError and have a re-auth callback, try to re-authenticate
+            if (error instanceof AuthError && this.onAuthError && !this.isReauthenticating) {
+              const url = (error as any).details?.endpoint || '';
+              const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/refresh');
+              
+              // Only re-authenticate for non-auth endpoints
+              if (!isAuthEndpoint) {
+                this.logger.info('Attempting to re-authenticate after 401 error...');
+                this.isReauthenticating = true;
+                try {
+                  await this.onAuthError();
+                  
+                  // Verify token was set after re-authentication
+                  const newToken = this.getAuthToken();
+                  if (!newToken) {
+                    this.logger.error('Re-authentication completed but token is still missing');
+                    throw new Error('Token not set after re-authentication');
+                  }
+                  
+                  this.logger.info(`Re-authentication successful. New token: ${newToken.substring(0, 20)}..., retrying request to ${url}...`);
+                  
+                  // Small delay to ensure token is fully set (though it should be immediate)
+                  await new Promise(resolve => setTimeout(resolve, 10));
+                  
+                  // Verify token is still available before retry
+                  const tokenBeforeRetry = this.getAuthToken();
+                  if (!tokenBeforeRetry || tokenBeforeRetry !== newToken) {
+                    this.logger.error(`Token changed or missing before retry. Expected: ${newToken.substring(0, 20)}..., Got: ${tokenBeforeRetry ? tokenBeforeRetry.substring(0, 20) + '...' : 'MISSING'}`);
+                    throw new Error('Token not available for retry');
+                  }
+                  
+                  // Retry the original request after re-authentication
+                  const response = await requestFn();
+                  this.logger.info(`Request retry successful after re-authentication`);
+                  return response.data;
+                } catch (reauthError) {
+                  this.logger.error('Re-authentication failed:', reauthError);
+                  throw error; // Throw original auth error
+                } finally {
+                  this.isReauthenticating = false;
+                }
+              }
+            }
+            throw error;
+          }
         },
         {
           maxAttempts: this.maxRetries,
           shouldRetry: (error, _attempt) => {
-            // Don't retry auth errors
+            // Don't retry auth errors (they're handled above)
             if (error instanceof AuthError) return false;
 
             // Retry network and timeout errors

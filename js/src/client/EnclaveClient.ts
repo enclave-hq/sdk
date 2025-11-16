@@ -137,6 +137,13 @@ export class EnclaveClient {
       logger: this.logger,
       enableRetry: true,
       maxRetries: 3,
+      // Set up automatic re-authentication on 401 errors
+      onAuthError: async () => {
+        this.logger.info('Re-authenticating after 401 error...');
+        // Reset authenticated flag to force re-authentication
+        this.authenticated = false;
+        await this.authenticate();
+      },
     });
 
     // Set auth token if provided
@@ -200,6 +207,7 @@ export class EnclaveClient {
     });
 
     this.withdrawalAction = new WithdrawalAction({
+      checkbooksStore: this.stores.checkbooks,
       api: this.withdrawalsAPI,
       store: this.stores.withdrawals,
       allocationsStore: this.stores.allocations,
@@ -244,13 +252,26 @@ export class EnclaveClient {
         await this.authenticate();
       }
 
-      // Connect WebSocket
-      await this.wsClient.connect();
+      // Set auth token for WebSocket (if authenticated)
+      if (this.authenticated && this.apiClient.getAuthToken()) {
+        this.wsClient.setAuthToken(this.apiClient.getAuthToken()!);
+      }
 
-      // Subscribe to channels
-      await this.subscribeToChannels();
+      // Connect WebSocket (optional - continue if it fails)
+      try {
+        await this.wsClient.connect();
+        // Subscribe to channels
+        await this.subscribeToChannels();
+        this.logger.info('WebSocket connected and subscribed');
+      } catch (wsError) {
+        this.logger.warn('WebSocket connection failed, continuing without real-time updates:', wsError);
+        // Continue without WebSocket - API calls will still work
+      }
 
       // Load initial data
+      // Verify token is still available before loading data
+      const tokenBeforeLoad = this.apiClient.getAuthToken();
+      this.logger.debug(`Token before loadInitialData: ${tokenBeforeLoad ? tokenBeforeLoad.substring(0, 20) + '...' : 'MISSING'}`);
       await this.loadInitialData();
 
       // Mark as connected
@@ -293,29 +314,48 @@ export class EnclaveClient {
     try {
       // Get nonce from backend
       const address = await this.walletManager.getAddressString();
-      const { nonce } = await this.authAPI.getNonce(address);
+      const nonceResponse = await this.authAPI.getNonce(address);
+      const { nonce } = nonceResponse;
       
-      // Create auth message
-      const message = `Sign this message to authenticate with Enclave.\nNonce: ${nonce}`;
+      // Use message from backend if available, otherwise create one
+      // Backend returns message in format: "ZKPay Authentication\nNonce: {nonce}\nTimestamp: {timestamp}"
+      let message: string;
+      if (nonceResponse.message) {
+        message = nonceResponse.message;
+      } else {
+        // Fallback: create message if backend doesn't provide it
+        message = `Sign this message to authenticate with Enclave.\nNonce: ${nonce}`;
+      }
+
+      this.logger.debug(`Auth message to sign: ${message}`);
 
       // Sign message
       const signature = await this.walletManager.signAuthMessage(message);
+      this.logger.debug(`Signature generated: ${signature.substring(0, 20)}...`);
 
-      // Get chain ID from wallet
+      // Get SLIP-44 chain ID from wallet (used for authentication)
       const chainId = this.walletManager.getDefaultChainId();
+      this.logger.debug(`Using SLIP-44 chain ID: ${chainId}`);
 
       // Authenticate
+      this.logger.debug(`Calling authenticate API with address: ${this.userAddress?.address}`);
       const authResponse = await this.authAPI.authenticate({
         address: this.userAddress!,
         signature,
         message,
         chainId,
       });
+      this.logger.debug(`Authenticate API response received`);
 
+      // Verify token is set in API client BEFORE marking as authenticated
+      const tokenInClient = this.apiClient.getAuthToken();
+      if (!tokenInClient) {
+        throw new AuthError('Token was not set in API client after authentication');
+      }
+      
+      this.logger.info(`Authentication successful. Token in API client: ${tokenInClient.substring(0, 20)}...`);
       this.authenticated = true;
       this.wsClient.setAuthToken(authResponse.token);
-
-      this.logger.info('Authentication successful');
     } catch (error) {
       throw new AuthError(`Authentication failed: ${(error as Error).message}`);
     }
@@ -325,9 +365,11 @@ export class EnclaveClient {
    * Subscribe to WebSocket channels
    */
   private async subscribeToChannels(): Promise<void> {
+    // Get owner address for WebSocket subscription (server will filter by JWT)
     const owner = await this.walletManager.getAddressString();
 
     // Subscribe to user-specific channels
+    // Note: owner parameter is used for WebSocket filtering, but API calls use JWT
     await this.wsClient.subscribe(WSChannel.CHECKBOOKS, { owner });
     await this.wsClient.subscribe(WSChannel.ALLOCATIONS, { owner });
     await this.wsClient.subscribe(WSChannel.WITHDRAWALS, { owner });
@@ -340,20 +382,37 @@ export class EnclaveClient {
    * Load initial data
    */
   private async loadInitialData(): Promise<void> {
-    const owner = await this.walletManager.getAddressString();
+    // Load user data (address is automatically determined from JWT token)
+    // Continue even if some endpoints fail with 404
+    const loadPromises = [
+      this.stores.checkbooks.fetchList({ limit: 100 }).catch((err) => {
+        this.logger.warn('Failed to load checkbooks:', err);
+      }),
+      this.stores.allocations.fetchList({ limit: 100 }).catch((err) => {
+        this.logger.warn('Failed to load allocations:', err);
+      }),
+      this.stores.withdrawals.fetchList({ limit: 100 }).catch((err) => {
+        this.logger.warn('Failed to load withdrawals:', err);
+      }),
+      this.stores.prices.fetchPrices().catch((err) => {
+        this.logger.warn('Failed to load prices (endpoint may not exist):', err);
+      }),
+      this.stores.pools.fetchPools().catch((err) => {
+        this.logger.warn('Failed to load pools:', err);
+      }),
+      this.stores.pools.fetchTokens().catch((err) => {
+        this.logger.warn('Failed to load tokens (endpoint may not exist):', err);
+      }),
+    ];
 
-    // Load user data
-    await Promise.all([
-      this.stores.checkbooks.fetchByOwner(owner),
-      this.stores.allocations.fetchList({ owner, limit: 100 }),
-      this.stores.withdrawals.fetchList({ owner, limit: 100 }),
-      this.stores.prices.fetchPrices(),
-      this.stores.pools.fetchPools(),
-      this.stores.pools.fetchTokens(),
-    ]);
+    await Promise.all(loadPromises);
 
-    // Start price auto-refresh
-    this.stores.prices.startAutoRefresh();
+    // Start price auto-refresh (only if prices store is available)
+    try {
+      this.stores.prices.startAutoRefresh();
+    } catch (err) {
+      this.logger.warn('Failed to start price auto-refresh:', err);
+    }
 
     this.logger.info('Initial data loaded');
   }

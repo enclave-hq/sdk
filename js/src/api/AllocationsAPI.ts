@@ -29,6 +29,28 @@ export class AllocationsAPI {
   }
 
   /**
+   * Convert backend allocation (snake_case) to frontend format (camelCase)
+   * Backend uses snake_case (Go standard), frontend uses camelCase (TypeScript standard)
+   */
+  private convertAllocation(backendAllocation: any): Allocation {
+    return {
+      id: backendAllocation.id,
+      checkbookId: backendAllocation.checkbook_id || backendAllocation.checkbookId, // Convert snake_case to camelCase
+      seq: backendAllocation.seq,
+      amount: backendAllocation.amount,
+      status: backendAllocation.status,
+      nullifier: backendAllocation.nullifier,
+      withdrawRequestId: backendAllocation.withdraw_request_id || backendAllocation.withdrawRequestId,
+      commitment: backendAllocation.commitment,
+      createdAt: backendAllocation.created_at ? new Date(backendAllocation.created_at).getTime() : (backendAllocation.createdAt || Date.now()),
+      updatedAt: backendAllocation.updated_at ? new Date(backendAllocation.updated_at).getTime() : (backendAllocation.updatedAt || Date.now()),
+      // Owner and token are typically not in the allocation response, but may be populated by store
+      owner: backendAllocation.owner || { chainId: 0, address: '' },
+      token: backendAllocation.token || { id: '', symbol: '', name: '', decimals: 18, contractAddress: '', chainId: 0, isActive: true },
+    };
+  }
+
+  /**
    * List allocations with optional filtering
    * @param request - List request with filters
    * @returns Paginated list of allocations
@@ -41,11 +63,19 @@ export class AllocationsAPI {
       validatePagination(request.page, request.limit);
     }
 
-    const response = await this.client.get<ListAllocationsResponse>(
+    // Owner is now automatically determined from JWT token if authenticated - no need to pass it
+    const response = await this.client.get<{
+      data: any[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        pages: number;
+      };
+    }>(
       '/api/allocations',
       {
         params: {
-          owner: request.owner,
           checkbookId: request.checkbookId,
           tokenId: request.tokenId,
           status: request.status,
@@ -55,7 +85,25 @@ export class AllocationsAPI {
       }
     );
 
-    return response;
+    // Convert backend snake_case to frontend camelCase
+    const convertedData = (response.data || []).map(allocation => this.convertAllocation(allocation));
+
+    // Convert backend pagination format to frontend format
+    const backendPagination = response.pagination;
+    const totalPages = backendPagination.pages || Math.ceil(backendPagination.total / backendPagination.limit);
+    const pagination = {
+      page: backendPagination.page,
+      limit: backendPagination.limit,
+      total: backendPagination.total,
+      totalPages: totalPages,
+      hasNext: backendPagination.page < totalPages,
+      hasPrev: backendPagination.page > 1,
+    };
+
+    return {
+      data: convertedData,
+      pagination,
+    };
   }
 
   /**
@@ -69,7 +117,7 @@ export class AllocationsAPI {
     // Validate request
     validateNonEmptyString(request.checkbookId, 'checkbookId');
     validateNonEmptyArray(request.amounts, 'amounts');
-    validateNonEmptyString(request.tokenId, 'tokenId');
+    validateNonEmptyString(request.tokenKey, 'tokenKey');
     validateNonEmptyString(request.message, 'message');
     validateSignature(request.signature, 'signature');
 
@@ -78,19 +126,29 @@ export class AllocationsAPI {
       validateNonEmptyString(amount, `amounts[${index}]`);
     });
 
-    const response = await this.client.post<CreateAllocationsResponse>(
+    const response = await this.client.post<{
+      success: boolean;
+      allocations: any[];
+      checkbook: any;
+    }>(
       '/api/allocations',
       {
         checkbookId: request.checkbookId,
         amounts: request.amounts,
-        tokenId: request.tokenId,
+        tokenKey: request.tokenKey, // Use tokenKey instead of tokenId
         signature: request.signature,
         message: request.message,
         commitments: request.commitments,
       }
     );
 
-    return response;
+    // Convert backend snake_case to frontend camelCase
+    const convertedAllocations = (response.allocations || []).map(allocation => this.convertAllocation(allocation));
+
+    return {
+      allocations: convertedAllocations,
+      checkbook: response.checkbook, // Checkbook conversion is handled in CheckbooksAPI
+    };
   }
 
   /**

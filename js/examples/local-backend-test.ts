@@ -30,7 +30,7 @@ async function main() {
   
   const walletManager = new WalletManager({
     enableStorage: true,
-    defaultChainId: 56, // BSC Mainnet (or 97 for BSC Testnet)
+    defaultChainId: 714, // BSC (SLIP-44 chain ID)
   });
 
   // Connect to MetaMask (or use private key for testing)
@@ -210,13 +210,17 @@ async function main() {
     console.log('\n💸 Step 8: Creating withdrawal...');
     
     try {
-      const withdrawRequest = await client.actions.createWithdrawal({
+      // Create withdrawal using correct API
+      // Note: intent.beneficiary.chainId should be SLIP-44 chain ID (714 for BSC)
+      const withdrawRequest = await client.withdraw({
         allocationIds: idleAllocations.slice(0, 2).map(a => a.id), // Take first 2
-        targetChainId: 56, // BSC
-        targetAddress: userAddress,
         intent: {
-          type: 'RawTokenIntent',
-          data: {},
+          type: 'RawToken',
+          beneficiary: {
+            chainId: 714, // BSC (SLIP-44)
+            address: userAddress,
+          },
+          tokenSymbol: 'USDT', // BSC USDT
         },
       });
       

@@ -205,8 +205,8 @@ WebSocket ws://localhost:3001/api/ws?token={JWT_TOKEN}
 | **submitting_commitment** | `submitting_commitment` | 凭证已生成，正在保存到区块链 | 交易已发送 |
 | **commitment_pending** | `commitment_pending` | 凭证已提交，等待区块链确认 | 等待区块确认 |
 | **with_checkbook** | `with_checkbook` | 凭证已完成，可以创建支票 | ✅ `client.createAllocation()` |
-| **proof_failed** | `proof_failed` | 证明生成失败 | ❌ 可重试 |
-| **submission_failed** | `submission_failed` | 提交失败 | ❌ 可重试 |
+| **proof_failed** | `proof_failed` | 证明生成失败 | ✅ `client.createCommitment()` (可重试) |
+| **submission_failed** | `submission_failed` | 提交失败 | ✅ `client.createCommitment()` (可重试) |
 | **DELETED** | `DELETED` | 记录已删除 | 不可用 |
 
 **状态流转**：
@@ -215,6 +215,32 @@ pending → unsigned → ready_for_commitment → generating_proof
     → submitting_commitment → commitment_pending → with_checkbook
                     ↓ (失败)
             proof_failed / submission_failed
+                    ↑ (可重试)
+            (重新调用 createCommitment())
+```
+
+**使用示例**：
+```typescript
+import { canCreateCommitment, canCreateAllocations, isRetryableFailure, CheckbookStatus } from '@enclave-hq/sdk';
+
+const checkbook = client.stores.checkbooks.get(id);
+
+// 检查是否可以创建 commitment（包括失败后重试）
+if (canCreateCommitment(checkbook.status)) {
+  // 可以创建 commitment（包括 ready_for_commitment、submission_failed、proof_failed 等状态）
+  await client.createCommitment({ ... });
+}
+
+// 检查是否可以创建 allocations
+if (canCreateAllocations(checkbook.status)) {
+  // 可以创建 allocations
+}
+
+// 检查是否为可重试的失败状态
+if (isRetryableFailure(checkbook.status)) {
+  // 显示重试按钮给用户
+  // 状态为 proof_failed 或 submission_failed
+}
 ```
 
 ---
@@ -362,7 +388,7 @@ const checkbookIdle = client.stores.allocations.getByCheckbookIdAndStatus(
 
 ---
 
-### `client.stores.allocations.getList(params)`
+### `client.stores.allocations.fetchList(params)`
 
 **功能**：从后端 API 查询 allocations 列表
 
@@ -396,15 +422,15 @@ GET /api/allocations?checkbook_id={id}&token_id={id}&status={status}
 **使用场景**：
 ```typescript
 // 查询所有 idle 状态的 allocations
-const idleList = await client.stores.allocations.getList({ status: 'idle' });
+const idleList = await client.stores.allocations.fetchList({ status: 'idle' });
 
 // 查询特定 checkbook 的所有 allocations
-const checkbookAllocations = await client.stores.allocations.getList({ 
-  checkbook_id: 'checkbook-uuid' 
+const checkbookAllocations = await client.stores.allocations.fetchList({ 
+  checkbookId: 'checkbook-uuid' 
 });
 
 // 组合查询：特定 checkbook + 特定 token + 特定状态
-const specific = await client.stores.allocations.getList({
+const specific = await client.stores.allocations.fetchList({
   checkbook_id: 'checkbook-uuid',
   token_id: 1,
   status: 'idle'
@@ -1756,9 +1782,9 @@ client.stores.withdrawals.on('updated', (withdrawal) => {
 
 | 方法 | 说明 | 示例 |
 |------|------|------|
-| `stores.checkbooks.getList(params)` | 查询 checkbooks 列表（含 deposit） | `await client.stores.checkbooks.getList({page: 1, size: 10})` |
+| `stores.checkbooks.fetchList(params)` | 查询 checkbooks 列表（含 deposit） | `await client.stores.checkbooks.fetchList({page: 1, limit: 10})` |
 | `stores.checkbooks.getById(id)` | 获取特定 Checkbook 详情 | `await client.stores.checkbooks.getById('uuid')` |
-| `stores.withdrawals.getList(params)` | 查询提现记录列表（分页） | `await client.stores.withdrawals.getList({page: 1, size: 10, status: 'pending'})` |
+| `stores.withdrawals.fetchList(params)` | 查询提现记录列表（分页） | `await client.stores.withdrawals.fetchList({page: 1, limit: 10, status: 'pending'})` |
 | `stores.withdrawals.getById(id)` | 获取特定提现请求详情 | `await client.stores.withdrawals.getById('uuid')` |
 | `stores.withdrawals.getByNullifier(nullifier)` | 按 nullifier 查询提现 | `await client.stores.withdrawals.getByNullifier('0x...')` |
 
@@ -1778,7 +1804,7 @@ function CheckbooksList() {
   
   // 用户主动刷新：调用特定的查询方法
   const handleRefresh = async () => {
-    await client.stores.checkbooks.getList({
+    await client.stores.checkbooks.fetchList({
       page: 1,
       size: 20,
     });
@@ -1895,7 +1921,7 @@ Enclave SDK 采用**双重数据同步机制**：
 
 ```typescript
 // 查询当前用户的 checkbooks 列表（主动调用后端 API）
-const result = await client.stores.checkbooks.getList({
+const result = await client.stores.checkbooks.fetchList({
   page: 1,
   size: 20,
   deleted: false,  // 是否包含已删除的记录
@@ -1975,7 +2001,7 @@ Authorization: Bearer {JWT_TOKEN}
 
 ```typescript
 // 查询提现记录列表（支持分页和过滤）
-const result = await client.stores.withdrawals.getList({
+const result = await client.stores.withdrawals.fetchList({
   page: 1,
   size: 10,
   status: 'pending',  // 可选：按状态过滤
@@ -2101,7 +2127,7 @@ await client.connect(signer);
 
 // 用户主动下拉刷新：调用特定查询方法
 async function onPullToRefresh() {
-  await client.stores.checkbooks.getList({
+  await client.stores.checkbooks.fetchList({
     page: 1,
     size: 20,
   });
@@ -2136,7 +2162,7 @@ AppState.addEventListener('change', (nextAppState) => {
 const onRefresh = async () => {
   setRefreshing(true);
   try {
-    await client.stores.checkbooks.getList({
+    await client.stores.checkbooks.fetchList({
       page: 1,
       size: 20,
     });
@@ -2161,7 +2187,7 @@ await client.connect(process.env.PRIVATE_KEY);
 setInterval(async () => {
   try {
     // 查询最新 checkbooks（包含 deposit 信息）
-    const result = await client.stores.checkbooks.getList({
+    const result = await client.stores.checkbooks.fetchList({
       page: 1,
       size: 100,
     });
@@ -2189,7 +2215,7 @@ client.connection.on('reconnected', async () => {
   console.log('WebSocket 重连成功，查询最新数据...');
   
   // WebSocket 断线期间可能错过的更新，主动查询一次
-  await client.stores.checkbooks.getList({
+  await client.stores.checkbooks.fetchList({
     page: 1,
     size: 20,
   });

@@ -86,8 +86,19 @@ export class ChainConfigAPI {
 
   /**
    * Get RPC endpoint for a chain
-   * @param chainId - SLIP-44 chain ID
+   * Note: This method accepts SLIP-44 chain ID (for API consistency)
+   * When using the RPC endpoint, you should use EVM Chain ID for provider initialization
+   * @param chainId - SLIP-44 chain ID (e.g., 714 for BSC, 60 for Ethereum)
    * @returns RPC endpoint URL
+   * @example
+   * ```typescript
+   * // Get RPC endpoint using SLIP-44 (API call)
+   * const rpcUrl = await client.chainConfig.getRpcEndpoint(714); // BSC
+   * 
+   * // Convert to EVM Chain ID for provider (chain operation)
+   * const evmChainId = getEvmChainIdFromSlip44(714); // Returns 56
+   * const provider = new ethers.JsonRpcProvider(rpcUrl, { chainId: evmChainId });
+   * ```
    */
   async getRpcEndpoint(chainId: number): Promise<string> {
     const config = await this.getChainConfig(chainId);

@@ -68,9 +68,14 @@ async function main() {
 
       const withdrawRequest = await client.withdraw({
         allocationIds: idleAllocations.map((a) => a.id),
-        targetChain: 1, // Ethereum mainnet
-        targetAddress: client.address!.address,
-        intent: 'withdraw',
+        intent: {
+          type: 'RawToken',
+          beneficiary: {
+            chainId: 60, // Ethereum (SLIP-44 chain ID)
+            address: client.address!.address,
+          },
+          tokenSymbol: 'USDT', // USDT on Ethereum
+        },
       });
 
       console.log(`Withdrawal created: ${withdrawRequest.id}`);

@@ -10,6 +10,7 @@ import { createUniversalAddress } from '../utils/address';
 import { SignerError } from '../utils/errors';
 import type { ILogger } from '../types/config';
 import { getLogger } from '../utils/logger';
+import { getSlip44FromChainId } from '../utils/chain';
 
 /**
  * Wallet manager configuration
@@ -19,7 +20,9 @@ export interface WalletManagerConfig {
   signer: SignerInput;
   /** User's universal address (optional, will be derived if not provided) */
   address?: UniversalAddress;
-  /** Default chain ID */
+  /** Default chain ID (SLIP-44 chain ID, e.g., 714 for BSC, 60 for Ethereum)
+   *  If EVM chain ID is provided, it will be automatically converted to SLIP-44
+   */
   chainId?: number;
   /** Logger instance */
   logger?: ILogger;
@@ -36,7 +39,14 @@ export class WalletManager {
 
   constructor(config: WalletManagerConfig) {
     this.logger = config.logger || getLogger();
-    this.defaultChainId = config.chainId || 1; // Default to Ethereum mainnet
+    // Default to BSC (SLIP-44: 714) if not provided
+    // If provided chainId is EVM chain ID, convert to SLIP-44
+    if (config.chainId) {
+      const slip44 = getSlip44FromChainId(config.chainId);
+      this.defaultChainId = slip44 ?? config.chainId; // Use SLIP-44 if conversion available, otherwise use as-is
+    } else {
+      this.defaultChainId = 714; // Default to BSC (SLIP-44: 714)
+    }
 
     // Initialize signer adapter
     this.signerAdapter = new SignerAdapter(config.signer);
@@ -86,13 +96,15 @@ export class WalletManager {
   }
 
   /**
-   * Sign message hash
-   * @param messageHash - Message hash to sign
+   * Sign a message (raw message string, not hash)
+   * @param message - Raw message string to sign (ethers.js will add EIP-191 prefix and hash it)
    * @returns Signature
    */
-  async signMessage(messageHash: string): Promise<string> {
+  async signMessage(message: string): Promise<string> {
     try {
-      const signature = await this.signerAdapter.signMessage(messageHash);
+      // Pass raw message string to signer adapter
+      // ethers.js will automatically add EIP-191 prefix and hash it
+      const signature = await this.signerAdapter.signMessage(message);
       this.logger.debug('Message signed successfully');
       return signature;
     } catch (error) {
@@ -104,34 +116,50 @@ export class WalletManager {
   }
 
   /**
-   * Sign authentication message
-   * @param message - Authentication message
+   * Sign authentication message (raw message string)
+   * @param message - Authentication message (plain text)
    * @returns Signature
    */
   async signAuthMessage(message: string): Promise<string> {
-    // For authentication, we sign the raw message
+    // For authentication, we sign the raw message string
+    // ethers.js Wallet.signMessage() will hash it internally using EIP-191
     // The backend will verify the signature
-    return this.signMessage(message);
+    try {
+      const signature = await this.signerAdapter.signMessage(message);
+      this.logger.debug('Auth message signed successfully');
+      return signature;
+    } catch (error) {
+      this.logger.error('Failed to sign auth message:', error);
+      throw new SignerError(
+        `Failed to sign auth message: ${(error as Error).message}`
+      );
+    }
   }
 
   /**
-   * Set default chain ID
-   * @param chainId - Chain ID
+   * Set default chain ID (should be SLIP-44 chain ID)
+   * @param chainId - SLIP-44 chain ID (e.g., 714 for BSC, 60 for Ethereum)
+   *                  If EVM chain ID is provided, it will be converted to SLIP-44
    */
   setDefaultChainId(chainId: number): void {
-    this.defaultChainId = chainId;
+    // Convert to SLIP-44 if needed
+    const slip44 = getSlip44FromChainId(chainId);
+    const finalChainId = slip44 ?? chainId; // Use SLIP-44 if conversion available, otherwise use as-is
+    
+    this.defaultChainId = finalChainId;
     
     // Update address if already cached
     if (this.address) {
       this.address = {
         ...this.address,
-        chainId,
+        chainId: finalChainId,
       };
     }
   }
 
   /**
-   * Get default chain ID
+   * Get default chain ID (returns SLIP-44 chain ID)
+   * @returns SLIP-44 chain ID (e.g., 714 for BSC, 60 for Ethereum)
    */
   getDefaultChainId(): number {
     return this.defaultChainId;

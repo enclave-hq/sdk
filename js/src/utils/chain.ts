@@ -32,9 +32,9 @@ export interface SDKChainInfo extends ChainInfo {
  */
 const CHAIN_MAPPINGS: Record<number, { slip44: number; name: string }> = {
   1: { slip44: 60, name: 'Ethereum' },
-  56: { slip44: 714, name: 'BSC' },
+  56: { slip44: 714, name: 'Binance Smart Chain' }, // Match lib.rs: "Binance Smart Chain" not "BSC"
   137: { slip44: 966, name: 'Polygon' },
-  195: { slip44: 195, name: 'Tron' },
+  195: { slip44: 195, name: 'TRON' },
   42161: { slip44: 1042161, name: 'Arbitrum' },
   10: { slip44: 1000010, name: 'Optimism' },
   8453: { slip44: 1008453, name: 'Base' },
@@ -56,7 +56,27 @@ export function getSlip44FromChainId(chainId: number): number | null {
 }
 
 /**
- * Get native chain ID from SLIP-44 ID
+ * Get EVM Chain ID from SLIP-44 ID
+ * Use this when you need EVM Chain ID for RPC operations, contract calls, etc.
+ * @param slip44 - SLIP-44 chain ID (e.g., 714 for BSC, 60 for Ethereum)
+ * @returns EVM Chain ID (e.g., 56 for BSC, 1 for Ethereum) or null if not found
+ * @example
+ * ```typescript
+ * const evmChainId = getEvmChainIdFromSlip44(714); // Returns 56 (BSC)
+ * const provider = new ethers.JsonRpcProvider(rpcUrl, { chainId: evmChainId });
+ * ```
+ */
+export function getEvmChainIdFromSlip44(slip44: number): number | null {
+  const native = slip44ToNative(slip44);
+  if (typeof native === 'number') {
+    return native;
+  }
+  return null;
+}
+
+/**
+ * Get native chain ID from SLIP-44 ID (deprecated, use getEvmChainIdFromSlip44 instead)
+ * @deprecated Use getEvmChainIdFromSlip44 for clarity
  */
 export function getChainIdFromSlip44(slip44: number): number | string | null {
   return slip44ToNative(slip44);
@@ -99,6 +119,29 @@ export function getChainName(chainId: number): string {
     if (mapping.slip44 === chainId) {
       return mapping.name;
     }
+  }
+  
+  // Special handling for SLIP-44 chain IDs to match lib.rs
+  // lib.rs uses full names like "Binance Smart Chain" not "BSC"
+  const slip44ChainNames: Record<number, string> = {
+    714: 'Binance Smart Chain', // Match lib.rs exactly
+    60: 'Ethereum',
+    966: 'Polygon',
+    195: 'TRON',
+    118: 'Cosmos',
+    501: 'Solana',
+    354: 'Polkadot',
+    434: 'Kusama',
+    43114: 'Avalanche',
+    250: 'Fantom',
+    9001: 'Arbitrum',
+    10001: 'Optimism',
+    8453: 'Base',
+    324: 'zkSync Era',
+  };
+  
+  if (slip44ChainNames[chainId]) {
+    return slip44ChainNames[chainId];
   }
   
   // Fall back to chain-utils

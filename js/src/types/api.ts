@@ -58,7 +58,7 @@ export interface APIError {
 export interface AuthRequest {
   /** User's universal address */
   address: UniversalAddress;
-  /** Chain ID */
+  /** SLIP-44 chain ID (e.g., 714 for BSC, 60 for Ethereum, 195 for TRON) */
   chainId: number;
   /** Signed message */
   signature: string;
@@ -100,8 +100,6 @@ export interface RefreshTokenResponse {
  * List checkbooks request
  */
 export interface ListCheckbooksRequest {
-  /** Owner address (optional, defaults to authenticated user) */
-  owner?: string;
   /** Filter by status */
   status?: string;
   /** Filter by token ID */
@@ -110,6 +108,7 @@ export interface ListCheckbooksRequest {
   page?: number;
   /** Items per page */
   limit?: number;
+  // Note: owner is now automatically determined from JWT token
 }
 
 /**
@@ -139,14 +138,13 @@ export interface GetCheckbookResponse {
  * List allocations request
  */
 export interface ListAllocationsRequest {
-  /** Owner address (optional) */
-  owner?: string;
   /** Filter by checkbook ID */
   checkbookId?: string;
   /** Filter by token ID */
   tokenId?: string;
   /** Filter by status */
   status?: string;
+  // Note: owner is now automatically determined from JWT token if authenticated
   /** Page number */
   page?: number;
   /** Items per page */
@@ -166,8 +164,8 @@ export interface CreateAllocationsRequest {
   checkbookId: string;
   /** Array of amounts */
   amounts: string[];
-  /** Token ID */
-  tokenId: string;
+  /** Token key (e.g., 'USDT', 'USDC') - replaces tokenId */
+  tokenKey: string;
   /** User's signature */
   signature: string;
   /** Message that was signed */
@@ -192,8 +190,6 @@ export interface CreateAllocationsResponse {
  * List withdrawal requests request
  */
 export interface ListWithdrawRequestsRequest {
-  /** Owner address (optional) */
-  owner?: string;
   /** Filter by status */
   status?: string;
   /** Filter by token ID */
@@ -204,6 +200,7 @@ export interface ListWithdrawRequestsRequest {
   page?: number;
   /** Items per page */
   limit?: number;
+  // Note: owner is now automatically determined from JWT token
 }
 
 /**
@@ -223,8 +220,12 @@ export interface GetWithdrawRequestRequest {
  * Get withdrawal request response
  */
 export interface GetWithdrawRequestResponse {
-  /** Withdraw request data with full allocations */
-  withdrawRequest: WithdrawRequestDetail;
+  /** Success status */
+  success?: boolean;
+  /** Withdraw request data (backend v2 format) */
+  data?: WithdrawRequestDetail;
+  /** Withdraw request data (legacy format) */
+  withdrawRequest?: WithdrawRequestDetail;
 }
 
 /**
@@ -243,18 +244,18 @@ export interface CreateWithdrawRequestRequest {
   checkbookId: string;
   /** Array of allocation IDs */
   allocationIds: string[];
-  /** Intent object (matches backend v2 format) */
+  /** Intent object (matches backend v2 format - flat structure) */
   intent: {
     type: number; // 0=RawToken, 1=AssetToken
-    beneficiary: {
-      chain_id: number;
-      address: string;
-    };
-    tokenIdentifier?: string; // For RawToken
-    assetId?: string; // For AssetToken
+    beneficiaryChainId: number; // SLIP-44 Chain ID
+    beneficiaryAddress: string; // 32-byte Universal Address (hex string without 0x prefix)
+    tokenSymbol: string; // Token symbol (RawToken: e.g., "USDT", AssetToken: e.g., "aUSDT")
+    assetId?: string; // For AssetToken: 32-byte Asset ID
   };
-  /** User's signature */
-  signature?: string;
+  /** User's signature (required for ZKVM proof generation) */
+  signature: string;
+  /** Chain ID for signature (SLIP-44, required) */
+  chainId: number;
   /** Message that was signed */
   message?: string;
   /** Nullifier hash */
@@ -328,10 +329,9 @@ export interface CancelWithdrawRequestResponse {
  * Get withdrawal statistics request
  */
 export interface GetWithdrawStatsRequest {
-  /** Owner address (optional) */
-  owner?: string;
   /** Token ID (optional) */
   tokenId?: string;
+  // Note: owner is now automatically determined from JWT token
 }
 
 /**
@@ -594,8 +594,9 @@ export interface RouteAndFeesRequest {
   intent: {
     type: 'RawToken' | 'AssetToken';
     beneficiary: UniversalAddress;
-    tokenContract?: string;  // For RawToken
-    assetId?: string;        // For AssetToken
+    tokenSymbol?: string;  // For RawToken: token symbol (e.g., "USDT")
+    assetId?: string;      // For AssetToken: 32-byte Asset ID
+    assetTokenSymbol?: string; // For AssetToken: asset token symbol (e.g., "aUSDT")
   };
   /** Amount to withdraw */
   amount: string;

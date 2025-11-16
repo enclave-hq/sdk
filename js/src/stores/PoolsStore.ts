@@ -31,7 +31,10 @@ export class PoolsStore extends BaseStore<Pool> {
   constructor(config: PoolsStoreConfig) {
     super({ name: 'PoolsStore', logger: config.logger });
     this.api = config.api;
-    makeObservable(this);
+    makeObservable(this, {
+      // Exclude clear() from auto-decoration since it's already decorated in parent
+      clear: false,
+    });
   }
 
   /**
@@ -255,8 +258,8 @@ export class PoolsStore extends BaseStore<Pool> {
 
   /**
    * Clear all data
+   * Note: No need to re-decorate with @action since parent's clear() is already @action
    */
-  @action
   override clear(): void {
     super.clear();
     this.tokens.clear();

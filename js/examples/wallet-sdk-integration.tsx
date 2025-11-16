@@ -302,13 +302,19 @@ export const EnclaveWalletSDKExample: React.FC = observer(() => {
       setError('');
       
       // Use SDK for business logic
-      const result = await enclaveClient.actions.createWithdrawal({
+      // Note: account.chainId is EVM Chain ID, need to convert to SLIP-44 for API
+      const { getSlip44FromChainId } = await import('../src/utils/chain');
+      const slip44ChainId = getSlip44FromChainId(account!.chainId) || account!.chainId;
+      
+      const result = await enclaveClient.withdraw({
         allocationIds: ['allocation-1', 'allocation-2'],
-        targetChainId: account!.chainId,
-        targetAddress: account!.nativeAddress,
         intent: {
-          type: 'RawTokenIntent',
-          data: {},
+          type: 'RawToken',
+          beneficiary: {
+            chainId: slip44ChainId, // SLIP-44 chain ID
+            address: account!.nativeAddress,
+          },
+          tokenSymbol: 'USDT', // BSC USDT (example)
         },
       });
       

@@ -129,11 +129,10 @@ export class AllocationsStore extends BaseStore<Allocation> {
 
   /**
    * Fetch allocations from API
-   * @param filters - Optional filters
+   * @param filters - Optional filters (owner is automatically determined from JWT if authenticated)
    * @returns Array of allocations
    */
   async fetchList(filters?: {
-    owner?: string;
     checkbookId?: string;
     tokenId?: string;
     status?: string;
@@ -195,7 +194,7 @@ export class AllocationsStore extends BaseStore<Allocation> {
   async create(params: {
     checkbookId: string;
     amounts: string[];
-    tokenId: string;
+    tokenKey: string; // Use tokenKey instead of tokenId
     signature: string;
     message: string;
     commitments?: string[];

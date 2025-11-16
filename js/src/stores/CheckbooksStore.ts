@@ -70,9 +70,13 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
 
   /**
    * Get completed checkbooks
+   * Note: CheckbookStatus enum doesn't have 'completed' status
+   * This method is kept for backward compatibility but will return empty array
    */
   @computed get completed(): Checkbook[] {
-    return this.filter((c) => c.status === 'completed');
+    // CheckbookStatus doesn't have 'completed' - return empty array
+    // Use WithCheckbook status instead if needed
+    return [];
   }
 
   /**
@@ -94,11 +98,12 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
   }
 
   /**
-   * Fetch checkbooks from API by owner
-   * @param owner - Owner address
+   * Fetch checkbooks from API for authenticated user
+   * @param owner - Owner address (deprecated, ignored - address is taken from JWT)
    * @param tokenId - Optional token ID filter
    * @param status - Optional status filter
    * @returns Array of checkbooks
+   * @deprecated Use fetchList() instead - owner is now determined from JWT token
    */
   async fetchByOwner(
     owner: string,
@@ -106,19 +111,19 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
     status?: string
   ): Promise<Checkbook[]> {
     return this.executeAction(async () => {
+      // Owner parameter is ignored - address is taken from JWT token
       const checkbooks = await this.api.getCheckbooksByOwner(owner, tokenId, status);
       this.updateItems(checkbooks, (c) => c.id);
       return checkbooks;
-    }, 'Failed to fetch checkbooks by owner');
+    }, 'Failed to fetch checkbooks');
   }
 
   /**
    * Fetch checkbooks list from API
-   * @param filters - Optional filters
+   * @param filters - Optional filters (owner is automatically determined from JWT)
    * @returns Paginated checkbooks response
    */
   async fetchList(filters?: {
-    owner?: string;
     status?: string;
     tokenId?: string;
     page?: number;

@@ -84,8 +84,10 @@ export interface IContractProvider {
   getAddress(): Promise<string>;
 
   /**
-   * Get current chain ID
-   * @returns Chain ID
+   * Get current chain ID from RPC provider
+   * Note: Returns EVM Chain ID (e.g., 56 for BSC, 1 for Ethereum) as provided by the RPC provider
+   * This is different from SLIP-44 chain ID used in API calls (e.g., 714 for BSC, 60 for Ethereum)
+   * @returns EVM Chain ID (for RPC operations)
    */
   getChainId(): Promise<number>;
 

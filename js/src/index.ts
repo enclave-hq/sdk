@@ -123,6 +123,12 @@ export {
   InvalidStateError,
   isEnclaveError,
   formatError,
+
+  // Checkbook status utilities
+  canCreateCommitment,
+  canCreateAllocations,
+  isRetryableFailure,
+  isProcessing,
 } from './utils';
 
 // ============ Formatters ============
@@ -139,6 +145,19 @@ export type {
   Allocation as CommitmentAllocation,
   Credential as CommitmentCredential,
 } from './utils/CommitmentCore';
+
+// ============ Withdraw Input Builder ============
+export {
+  buildWithdrawInput,
+  withdrawInputToZKVMFormat,
+} from './utils/WithdrawInputBuilder';
+export type {
+  WithdrawInput,
+  AllocationsFromCommitment,
+  AllocationWithCredential,
+  Credential as WithdrawCredential,
+  BuildWithdrawInputOptions,
+} from './utils/WithdrawInputBuilder';
 
 // ============ Stores (for advanced usage) ============
 export type {
