@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] - 2025-01-24
+
+### Added
+- Add ChainConfigStore for managing chain configurations (Treasury, ZKPay addresses, RPC endpoints)
+
+### Changed
+- Enhance CheckbooksAPI with additional functionality
+- Improve TokenRoutingAPI with new features
+- Simplify WithdrawFormatter (47 lines removed)
+- Enhance WithdrawalsStore with new capabilities
+- Update WebSocketClient and retry utilities
+
 ## [2.1.1] - 2025-01-24
 
 ### Changed

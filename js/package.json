@@ -1,6 +1,6 @@
 {
   "name": "@enclave-hq/sdk",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Enclave SDK - Privacy-preserving multi-chain DeFi protocol client library",
   "keywords": [
     "enclave",
@@ -125,4 +125,3 @@
     "node": ">=16.0.0"
   }
 }
-
