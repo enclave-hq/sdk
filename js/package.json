@@ -1,6 +1,6 @@
 {
   "name": "@enclave-hq/sdk",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Enclave SDK - Privacy-preserving multi-chain DeFi protocol client library",
   "keywords": [
     "enclave",
@@ -73,8 +73,8 @@
     "check-checkbook-status": "npx tsx scripts/check-checkbook-status.ts"
   },
   "dependencies": {
-    "@enclave-hq/chain-utils": "file:../../chain-utils",
-    "@enclave-hq/wallet-sdk": "^1.1.4",
+    "@enclave-hq/chain-utils": "^1.0.3",
+    "@enclave-hq/wallet-sdk": "^1.1.5",
     "axios": "^1.6.7",
     "ethers": "^6.10.0",
     "eventemitter3": "^5.0.1",
