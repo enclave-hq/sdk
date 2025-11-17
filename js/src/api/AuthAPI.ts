@@ -18,6 +18,7 @@ import {
   validateSignature,
   validatePositiveNumber,
 } from '../utils/validation';
+import { NetworkError, APIError, AuthError } from '../utils/errors';
 
 /**
  * Authentication API endpoints
@@ -141,25 +142,46 @@ export class AuthAPI {
    */
   async getNonce(address?: string): Promise<{ nonce: string; timestamp: string; message?: string }> {
     const params = address ? { owner: address } : {};
-    // Backend returns { success: bool, nonce: string, message: string, timestamp: number }
-    const response = await this.client.get<any>(
-      '/api/auth/nonce',
-      { params }
-    );
     
-    // Handle backend response format
-    if (response.success === false || !response.nonce) {
-      throw new Error(response.message || 'Failed to get nonce from backend');
+    try {
+      // Backend returns { success: bool, nonce: string, message: string, timestamp: number }
+      const response = await this.client.get<any>(
+        '/api/auth/nonce',
+        { params }
+      );
+      
+      // Handle backend response format
+      if (response.success === false || !response.nonce) {
+        // If backend returns success: false, it's an API error
+        const errorMessage = response.message || 'Failed to get nonce from backend';
+        // Re-throw as APIError with 200 status (backend returned error in response body)
+        throw new APIError(
+          errorMessage,
+          200,
+          'NONCE_ERROR',
+          '/api/auth/nonce',
+          { response }
+        );
+      }
+      
+      // Convert timestamp to string if it's a number
+      return {
+        nonce: response.nonce,
+        timestamp: typeof response.timestamp === 'number' 
+          ? response.timestamp.toString() 
+          : response.timestamp || Date.now().toString(),
+        message: response.message, // Include message from backend
+      };
+    } catch (error) {
+      // Re-throw NetworkError, APIError, and AuthError as-is
+      // These are already properly formatted by APIClient
+      if (error instanceof NetworkError || error instanceof APIError || error instanceof AuthError) {
+        throw error;
+      }
+      
+      // For other errors, wrap them
+      throw new Error(`Failed to get nonce: ${(error as Error).message}`);
     }
-    
-    // Convert timestamp to string if it's a number
-    return {
-      nonce: response.nonce,
-      timestamp: typeof response.timestamp === 'number' 
-        ? response.timestamp.toString() 
-        : response.timestamp || Date.now().toString(),
-      message: response.message, // Include message from backend
-    };
   }
 }
 

@@ -120,9 +120,24 @@ export class CheckbooksAPI {
       return checkbook;
     });
 
+    // Convert pagination format: backend uses "size" and "pages", frontend expects "limit" and "totalPages"
+    const pagination = response.pagination ? {
+      page: response.pagination.page || 1,
+      limit: response.pagination.limit || response.pagination.size || 20,
+      total: response.pagination.total || 0,
+      totalPages: response.pagination.totalPages || response.pagination.pages || 1,
+      hasNext: response.pagination.hasNext !== undefined 
+        ? response.pagination.hasNext 
+        : (response.pagination.page || 1) < (response.pagination.totalPages || response.pagination.pages || 1),
+      hasPrev: response.pagination.hasPrev !== undefined 
+        ? response.pagination.hasPrev 
+        : (response.pagination.page || 1) > 1,
+    } : undefined;
+
     return {
       ...response,
       data: convertedData,
+      pagination,
     } as ListCheckbooksResponse;
   }
 

@@ -6,8 +6,14 @@
 import { getAddress as ethersGetAddress } from 'ethers';
 import { ValidationError } from './errors';
 import { isValidAddress } from './crypto';
-import { getChainName, getSlip44FromChainId } from './chain';
+import { getChainName, getSlip44FromChainId, getChainType } from './chain';
 import type { UniversalAddress } from '../types/models';
+import { 
+  evmConverter,
+  tronConverter,
+  type AddressConverter,
+  ChainType
+} from '@enclave-hq/chain-utils';
 
 // Re-export for backward compatibility
 export { getChainName };
@@ -68,58 +74,74 @@ export function formatAddressShort(
  *                  Note: If EVM chain ID is provided, it will be converted to SLIP-44
  * @returns Universal address object
  */
-/**
- * Convert 20-byte EVM address to 32-byte Universal Address format
- * Right-aligns the address in 32 bytes (left-pads with zeros)
- * @param address - 20-byte EVM address
- * @returns 32-byte hex string (64 hex chars, no 0x prefix)
- */
-function addressToUniversalFormat(address: string): string {
-  // Remove 0x prefix if present
-  const hex = address.startsWith('0x') ? address.slice(2) : address;
-  
-  // Convert to buffer (20 bytes for Ethereum address)
-  const addressBuf = Buffer.from(hex, 'hex');
-  
-  if (addressBuf.length !== 20) {
-    throw new ValidationError('Address must be 20 bytes', 'address');
-  }
-  
-  // Right-align in 32 bytes (left-pad with zeros)
-  const result = Buffer.allocUnsafe(32);
-  result.fill(0);
-  addressBuf.copy(result, 12); // Copy to bytes 12-31 (right-aligned)
-  
-  return result.toString('hex'); // Return as hex string without 0x prefix
-}
-
 export function createUniversalAddress(
   address: string,
   chainId: number = 714  // Default to BSC (SLIP-44: 714)
 ): UniversalAddress {
-  if (!isValidAddress(address)) {
-    throw new ValidationError('Invalid Ethereum address', 'address');
-  }
-
-  const checksumAddress = toChecksumAddress(address);
-  const slip44 = getSlip44FromChainId(chainId);
+  // Get chain type to determine which converter to use
+  const chainType = getChainType(chainId);
+  const slip44 = getSlip44FromChainId(chainId) ?? chainId;
   
-  // Convert 20-byte EVM address to 32-byte Universal Address format
-  const universalFormat = addressToUniversalFormat(checksumAddress);
+  // Select appropriate address converter based on chain type
+  let converter: AddressConverter;
+  let validatedAddress: string;
+  
+  // Check if address format matches TRON (T... 34 chars) - do this first as fallback
+  const isTronFormat = address.length === 34 && address.startsWith('T') && 
+    /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(address);
+  
+  // If address looks like TRON format, use TRON converter regardless of chainType
+  // This handles cases where getChainType might return null for chainId 195
+  if (isTronFormat) {
+    converter = tronConverter;
+    if (!tronConverter.isValid(address)) {
+      throw new ValidationError('Invalid TRON address', 'address');
+    }
+    validatedAddress = address;
+  } else if (chainType === ChainType.TRON) {
+    converter = tronConverter;
+    // Validate TRON address format
+    if (!tronConverter.isValid(address)) {
+      throw new ValidationError('Invalid TRON address', 'address');
+    }
+    validatedAddress = address; // Keep original Base58 address for TRON
+  } else if (chainType === ChainType.EVM) {
+    converter = evmConverter;
+    // Validate EVM address format
+    if (!isValidAddress(address)) {
+      throw new ValidationError('Invalid EVM address', 'address');
+    }
+    validatedAddress = toChecksumAddress(address);
+  } else {
+    // For unknown chain types, default to EVM format
+    converter = evmConverter;
+    if (!isValidAddress(address)) {
+      throw new ValidationError('Invalid address format', 'address');
+    }
+    validatedAddress = toChecksumAddress(address);
+  }
+  
+  // Convert address to 32-byte format using chain-utils
+  const addressBytes = converter.toBytes(validatedAddress);
+  
+  // Convert to universal format (32 bytes as hex string)
+  const universalFormatHex = '0x' + Array.from(addressBytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 
   return {
-    chainId,
+    chainId: slip44,
     chainName: getChainName(chainId),
-    address: checksumAddress, // Keep 20-byte address for backward compatibility
-    universalFormat: '0x' + universalFormat, // 32-byte Universal Address format
-    slip44: slip44 ?? undefined,
+    address: validatedAddress, // Keep original address format
+    universalFormat: universalFormatHex, // 32-byte Universal Address format
+    slip44: slip44,
   };
 }
 
 /**
  * Parse universal address string (format: "slip44_chain_id:address")
  * @param addressString - Address string to parse (format: "slip44_chain_id:address")
- *                        Example: "714:0x1234..." (BSC) or "60:0x1234..." (Ethereum)
+ *                        Example: "714:0x1234..." (BSC), "60:0x1234..." (Ethereum), or "195:TW9nWM2AAewQyLV4xtysTtKJM2En2jyiW9" (TRON)
  * @returns Universal address object
  * @throws ValidationError if invalid format
  */
@@ -150,13 +172,9 @@ export function parseUniversalAddress(
     throw new ValidationError('Invalid SLIP-44 chain ID in universal address', 'chainId');
   }
 
-  if (!isValidAddress(addressPart)) {
-    throw new ValidationError(
-      'Invalid address in universal address',
-      'address'
-    );
-  }
-
+  // Don't validate address format here - let createUniversalAddress handle it
+  // This allows TRON addresses (Base58) and EVM addresses (0x...) to both work
+  // createUniversalAddress will validate the address format based on chain type
   return createUniversalAddress(addressPart, chainId);
 }
 

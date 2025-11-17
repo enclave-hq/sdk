@@ -85,6 +85,7 @@ export {
   addressEquals,
   formatAddressShort,
   createUniversalAddress,
+  parseUniversalAddress,
   formatUniversalAddress,
   universalAddressEquals,
 

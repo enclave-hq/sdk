@@ -31,6 +31,7 @@ import { QuoteAPI } from '../api/QuoteAPI';
 import { ChainConfigAPI } from '../api/ChainConfigAPI';
 import { BeneficiaryAPI } from '../api/BeneficiaryAPI';
 import { TokenRoutingAPI } from '../api/TokenRoutingAPI';
+import { StatisticsAPI } from '../api/StatisticsAPI';
 
 // Stores
 import { CheckbooksStore } from '../stores/CheckbooksStore';
@@ -39,6 +40,7 @@ import { WithdrawalsStore } from '../stores/WithdrawalsStore';
 import { PricesStore } from '../stores/PricesStore';
 import { PoolsStore } from '../stores/PoolsStore';
 import { ChainConfigStore } from '../stores/ChainConfigStore';
+import { StatisticsStore } from '../stores/StatisticsStore';
 
 // WebSocket
 import { WebSocketClient } from '../websocket/WebSocketClient';
@@ -54,7 +56,7 @@ import { WithdrawalAction } from '../actions/WithdrawalAction';
 // Utils
 import { createLogger } from '../utils/logger';
 import type { ILogger } from '../types/config';
-import { ConfigError, AuthError } from '../utils/errors';
+import { ConfigError, AuthError, NetworkError, APIError } from '../utils/errors';
 import { validateRequired, validateUrl } from '../utils/validation';
 
 /**
@@ -83,6 +85,7 @@ export class EnclaveClient {
   private readonly chainConfigAPI: ChainConfigAPI;
   private readonly beneficiaryAPI: BeneficiaryAPI;
   private readonly tokenRoutingAPI: TokenRoutingAPI;
+  private readonly statisticsAPI: StatisticsAPI;
 
   // Stores
   public readonly stores: {
@@ -92,6 +95,7 @@ export class EnclaveClient {
     prices: PricesStore;
     pools: PoolsStore;
     chainConfig: ChainConfigStore;
+    statistics: StatisticsStore;
   };
 
   // Actions
@@ -166,6 +170,7 @@ export class EnclaveClient {
     this.chainConfigAPI = new ChainConfigAPI(this.apiClient);
     this.beneficiaryAPI = new BeneficiaryAPI(this.apiClient);
     this.tokenRoutingAPI = new TokenRoutingAPI(this.apiClient);
+    this.statisticsAPI = new StatisticsAPI(this.apiClient);
 
     // Initialize wallet manager
     this.walletManager = new WalletManager({
@@ -200,6 +205,11 @@ export class EnclaveClient {
       chainConfig: new ChainConfigStore({
         api: this.chainConfigAPI,
         logger: this.logger,
+      }),
+      statistics: new StatisticsStore({
+        api: this.statisticsAPI,
+        logger: this.logger,
+        autoRefreshInterval: 60000, // 1 minute
       }),
     };
 
@@ -318,9 +328,51 @@ export class EnclaveClient {
     this.logger.info('Authenticating...');
 
     try {
-      // Get nonce from backend
-      const address = await this.walletManager.getAddressString();
-      const nonceResponse = await this.authAPI.getNonce(address);
+      // Step 1: Get nonce from backend
+      let address: string;
+      try {
+        address = await this.walletManager.getAddressString();
+        this.logger.debug(`Got address for nonce request: ${address}`);
+      } catch (error) {
+        const err = error as Error;
+        this.logger.error(`Failed to get wallet address: ${err.message}`);
+        throw new AuthError(
+          `Failed to get wallet address: ${err.message}. Please ensure your wallet is connected.`,
+          { step: 'get_address', originalError: err.message }
+        );
+      }
+
+      let nonceResponse: { nonce: string; timestamp: string; message?: string };
+      try {
+        nonceResponse = await this.authAPI.getNonce(address);
+        this.logger.debug(`Got nonce from backend: ${nonceResponse.nonce.substring(0, 10)}...`);
+      } catch (error) {
+        const err = error as Error;
+        this.logger.error(`Failed to get nonce from backend: ${err.message}`);
+        
+        // Preserve original error type and details
+        if (err instanceof NetworkError) {
+          throw new NetworkError(
+            `Failed to connect to authentication server: ${err.message}. Please check your network connection and API URL.`,
+            err.statusCode,
+            { step: 'get_nonce', endpoint: '/api/auth/nonce', originalError: err.message }
+          );
+        } else if (err instanceof APIError) {
+          throw new APIError(
+            `Authentication server error: ${err.message}`,
+            err.statusCode,
+            err.code,
+            err.endpoint,
+            { step: 'get_nonce', originalError: err.message }
+          );
+        } else {
+          throw new AuthError(
+            `Failed to get authentication nonce: ${err.message}. Please check your API connection.`,
+            { step: 'get_nonce', originalError: err.message }
+          );
+        }
+      }
+
       const { nonce } = nonceResponse;
       
       // Use message from backend if available, otherwise create one
@@ -335,35 +387,106 @@ export class EnclaveClient {
 
       this.logger.debug(`Auth message to sign: ${message}`);
 
-      // Sign message
-      const signature = await this.walletManager.signAuthMessage(message);
-      this.logger.debug(`Signature generated: ${signature.substring(0, 20)}...`);
+      // Step 2: Sign message (this will trigger MetaMask popup)
+      let signature: string;
+      try {
+        signature = await this.walletManager.signAuthMessage(message);
+        this.logger.debug(`Signature generated: ${signature.substring(0, 20)}...`);
+      } catch (error) {
+        const err = error as Error;
+        const errorMessage = err.message.toLowerCase();
+        
+        // Check if user rejected the signature request
+        const isUserRejection = 
+          errorMessage.includes('rejected') || 
+          errorMessage.includes('user rejected') ||
+          errorMessage.includes('user denied') ||
+          errorMessage.includes('4001') || // MetaMask rejection code
+          errorMessage.includes('user cancelled') ||
+          errorMessage.includes('user canceled');
+        
+        if (isUserRejection) {
+          this.logger.warn('User rejected signature request');
+          throw new AuthError(
+            'Authentication cancelled: You rejected the signature request. Please approve the signature in MetaMask to continue.',
+            { step: 'sign_message', userRejected: true, originalError: err.message }
+          );
+        }
+        
+        this.logger.error(`Failed to sign auth message: ${err.message}`);
+        throw new AuthError(
+          `Failed to sign authentication message: ${err.message}. Please ensure your wallet is unlocked and try again.`,
+          { step: 'sign_message', originalError: err.message }
+        );
+      }
 
       // Get SLIP-44 chain ID from wallet (used for authentication)
       const chainId = this.walletManager.getDefaultChainId();
       this.logger.debug(`Using SLIP-44 chain ID: ${chainId}`);
 
-      // Authenticate
-      this.logger.debug(`Calling authenticate API with address: ${this.userAddress?.address}`);
-      const authResponse = await this.authAPI.authenticate({
-        address: this.userAddress!,
-        signature,
-        message,
-        chainId,
-      });
-      this.logger.debug(`Authenticate API response received`);
+      // Step 3: Authenticate with backend
+      let authResponse: { token: string; user_address: any };
+      try {
+        this.logger.debug(`Calling authenticate API with address: ${this.userAddress?.address}`);
+        authResponse = await this.authAPI.authenticate({
+          address: this.userAddress!,
+          signature,
+          message,
+          chainId,
+        });
+        this.logger.debug(`Authenticate API response received`);
+      } catch (error) {
+        const err = error as Error;
+        this.logger.error(`Authentication API call failed: ${err.message}`);
+        
+        // Preserve original error type
+        if (err instanceof NetworkError) {
+          throw new NetworkError(
+            `Failed to connect to authentication server: ${err.message}`,
+            err.statusCode,
+            { step: 'authenticate', endpoint: '/api/auth/login', originalError: err.message }
+          );
+        } else if (err instanceof APIError) {
+          throw new APIError(
+            `Authentication failed: ${err.message}`,
+            err.statusCode,
+            err.code,
+            err.endpoint,
+            { step: 'authenticate', originalError: err.message }
+          );
+        } else {
+          throw new AuthError(
+            `Authentication failed: ${err.message}`,
+            { step: 'authenticate', originalError: err.message }
+          );
+        }
+      }
 
       // Verify token is set in API client BEFORE marking as authenticated
       const tokenInClient = this.apiClient.getAuthToken();
       if (!tokenInClient) {
-        throw new AuthError('Token was not set in API client after authentication');
+        throw new AuthError(
+          'Token was not set in API client after authentication',
+          { step: 'verify_token' }
+        );
       }
       
       this.logger.info(`Authentication successful. Token in API client: ${tokenInClient.substring(0, 20)}...`);
       this.authenticated = true;
       this.wsClient.setAuthToken(authResponse.token);
     } catch (error) {
-      throw new AuthError(`Authentication failed: ${(error as Error).message}`);
+      // If error is already an EnclaveError, re-throw it with details
+      if (error instanceof AuthError || error instanceof NetworkError || error instanceof APIError) {
+        throw error;
+      }
+      
+      // Otherwise, wrap it as AuthError with context
+      const err = error as Error;
+      this.logger.error(`Authentication failed: ${err.message}`, err);
+      throw new AuthError(
+        `Authentication failed: ${err.message}`,
+        { originalError: err.message, stack: err.stack }
+      );
     }
   }
 
@@ -503,7 +626,10 @@ export class EnclaveClient {
     switch (action) {
       case 'created':
       case 'updated':
-        this.stores.allocations.updateAllocation(allocation);
+        // Convert backend Check model to frontend Allocation format
+        // WebSocket messages contain backend format (snake_case), need to normalize
+        const normalized = this.allocationsAPI.convertAllocation(allocation);
+        this.stores.allocations.updateAllocation(normalized);
         break;
       case 'deleted':
         this.stores.allocations.removeAllocation(allocation.id);
@@ -520,7 +646,10 @@ export class EnclaveClient {
     switch (action) {
       case 'created':
       case 'updated':
-        this.stores.withdrawals.updateWithdrawal(withdrawal);
+        // Convert backend Check model to frontend WithdrawRequest format
+        // WebSocket messages contain backend format (snake_case), need to normalize
+        const normalized = this.withdrawalsAPI.normalizeWithdrawRequest(withdrawal);
+        this.stores.withdrawals.updateWithdrawal(normalized);
         break;
       case 'deleted':
         this.stores.withdrawals.removeWithdrawal(withdrawal.id);

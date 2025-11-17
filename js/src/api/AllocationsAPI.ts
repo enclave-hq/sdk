@@ -32,7 +32,7 @@ export class AllocationsAPI {
    * Convert backend allocation (snake_case) to frontend format (camelCase)
    * Backend uses snake_case (Go standard), frontend uses camelCase (TypeScript standard)
    */
-  private convertAllocation(backendAllocation: any): Allocation {
+  convertAllocation(backendAllocation: any): Allocation {
     // Convert backend token format to SDK Token interface
     let token = { id: '', symbol: '', name: '', decimals: 18, contractAddress: '', chainId: 0, isActive: true };
     if (backendAllocation.token) {

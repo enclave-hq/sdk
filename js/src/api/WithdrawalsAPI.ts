@@ -89,7 +89,7 @@ export class WithdrawalsAPI {
    * - recipient_* (embedded fields from GORM)
    * - owner_* (embedded fields from GORM)
    */
-  private normalizeWithdrawRequest(data: unknown): WithdrawRequestDetail {
+  normalizeWithdrawRequest(data: unknown): WithdrawRequestDetail {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const obj = data as any;
     

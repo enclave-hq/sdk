@@ -760,4 +760,24 @@ export interface HookAssetResponse {
   };
 }
 
+// ============ Statistics ============
+
+/**
+ * Statistics overview response
+ */
+export interface StatisticsOverviewResponse {
+  /** Total locked value in USD (formatted as string for precision) */
+  total_locked_value: string;
+  /** Total transaction volume in USD */
+  total_volume: string;
+  /** Number of private transactions (executed withdraws) */
+  private_tx_count: number;
+  /** Number of active users (users with checkbooks) */
+  active_users: number;
+  /** Total locked amount in wei (raw, not converted to USD) */
+  total_locked_amount: string;
+  /** Total volume amount in wei (raw, not converted to USD) */
+  total_volume_amount: string;
+}
+
 

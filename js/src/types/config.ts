@@ -9,32 +9,54 @@ import type { UniversalAddress } from './models';
 
 /**
  * Signature callback function type
- * Allows external signing (e.g., hardware wallet, remote service)
+ * Allows external signing (e.g., hardware wallet, remote service, Wallet SDK)
+ * 
+ * @param message - Raw message string to sign (not hashed)
+ *                  The callback should handle the appropriate signature standard:
+ *                  - EIP-191 for EVM chains
+ *                  - TIP-191 for TRON
+ *                  - Other standards for other chains
+ * @returns Signature (hex string with 0x prefix)
  */
-export type SignerCallback = (messageHash: string) => Promise<string>;
+export type SignerCallback = (message: string) => Promise<string>;
 
 /**
  * Signer interface
- * Compatible with ethers.js Signer and similar abstractions
+ * Compatible with ethers.js Signer, Wallet SDK adapters, and similar abstractions
+ * 
+ * Note: The signer should handle the appropriate signature standard:
+ * - EIP-191 for EVM chains (ethers.js does this automatically)
+ * - TIP-191 for TRON (Wallet SDK handles this)
+ * - Other standards for other chains
+ * 
+ * Wallet SDK adapters (e.g., EVMPrivateKeyAdapter, MetaMaskAdapter, TronLinkAdapter)
+ * now implement this interface, so they can be used directly as signers.
  */
 export interface ISigner {
   /**
-   * Sign a message hash
-   * @param messageHash - Hash to sign (hex string with 0x prefix)
+   * Sign a message (raw message string, not hash)
+   * @param message - Raw message string to sign
+   *                  The signer should handle the appropriate signature standard
    * @returns Signature (hex string with 0x prefix)
    */
-  signMessage(messageHash: string): Promise<string>;
+  signMessage(message: string): Promise<string>;
 
   /**
    * Get the signer's address
-   * @returns Address (hex string with 0x prefix)
+   * @returns Address (hex string with 0x prefix for EVM, Base58 for TRON)
    */
   getAddress(): Promise<string>;
 }
 
 /**
  * Signer input - flexible signature provider
- * Can be: private key, callback function, or Signer object
+ * Can be:
+ * - Private key (string): For EVM chains, delegates to Wallet SDK's EVMPrivateKeyAdapter
+ * - Callback function: For custom signing logic (e.g., Wallet SDK's signMessage callback)
+ * - Signer object (ISigner): Any object implementing ISigner interface
+ *   - Wallet SDK adapters (e.g., EVMPrivateKeyAdapter, MetaMaskAdapter, TronLinkAdapter)
+ *   - Custom ISigner implementations
+ *   - ethers.js Signer (if compatible)
  */
 export type SignerInput = string | SignerCallback | ISigner;
 

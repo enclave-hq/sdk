@@ -77,7 +77,14 @@ export class APIClient {
           config.headers.Authorization = `Bearer ${this.authToken}`;
           this.logger.debug(`Added Authorization header: Bearer ${this.authToken.substring(0, 20)}... for ${config.method?.toUpperCase()} ${config.url}`);
         } else {
-          this.logger.warn(`No auth token available for request: ${config.method?.toUpperCase()} ${config.url}`);
+          // Only warn for endpoints that require auth, debug for public endpoints
+          const url = config.url || '';
+          const isPublicEndpoint = url.includes('/api/auth/nonce') || url.includes('/api/auth/login');
+          if (isPublicEndpoint) {
+            this.logger.debug(`No auth token for public endpoint: ${config.method?.toUpperCase()} ${config.url}`);
+          } else {
+            this.logger.warn(`No auth token available for request: ${config.method?.toUpperCase()} ${config.url}`);
+          }
         }
 
         return config;

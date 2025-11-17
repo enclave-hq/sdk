@@ -73,9 +73,12 @@ export class WebSocketClient {
   private state: WebSocketState = WebSocketState.DISCONNECTED;
   private authToken?: string;
   private pingIntervalId?: any;
+  private pingAnimationFrameId?: number;
   private lastPongTimestamp?: number;
   private lastPingTimestamp?: number; // Track when we sent the last ping
+  private nextPingTime?: number; // Track when the next ping should be sent
   private eventHandlers: Map<string, Set<WSEventHandler>> = new Map();
+  private visibilityChangeHandler?: () => void;
 
   constructor(config: WebSocketClientConfig) {
     this.logger = config.logger || getLogger();
@@ -148,6 +151,7 @@ export class WebSocketClient {
       // Start ping
       if (this.config.pingInterval > 0) {
         this.startPing();
+        this.setupVisibilityHandlers();
       }
 
       this.logger.info('WebSocket connected');
@@ -179,6 +183,7 @@ export class WebSocketClient {
     this.logger.info('Disconnecting WebSocket');
 
     this.stopPing();
+    this.removeVisibilityHandlers();
 
     if (this.adapter) {
       this.adapter.disconnect();
@@ -398,6 +403,7 @@ export class WebSocketClient {
    */
   private async handleDisconnect(): void {
     this.stopPing();
+    this.removeVisibilityHandlers();
 
     if (this.state !== WebSocketState.DISCONNECTED) {
       this.setState(WebSocketState.DISCONNECTED);
@@ -455,19 +461,28 @@ export class WebSocketClient {
   }
 
   /**
-   * Start ping interval
+   * Start ping interval using a more reliable approach
+   * Uses requestAnimationFrame for better reliability when page is visible,
+   * and falls back to setInterval as a backup
    */
   private startPing(): void {
     this.stopPing(); // Clear any existing interval
 
-    this.pingIntervalId = setInterval(() => {
-      if (!this.isConnected()) return;
+    const now = Date.now();
+    this.nextPingTime = now + this.config.pingInterval;
 
-      const now = Date.now();
+    // Use requestAnimationFrame for more reliable timing when page is visible
+    const pingLoop = () => {
+      if (!this.isConnected()) {
+        this.pingAnimationFrameId = undefined;
+        return;
+      }
+
+      const currentTime = Date.now();
 
       // Check if last pong is too old (if we've received at least one pong)
       if (this.lastPongTimestamp) {
-        const timeSinceLastPong = now - this.lastPongTimestamp;
+        const timeSinceLastPong = currentTime - this.lastPongTimestamp;
         if (timeSinceLastPong > this.config.pingTimeout) {
           this.logger.warn('Ping timeout, disconnecting');
           this.handleDisconnect();
@@ -478,7 +493,7 @@ export class WebSocketClient {
       // Check if we sent a ping but haven't received a pong within timeout
       // This handles the case where we've never received a pong
       if (this.lastPingTimestamp) {
-        const timeSinceLastPing = now - this.lastPingTimestamp;
+        const timeSinceLastPing = currentTime - this.lastPingTimestamp;
         if (timeSinceLastPing > this.config.pingTimeout) {
           this.logger.warn('No pong received after ping timeout, disconnecting');
           this.handleDisconnect();
@@ -486,15 +501,46 @@ export class WebSocketClient {
         }
       }
 
-      // Send ping
-      try {
-        this.lastPingTimestamp = now;
-        this.send({
-          type: 'ping' as WSMessageType.PING,
-          timestamp: now,
-        });
-      } catch (error) {
-        this.logger.error('Failed to send ping:', error);
+      // Send ping if it's time (using time-based check instead of relying on interval precision)
+      if (this.nextPingTime && currentTime >= this.nextPingTime) {
+        try {
+          this.lastPingTimestamp = currentTime;
+          this.nextPingTime = currentTime + this.config.pingInterval;
+          this.send({
+            type: 'ping' as WSMessageType.PING,
+            timestamp: currentTime,
+          });
+        } catch (error) {
+          this.logger.error('Failed to send ping:', error);
+        }
+      }
+
+      // Continue the loop
+      this.pingAnimationFrameId = requestAnimationFrame(pingLoop);
+    };
+
+    // Start the ping loop
+    this.pingAnimationFrameId = requestAnimationFrame(pingLoop);
+
+    // Also use setInterval as a backup to ensure we don't miss pings
+    // This helps when requestAnimationFrame is throttled (e.g., when tab is in background)
+    this.pingIntervalId = setInterval(() => {
+      if (!this.isConnected()) return;
+
+      const currentTime = Date.now();
+
+      // Force send ping if we're overdue (more than 1.5x the interval)
+      if (this.nextPingTime && currentTime >= this.nextPingTime + (this.config.pingInterval * 0.5)) {
+        try {
+          this.lastPingTimestamp = currentTime;
+          this.nextPingTime = currentTime + this.config.pingInterval;
+          this.send({
+            type: 'ping' as WSMessageType.PING,
+            timestamp: currentTime,
+          });
+        } catch (error) {
+          this.logger.error('Failed to send ping (backup interval):', error);
+        }
       }
     }, this.config.pingInterval);
   }
@@ -507,9 +553,53 @@ export class WebSocketClient {
       clearInterval(this.pingIntervalId);
       this.pingIntervalId = undefined;
     }
+    if (this.pingAnimationFrameId !== undefined) {
+      cancelAnimationFrame(this.pingAnimationFrameId);
+      this.pingAnimationFrameId = undefined;
+    }
     // Reset ping/pong timestamps
     this.lastPingTimestamp = undefined;
     this.lastPongTimestamp = undefined;
+    this.nextPingTime = undefined;
+  }
+
+  /**
+   * Set up visibility change handlers to ensure ping continues when page becomes visible
+   */
+  private setupVisibilityHandlers(): void {
+    if (typeof document === 'undefined') return;
+
+    this.visibilityChangeHandler = () => {
+      if (document.visibilityState === 'visible' && this.isConnected()) {
+        // When page becomes visible, immediately check if we need to send a ping
+        const now = Date.now();
+        if (this.nextPingTime && now >= this.nextPingTime) {
+          try {
+            this.lastPingTimestamp = now;
+            this.nextPingTime = now + this.config.pingInterval;
+            this.send({
+              type: 'ping' as WSMessageType.PING,
+              timestamp: now,
+            });
+            this.logger.debug('Sent ping after page became visible');
+          } catch (error) {
+            this.logger.error('Failed to send ping after visibility change:', error);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+  }
+
+  /**
+   * Remove visibility change handlers
+   */
+  private removeVisibilityHandlers(): void {
+    if (typeof document === 'undefined' || !this.visibilityChangeHandler) return;
+
+    document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+    this.visibilityChangeHandler = undefined;
   }
 }
 

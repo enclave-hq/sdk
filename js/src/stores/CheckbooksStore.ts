@@ -3,7 +3,7 @@
  * @module stores/CheckbooksStore
  */
 
-import { computed } from 'mobx';
+import { computed, runInAction } from 'mobx';
 import { BaseStore } from './BaseStore';
 import type { Checkbook, CheckbookStatus } from '../types/models';
 import type { CheckbooksAPI } from '../api/CheckbooksAPI';
@@ -121,7 +121,7 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
   /**
    * Fetch checkbooks list from API
    * @param filters - Optional filters (owner is automatically determined from JWT)
-   * @returns Paginated checkbooks response
+   * @returns Paginated checkbooks response with data and pagination info
    */
   async fetchList(filters?: {
     status?: string;
@@ -129,11 +129,30 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
     page?: number;
     limit?: number;
     deleted?: boolean;
-  }): Promise<Checkbook[]> {
+  }): Promise<{ data: Checkbook[]; pagination?: any }> {
     return this.executeAction(async () => {
       const response = await this.api.listCheckbooks(filters);
-      this.updateItems(response.data, (c) => c.id);
-      return response.data;
+      
+      // 如果是分页查询（有 page 参数），先清空 Store，只保留当前页的数据
+      // 这样可以避免不同页的数据累加导致重复显示
+      // 注意：分页查询时，Store 应该只保留当前页的数据，而不是累加所有页的数据
+      if (filters?.page !== undefined) {
+        // 使用 runInAction 确保清空操作在正确的 action 上下文中执行
+        runInAction(() => {
+          this.clear();
+          this.logger.debug(`Cleared checkbooks store for paginated query (page: ${filters.page})`);
+        });
+      }
+      
+      // 更新 Store 中的数据（在 action 上下文中）
+      runInAction(() => {
+        this.updateItems(response.data, (c) => c.id);
+      });
+      
+      return {
+        data: response.data,
+        pagination: response.pagination,
+      };
     }, 'Failed to fetch checkbooks list');
   }
 
