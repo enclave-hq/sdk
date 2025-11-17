@@ -50,13 +50,44 @@ export class CheckbooksAPI {
           tokenId: request.tokenId,
           page: request.page || 1,
           limit: request.limit || 20,
+          deleted: request.deleted !== undefined ? String(request.deleted) : undefined,
         },
       }
     );
 
-    // Convert backend snake_case to frontend camelCase, including timestamps
+    // Convert backend snake_case to frontend camelCase, including timestamps and amount fields
     const convertedData = (response.data || []).map((backendCheckbook: any) => {
       const checkbook: any = { ...backendCheckbook };
+      
+      // Convert local_deposit_id to localDepositId
+      if (backendCheckbook.local_deposit_id !== undefined && backendCheckbook.local_deposit_id !== null) {
+        checkbook.localDepositId = backendCheckbook.local_deposit_id;
+      }
+      
+      // Convert slip44_chain_id to slip44ChainId
+      if (backendCheckbook.slip44_chain_id !== undefined && backendCheckbook.slip44_chain_id !== null) {
+        checkbook.slip44ChainId = backendCheckbook.slip44_chain_id;
+      }
+      
+      // Convert amount fields: gross_amount, allocatable_amount, fee_total_locked
+      if (backendCheckbook.gross_amount !== undefined && backendCheckbook.gross_amount !== null) {
+        checkbook.grossAmount = String(backendCheckbook.gross_amount);
+        // Also set depositAmount = grossAmount for compatibility
+        if (!checkbook.depositAmount) {
+          checkbook.depositAmount = String(backendCheckbook.gross_amount);
+        }
+      } else if (backendCheckbook.amount !== undefined && backendCheckbook.amount !== null && !checkbook.depositAmount) {
+        // Fallback to amount if gross_amount is not available
+        checkbook.depositAmount = String(backendCheckbook.amount);
+      }
+      
+      if (backendCheckbook.allocatable_amount !== undefined && backendCheckbook.allocatable_amount !== null) {
+        checkbook.allocatableAmount = String(backendCheckbook.allocatable_amount);
+      }
+      
+      if (backendCheckbook.fee_total_locked !== undefined && backendCheckbook.fee_total_locked !== null) {
+        checkbook.feeTotalLocked = String(backendCheckbook.fee_total_locked);
+      }
       
       // Convert created_at to createdAt (timestamp)
       if (backendCheckbook.created_at) {

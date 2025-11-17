@@ -128,6 +128,7 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
     tokenId?: string;
     page?: number;
     limit?: number;
+    deleted?: boolean;
   }): Promise<Checkbook[]> {
     return this.executeAction(async () => {
       const response = await this.api.listCheckbooks(filters);
@@ -223,4 +224,5 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
     return result;
   }
 }
+
 

@@ -218,7 +218,7 @@ EnclaveClient (SDK メインクライアント)
 |--------|----------|--------------|-----------|---------------------|
 | `/home` | おすすめ商品、総ロック額 | `stores.pools`<br>`stores.prices` | `useFeaturedPools()`<br>`useUserAssets()` | - |
 | `/deposit` | 預金記録、バウチャー割り当て | `stores.checkbooks`<br>`stores.allocations` | `useCheckbooksData()`<br>`useDepositActions()` | `sdk.createCommitment()` |
-| `/difi` | レンディングプール、RWA 資産、出金 | `stores.pools`<br>`stores.allocations` | `useFeaturedPools()`<br>`useAllocationsData()`<br>`useQuoteRoute()` | `sdk.quote.getRouteAndFees()`<br>`sdk.withdraw()` |
+| `/defi` | レンディングプール、RWA 資産、出金 | `stores.pools`<br>`stores.allocations` | `useFeaturedPools()`<br>`useAllocationsData()`<br>`useQuoteRoute()` | `sdk.quote.getRouteAndFees()`<br>`sdk.withdraw()` |
 | `/records` | 取引履歴 | `stores.withdrawals` | - | - |
 
 ### 使用方法

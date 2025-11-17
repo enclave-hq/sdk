@@ -38,6 +38,7 @@ import { AllocationsStore } from '../stores/AllocationsStore';
 import { WithdrawalsStore } from '../stores/WithdrawalsStore';
 import { PricesStore } from '../stores/PricesStore';
 import { PoolsStore } from '../stores/PoolsStore';
+import { ChainConfigStore } from '../stores/ChainConfigStore';
 
 // WebSocket
 import { WebSocketClient } from '../websocket/WebSocketClient';
@@ -90,6 +91,7 @@ export class EnclaveClient {
     withdrawals: WithdrawalsStore;
     prices: PricesStore;
     pools: PoolsStore;
+    chainConfig: ChainConfigStore;
   };
 
   // Actions
@@ -116,7 +118,7 @@ export class EnclaveClient {
       autoReconnect: config.autoReconnect ?? true,
       maxReconnectAttempts: config.maxReconnectAttempts ?? 5,
       reconnectDelay: config.reconnectDelay ?? 1000,
-      timeout: config.timeout ?? 30000,
+      timeout: config.timeout ?? 300000, // 5 minutes (300 seconds) default timeout
       logLevel: config.logLevel || 'info' as any,
       logger: this.logger,
       cacheAuth: config.cacheAuth ?? true,
@@ -135,7 +137,7 @@ export class EnclaveClient {
       timeout: this.config.timeout,
       headers: config.headers,
       logger: this.logger,
-      enableRetry: true,
+      enableRetry: false, // Disable retry as requested
       maxRetries: 3,
       // Set up automatic re-authentication on 401 errors
       onAuthError: async () => {
@@ -193,6 +195,10 @@ export class EnclaveClient {
       }),
       pools: new PoolsStore({
         api: this.poolsAPI,
+        logger: this.logger,
+      }),
+      chainConfig: new ChainConfigStore({
+        api: this.chainConfigAPI,
         logger: this.logger,
       }),
     };
@@ -402,6 +408,9 @@ export class EnclaveClient {
       }),
       this.stores.pools.fetchTokens().catch((err) => {
         this.logger.warn('Failed to load tokens (endpoint may not exist):', err);
+      }),
+      this.stores.chainConfig.fetchChains().catch((err) => {
+        this.logger.warn('Failed to load chain configurations:', err);
       }),
     ];
 

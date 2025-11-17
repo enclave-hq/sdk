@@ -3,7 +3,7 @@
  * @module stores/PoolsStore
  */
 
-import { computed, observable, action, makeObservable } from 'mobx';
+import { computed, observable, action } from 'mobx';
 import { BaseStore } from './BaseStore';
 import type { Pool, Token } from '../types/models';
 import type { PoolsAPI } from '../api/PoolsAPI';
@@ -31,10 +31,8 @@ export class PoolsStore extends BaseStore<Pool> {
   constructor(config: PoolsStoreConfig) {
     super({ name: 'PoolsStore', logger: config.logger });
     this.api = config.api;
-    makeObservable(this, {
-      // Exclude clear() from auto-decoration since it's already decorated in parent
-      clear: false,
-    });
+    // Don't call makeObservable here - parent's makeObservable will handle decorators
+    // This avoids mixing decorators with annotation maps
   }
 
   /**
@@ -258,7 +256,8 @@ export class PoolsStore extends BaseStore<Pool> {
 
   /**
    * Clear all data
-   * Note: No need to re-decorate with @action since parent's clear() is already @action
+   * Override parent's clear() method
+   * Note: Don't add @action decorator here - parent already has it
    */
   override clear(): void {
     super.clear();

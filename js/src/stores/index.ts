@@ -9,4 +9,5 @@ export * from './AllocationsStore';
 export * from './WithdrawalsStore';
 export * from './PricesStore';
 export * from './PoolsStore';
+export * from './ChainConfigStore';
 

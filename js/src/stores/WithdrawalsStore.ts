@@ -180,11 +180,17 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
     allocationIds: string[];
     intent: {
       type: number; // 0=RawToken, 1=AssetToken
+      beneficiaryChainId: number; // SLIP-44 Chain ID (flat format from convertIntentToBackendFormat)
+      beneficiaryAddress: string; // Universal Address format (32-byte hex string without 0x prefix)
+      tokenSymbol?: string; // For RawToken
+      assetId?: string; // For AssetToken
+    } | {
+      type: number; // 0=RawToken, 1=AssetToken
       beneficiary: {
         chain_id: number;
         address: string;
       };
-      tokenIdentifier?: string; // For RawToken
+      tokenIdentifier?: string; // For RawToken (legacy format)
       assetId?: string; // For AssetToken
     };
     signature: string; // Required for ZKVM proof generation
@@ -195,16 +201,42 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
     metadata?: Record<string, any>;
   }): Promise<WithdrawRequest> {
     return this.executeAction(async () => {
-      const request: import('../types/api').CreateWithdrawRequestRequest = {
-        checkbookId: params.checkbookId,
-        allocationIds: params.allocationIds,
-        intent: {
+      // Handle both flat format (from convertIntentToBackendFormat) and nested format (legacy)
+      let intentData: {
+        type: number;
+        beneficiaryChainId: number;
+        beneficiaryAddress: string;
+        tokenSymbol: string;
+        assetId?: string;
+      };
+      
+      // Check if intent is in flat format (from convertIntentToBackendFormat)
+      if ('beneficiaryChainId' in params.intent && 'beneficiaryAddress' in params.intent) {
+        // Flat format (new format from convertIntentToBackendFormat)
+        intentData = {
+          type: params.intent.type,
+          beneficiaryChainId: params.intent.beneficiaryChainId,
+          beneficiaryAddress: params.intent.beneficiaryAddress,
+          tokenSymbol: params.intent.tokenSymbol || '',
+          assetId: params.intent.assetId,
+        };
+      } else if ('beneficiary' in params.intent) {
+        // Nested format (legacy format)
+        intentData = {
           type: params.intent.type,
           beneficiaryChainId: params.intent.beneficiary.chain_id,
           beneficiaryAddress: params.intent.beneficiary.address,
-          tokenSymbol: params.intent.tokenIdentifier || '',
+          tokenSymbol: (params.intent as any).tokenIdentifier || '',
           assetId: params.intent.assetId,
-        },
+        };
+      } else {
+        throw new Error('Invalid intent format: must have either beneficiaryChainId/beneficiaryAddress (flat) or beneficiary (nested)');
+      }
+      
+      const request: import('../types/api').CreateWithdrawRequestRequest = {
+        checkbookId: params.checkbookId,
+        allocationIds: params.allocationIds,
+        intent: intentData,
         signature: params.signature,
         chainId: params.chainId,
         message: params.message,

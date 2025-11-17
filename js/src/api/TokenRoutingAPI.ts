@@ -52,8 +52,17 @@ export interface ChainInfo {
 export interface GetAllowedTargetsRequest {
   /** Source chain ID (SLIP-44) */
   source_chain_id?: number;
-  /** Source token ID (token address for RawToken, asset_id for AssetToken) */
-  source_token_id?: string;
+  /** Source token key (token symbol, e.g., "USDT", "USDC") */
+  source_token_key?: string;
+  /** Intent for withdrawal (RawToken type) */
+  intent?: {
+    type: string; // 'RawToken'
+    beneficiary: {
+      chainId: number; // Target chain SLIP-44 ID
+      address: string; // Beneficiary address
+    };
+    tokenKey: string; // Target token key (e.g., "USDT")
+  };
 }
 
 /**
@@ -183,8 +192,26 @@ export class TokenRoutingAPI {
     if (request.source_chain_id !== undefined) {
       params.source_chain_id = request.source_chain_id;
     }
-    if (request.source_token_id !== undefined) {
-      params.source_token_id = request.source_token_id;
+    if (request.source_token_key !== undefined) {
+      params.source_token_key = request.source_token_key;
+    }
+    if (request.intent !== undefined) {
+      // Intent 作为 JSON body 发送（POST）或作为查询参数（GET）
+      // 这里使用 POST 方式发送 Intent，因为 Intent 可能包含复杂对象
+      const body: Record<string, any> = {};
+      if (request.intent.type) {
+        body.intent_type = request.intent.type;
+      }
+      if (request.intent.beneficiary) {
+        body.beneficiary_chain_id = request.intent.beneficiary.chainId;
+        body.beneficiary_address = request.intent.beneficiary.address;
+      }
+      if (request.intent.tokenKey) {
+        body.target_token_key = request.intent.tokenKey;
+      }
+      
+      // 将 Intent 信息合并到 params 中（作为查询参数）
+      Object.assign(params, body);
     }
 
     const response = await this.client.get<GetAllowedTargetsResponse | GetAllPoolsAndTokensResponse>(
@@ -237,7 +264,7 @@ export class TokenRoutingAPI {
     
     const response = await this.getAllowedTargets({
       source_chain_id: sourceChainId,
-      source_token_id: sourceTokenId,
+      source_token_key: sourceTokenId,
     });
     
     // Type guard: check if response has 'allowed_targets' property

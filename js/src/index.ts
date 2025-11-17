@@ -106,6 +106,11 @@ export {
   isValidHex,
   isValidAddress,
 
+  // Chain utilities
+  getSlip44FromChainId,
+  getEvmChainIdFromSlip44,
+  getChainName,
+
   // Error classes
   EnclaveError,
   ConfigError,
@@ -167,6 +172,9 @@ export type {
   PricesStore,
   PoolsStore,
 } from './stores';
+
+// ============ Providers ============
+export { WalletSDKContractProvider } from './providers';
 
 // ============ Version Info ============
 export const SDK_VERSION = '2.0.2';

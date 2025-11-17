@@ -3,7 +3,7 @@
  */
 
 import type { IContractProvider, TransactionReceipt } from '../types/contract-provider';
-import type { Contract, Provider, Signer } from 'ethers';
+import type { Provider, Signer } from 'ethers';
 
 /**
  * Ethers Contract Provider
@@ -26,7 +26,11 @@ export class EthersContractProvider implements IContractProvider {
     const { Contract } = await import('ethers');
     
     const contract = new Contract(address, abi, this.providerOrSigner);
-    const result = await contract[functionName](...(args || []));
+    const func = contract[functionName];
+    if (!func || typeof func !== 'function') {
+      throw new Error(`Function ${functionName} not found in contract ABI`);
+    }
+    const result = await func(...(args || []));
     return result as T;
   }
 
@@ -56,7 +60,11 @@ export class EthersContractProvider implements IContractProvider {
     if (options?.gas) txOptions.gasLimit = options.gas;
     if (options?.gasPrice) txOptions.gasPrice = options.gasPrice;
     
-    const tx = await contract[functionName](...(args || []), txOptions);
+    const func = contract[functionName];
+    if (!func || typeof func !== 'function') {
+      throw new Error(`Function ${functionName} not found in contract ABI`);
+    }
+    const tx = await func(...(args || []), txOptions);
     return tx.hash;
   }
 
@@ -86,7 +94,7 @@ export class EthersContractProvider implements IContractProvider {
       to: receipt.to || '',
       status: receipt.status === 1 ? 'success' : 'failed',
       gasUsed: receipt.gasUsed.toString(),
-      logs: receipt.logs,
+      logs: [...receipt.logs],
     };
   }
 

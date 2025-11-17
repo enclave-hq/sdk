@@ -100,6 +100,7 @@ export interface RefreshTokenResponse {
  * List checkbooks request
  */
 export interface ListCheckbooksRequest {
+  deleted?: boolean;
   /** Filter by status */
   status?: string;
   /** Filter by token ID */
@@ -758,4 +759,5 @@ export interface HookAssetResponse {
     cacheValidUntil: string;
   };
 }
+
 

@@ -64,7 +64,7 @@ export class WithdrawalsAPI {
           tokenId: request.tokenId,
           targetChain: request.targetChain,
           page: request.page || 1,
-          page_size: request.limit || 20,
+          page_size: request.limit || 10,
         },
       }
     );

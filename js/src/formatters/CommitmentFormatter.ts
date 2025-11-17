@@ -184,15 +184,16 @@ export class CommitmentFormatter {
       const integerPart = amountBigInt / divisor;
       const decimalPart = amountBigInt % divisor;
 
-      // Format decimal part (pad to 18 digits, then trim trailing zeros)
-      const decimalStr = decimalPart.toString().padStart(18, '0');
-      const trimmedDecimal = decimalStr.replace(/0+$/, '').replace(/\.$/, '');
-
+      // Format amount matching lib.rs get_deposit_data_to_sign (最多6位小数)
+      // lib.rs logic: format!("{:.6}", display_amount).trim_end_matches('0').trim_end_matches('.')
       let formattedAmount: string;
       if (decimalPart === 0n) {
         formattedAmount = integerPart.toString();
       } else {
-        formattedAmount = `${integerPart}.${trimmedDecimal}`;
+        // Convert to number for formatting (matching lib.rs f64 conversion)
+        const amountNumber = Number(amountBigInt) / Number(divisor);
+        // Use toFixed(6) then trim trailing zeros (matching lib.rs format!("{:.6}", ...))
+        formattedAmount = amountNumber.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
       }
 
       // Use tokenSymbol instead of "units" for better user experience
@@ -200,17 +201,19 @@ export class CommitmentFormatter {
     }
 
     // Total Amount (matching lib.rs - must be after allocations, before Deposit ID)
+    // Format matching lib.rs get_deposit_data_to_sign (最多6位小数)
     const totalDivisor = BigInt(10) ** BigInt(18);
     const totalIntegerPart = totalAmountBigInt / totalDivisor;
     const totalDecimalPart = totalAmountBigInt % totalDivisor;
-    const totalDecimalStr = totalDecimalPart.toString().padStart(18, '0');
-    const totalTrimmedDecimal = totalDecimalStr.replace(/0+$/, '').replace(/\.$/, '');
     
     let totalFormatted: string;
     if (totalDecimalPart === 0n) {
       totalFormatted = totalIntegerPart.toString();
     } else {
-      totalFormatted = `${totalIntegerPart}.${totalTrimmedDecimal}`;
+      // Convert to number for formatting (matching lib.rs f64 conversion)
+      const totalNumber = Number(totalAmountBigInt) / Number(totalDivisor);
+      // Use toFixed(6) then trim trailing zeros (matching lib.rs format!("{:.6}", ...))
+      totalFormatted = totalNumber.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
     }
 
     switch (lang) {

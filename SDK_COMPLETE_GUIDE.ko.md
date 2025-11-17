@@ -218,7 +218,7 @@ EnclaveClient (SDK 메인 클라이언트)
 |--------|-----------|-----------|-----------|----------------|
 | `/home` | 추천 상품, 총 잠금량 | `stores.pools`<br>`stores.prices` | `useFeaturedPools()`<br>`useUserAssets()` | - |
 | `/deposit` | 예금 기록, 바우처 할당 | `stores.checkbooks`<br>`stores.allocations` | `useCheckbooksData()`<br>`useDepositActions()` | `sdk.createCommitment()` |
-| `/difi` | 대출 풀, RWA 자산, 출금 | `stores.pools`<br>`stores.allocations` | `useFeaturedPools()`<br>`useAllocationsData()`<br>`useQuoteRoute()` | `sdk.quote.getRouteAndFees()`<br>`sdk.withdraw()` |
+| `/defi` | 대출 풀, RWA 자산, 출금 | `stores.pools`<br>`stores.allocations` | `useFeaturedPools()`<br>`useAllocationsData()`<br>`useQuoteRoute()` | `sdk.quote.getRouteAndFees()`<br>`sdk.withdraw()` |
 | `/records` | 거래 이력 | `stores.withdrawals` | - | - |
 
 ### 사용 방법

@@ -33,6 +33,23 @@ export class AllocationsAPI {
    * Backend uses snake_case (Go standard), frontend uses camelCase (TypeScript standard)
    */
   private convertAllocation(backendAllocation: any): Allocation {
+    // Convert backend token format to SDK Token interface
+    let token = { id: '', symbol: '', name: '', decimals: 18, contractAddress: '', chainId: 0, isActive: true };
+    if (backendAllocation.token) {
+      const backendToken = backendAllocation.token;
+      token = {
+        id: backendToken.id || `token_${backendAllocation.checkbook?.token_id || backendAllocation.token_id || 'unknown'}`,
+        symbol: backendToken.symbol || 'UNKNOWN',
+        name: backendToken.name || backendToken.symbol || 'Unknown Token',
+        decimals: backendToken.decimals || 18,
+        contractAddress: backendToken.address || backendToken.contractAddress || '',
+        chainId: backendToken.chain_id || backendToken.chainId || 0,
+        // iconUrl: undefined, // Removed - not in Token type
+        isActive: backendToken.is_active !== undefined ? Boolean(backendToken.is_active) : (backendToken.isActive !== undefined ? Boolean(backendToken.isActive) : true),
+        // metrics: undefined, // Removed - not in Token type
+      };
+    }
+
     return {
       id: backendAllocation.id,
       checkbookId: backendAllocation.checkbook_id || backendAllocation.checkbookId, // Convert snake_case to camelCase
@@ -44,10 +61,12 @@ export class AllocationsAPI {
       commitment: backendAllocation.commitment,
       createdAt: backendAllocation.created_at ? new Date(backendAllocation.created_at).getTime() : (backendAllocation.createdAt || Date.now()),
       updatedAt: backendAllocation.updated_at ? new Date(backendAllocation.updated_at).getTime() : (backendAllocation.updatedAt || Date.now()),
-      // Owner and token are typically not in the allocation response, but may be populated by store
+      // Owner and token - now token is included in backend response
       owner: backendAllocation.owner || { chainId: 0, address: '' },
-      token: backendAllocation.token || { id: '', symbol: '', name: '', decimals: 18, contractAddress: '', chainId: 0, isActive: true },
-    };
+      token: token,
+      // Preserve checkbook info from backend (for localDepositId access)
+      ...(backendAllocation.checkbook && { _checkbook: backendAllocation.checkbook }),
+    } as any; // Use 'as any' to allow _checkbook field
   }
 
   /**

@@ -53,14 +53,14 @@ export class APIClient {
 
   constructor(config: APIClientConfig) {
     this.logger = config.logger || getLogger();
-    this.enableRetry = config.enableRetry ?? true;
+    this.enableRetry = config.enableRetry ?? false; // Disable retry by default
     this.maxRetries = config.maxRetries ?? 3;
     this.onAuthError = config.onAuthError;
 
     // Create axios instance
     this.axios = axios.create({
       baseURL: config.baseUrl,
-      timeout: config.timeout || 30000,
+      timeout: config.timeout || 300000, // 5 minutes (300 seconds) default timeout
       headers: {
         'Content-Type': 'application/json',
         ...config.headers,
@@ -134,7 +134,7 @@ export class APIClient {
       if (error.code === 'ECONNABORTED') {
         return new TimeoutError(
           'Request timeout',
-          this.axios.defaults.timeout || 30000,
+          this.axios.defaults.timeout || 300000, // 5 minutes default
           { originalError: error.message }
         );
       }

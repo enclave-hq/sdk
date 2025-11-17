@@ -380,24 +380,6 @@ export class WithdrawFormatter {
   }
 
   /**
-   * Format token contract (32 bytes) as address string
-   * Matches lib.rs format_token_contract
-   * @internal Reserved for future use
-   */
-  private static _formatTokenContract(tokenContract: string): string {
-    // Remove 0x prefix if present
-    const hex = tokenContract.startsWith('0x') ? tokenContract.slice(2) : tokenContract;
-    
-    // Extract right-aligned 20 bytes (last 40 hex chars)
-    if (hex.length < 40) {
-      throw new Error('Token contract must be at least 20 bytes (40 hex chars)');
-    }
-    
-    const addressHex = hex.slice(-40); // Last 40 hex chars = 20 bytes
-    return `0x${addressHex}`;
-  }
-
-  /**
    * Extract adapter ID from asset ID (bytes 4-7)
    */
   private static getAdapterId(assetId: string): number {
@@ -408,20 +390,6 @@ export class WithdrawFormatter {
     // Bytes 4-7 (hex chars 8-15)
     const adapterHex = hex.slice(8, 16);
     return parseInt(adapterHex, 16);
-  }
-
-  /**
-   * Extract token ID from asset ID (bytes 8-9)
-   * @internal Reserved for future use
-   */
-  private static _getTokenId(assetId: string): number {
-    const hex = assetId.startsWith('0x') ? assetId.slice(2) : assetId;
-    if (hex.length < 20) {
-      throw new Error('Asset ID must be at least 10 bytes (20 hex chars)');
-    }
-    // Bytes 8-9 (hex chars 16-19)
-    const tokenHex = hex.slice(16, 20);
-    return parseInt(tokenHex, 16);
   }
 
   /**
@@ -440,6 +408,7 @@ export class WithdrawFormatter {
 
   /**
    * Format amount with decimals (matching lib.rs format_amount)
+   * For signature messages, uses at most 6 decimal places (matching lib.rs get_deposit_data_to_sign and get_withdraw_data_to_sign)
    * @param amountBytes - Amount as 32-byte hex string or BigInt string
    * @param decimals - Number of decimals (default: 18)
    * @param symbol - Token symbol for display
@@ -479,14 +448,16 @@ export class WithdrawFormatter {
     const integerPart = amountBigInt / divisor;
     const decimalPart = amountBigInt % divisor;
     
-    // Format decimal part with padding
-    const decimalStr = decimalPart.toString().padStart(decimals, '0');
-    const trimmedDecimal = decimalStr.replace(/0+$/, '');
-    
-    if (trimmedDecimal === '') {
+    // Format matching lib.rs get_deposit_data_to_sign and get_withdraw_data_to_sign (最多6位小数)
+    // lib.rs logic: format!("{:.6}", display_amount).trim_end_matches('0').trim_end_matches('.')
+    if (decimalPart === 0n) {
       return `${integerPart} ${symbol}`;
     } else {
-      return `${integerPart}.${trimmedDecimal} ${symbol}`;
+      // Convert to number for formatting (matching lib.rs f64 conversion)
+      const amountNumber = Number(amountBigInt) / Number(divisor);
+      // Use toFixed(6) then trim trailing zeros (matching lib.rs format!("{:.6}", ...))
+      const formatted = amountNumber.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+      return `${formatted} ${symbol}`;
     }
   }
 

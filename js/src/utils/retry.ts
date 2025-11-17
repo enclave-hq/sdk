@@ -3,7 +3,8 @@
  * @module utils/retry
  */
 
-import { TimeoutError } from './errors';
+// TimeoutError is imported but not used (removed withTimeout function)
+// import { TimeoutError } from './errors';
 import type { ILogger } from '../types/config';
 import { getLogger } from './logger';
 
@@ -61,24 +62,6 @@ function calculateDelay(
 }
 
 /**
- * Execute function with timeout
- */
-async function withTimeout<T>(
-  fn: () => Promise<T>,
-  timeout: number
-): Promise<T> {
-  return Promise.race([
-    fn(),
-    new Promise<T>((_, reject) =>
-      setTimeout(
-        () => reject(new TimeoutError(`Operation timed out after ${timeout}ms`, timeout)),
-        timeout
-      )
-    ),
-  ]);
-}
-
-/**
  * Retry a function with exponential backoff
  * @param fn - Function to retry
  * @param options - Retry options
@@ -96,8 +79,10 @@ export async function retry<T>(
     try {
       opts.logger.debug(`Retry attempt ${attempt}/${opts.maxAttempts}`);
 
-      // Execute function with timeout
-      const result = await withTimeout(fn, opts.timeout);
+      // Execute function
+      // Note: We don't use withTimeout here because axios already has its own timeout
+      // Using both would cause double timeout and request cancellation issues
+      const result = await fn();
 
       if (attempt > 1) {
         opts.logger.info(`Retry succeeded on attempt ${attempt}`);

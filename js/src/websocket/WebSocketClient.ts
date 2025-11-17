@@ -74,6 +74,7 @@ export class WebSocketClient {
   private authToken?: string;
   private pingIntervalId?: any;
   private lastPongTimestamp?: number;
+  private lastPingTimestamp?: number; // Track when we sent the last ping
   private eventHandlers: Map<string, Set<WSEventHandler>> = new Map();
 
   constructor(config: WebSocketClientConfig) {
@@ -385,6 +386,7 @@ export class WebSocketClient {
     // Update last pong timestamp
     if (message.type === 'pong') {
       this.lastPongTimestamp = Date.now();
+      this.lastPingTimestamp = undefined; // Reset ping timestamp after receiving pong
     }
 
     // Process message through handler
@@ -461,9 +463,11 @@ export class WebSocketClient {
     this.pingIntervalId = setInterval(() => {
       if (!this.isConnected()) return;
 
-      // Check if last pong is too old
+      const now = Date.now();
+
+      // Check if last pong is too old (if we've received at least one pong)
       if (this.lastPongTimestamp) {
-        const timeSinceLastPong = Date.now() - this.lastPongTimestamp;
+        const timeSinceLastPong = now - this.lastPongTimestamp;
         if (timeSinceLastPong > this.config.pingTimeout) {
           this.logger.warn('Ping timeout, disconnecting');
           this.handleDisconnect();
@@ -471,11 +475,23 @@ export class WebSocketClient {
         }
       }
 
+      // Check if we sent a ping but haven't received a pong within timeout
+      // This handles the case where we've never received a pong
+      if (this.lastPingTimestamp) {
+        const timeSinceLastPing = now - this.lastPingTimestamp;
+        if (timeSinceLastPing > this.config.pingTimeout) {
+          this.logger.warn('No pong received after ping timeout, disconnecting');
+          this.handleDisconnect();
+          return;
+        }
+      }
+
       // Send ping
       try {
+        this.lastPingTimestamp = now;
         this.send({
           type: 'ping' as WSMessageType.PING,
-          timestamp: Date.now(),
+          timestamp: now,
         });
       } catch (error) {
         this.logger.error('Failed to send ping:', error);
@@ -491,6 +507,9 @@ export class WebSocketClient {
       clearInterval(this.pingIntervalId);
       this.pingIntervalId = undefined;
     }
+    // Reset ping/pong timestamps
+    this.lastPingTimestamp = undefined;
+    this.lastPongTimestamp = undefined;
   }
 }
 

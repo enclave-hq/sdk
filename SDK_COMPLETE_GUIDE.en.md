@@ -218,7 +218,7 @@ Backend REST API
 |------|-------------|------------|------------|-----------------|
 | `/home` | Featured products, total locked | `stores.pools`<br>`stores.prices` | `useFeaturedPools()`<br>`useUserAssets()` | - |
 | `/deposit` | Deposit records, voucher allocation | `stores.checkbooks`<br>`stores.allocations` | `useCheckbooksData()`<br>`useDepositActions()` | `sdk.createCommitment()` |
-| `/difi` | Lending pools, RWA assets, withdrawal | `stores.pools`<br>`stores.allocations` | `useFeaturedPools()`<br>`useAllocationsData()`<br>`useQuoteRoute()` | `sdk.quote.getRouteAndFees()`<br>`sdk.withdraw()` |
+| `/defi` | Lending pools, RWA assets, withdrawal | `stores.pools`<br>`stores.allocations` | `useFeaturedPools()`<br>`useAllocationsData()`<br>`useQuoteRoute()` | `sdk.quote.getRouteAndFees()`<br>`sdk.withdraw()` |
 | `/records` | Transaction history | `stores.withdrawals` | - | - |
 
 ### Usage

@@ -218,7 +218,7 @@ Backend REST API
 |------|---------|-----------|-----------|-------------|
 | `/home` | 推荐理财产品、总锁仓量 | `stores.pools`<br>`stores.prices` | `useFeaturedPools()`<br>`useUserAssets()` | - |
 | `/deposit` | 存款记录、凭证分配 | `stores.checkbooks`<br>`stores.allocations` | `useCheckbooksData()`<br>`useDepositActions()` | `sdk.createCommitment()` |
-| `/difi` | 借贷池、RWA 资产、提取 | `stores.pools`<br>`stores.allocations` | `useFeaturedPools()`<br>`useAllocationsData()`<br>`useQuoteRoute()` | `sdk.quote.getRouteAndFees()`<br>`sdk.withdraw()` |
+| `/defi` | 借贷池、RWA 资产、提取 | `stores.pools`<br>`stores.allocations` | `useFeaturedPools()`<br>`useAllocationsData()`<br>`useQuoteRoute()` | `sdk.quote.getRouteAndFees()`<br>`sdk.withdraw()` |
 | `/records` | 交易历史 | `stores.withdrawals` | - | - |
 
 ### 使用方式
