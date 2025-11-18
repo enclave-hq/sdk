@@ -47,7 +47,9 @@ export class ConsoleLogger implements ILogger {
    */
   private format(level: string, message: string, args: any[]): string {
     const timestamp = new Date().toISOString();
-    const formattedArgs = args.length > 0 ? ` ${JSON.stringify(args)}` : '';
+    // Use JSON.stringify with a replacer to avoid escaping forward slashes
+    // This makes URLs more readable in logs (wss:// instead of wss:\/\/)
+    const formattedArgs = args.length > 0 ? ` ${JSON.stringify(args).replace(/\\\//g, '/')}` : '';
     return `${timestamp} ${this.prefix} [${level}] ${message}${formattedArgs}`;
   }
 
@@ -101,10 +103,7 @@ export class SilentLogger implements ILogger {
 /**
  * Create logger instance
  */
-export function createLogger(
-  level: LogLevel = LogLevel.INFO,
-  silent: boolean = false
-): ILogger {
+export function createLogger(level: LogLevel = LogLevel.INFO, silent: boolean = false): ILogger {
   if (silent) {
     return new SilentLogger();
   }
@@ -129,4 +128,3 @@ export function getLogger(): ILogger {
 export function setLogger(logger: ILogger): void {
   defaultLogger = logger;
 }
-
