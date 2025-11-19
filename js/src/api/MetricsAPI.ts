@@ -9,22 +9,22 @@ import type {
 
 /**
  * MetricsAPI handles fetching dynamic metrics for pools and tokens
- * 
+ *
  * Metrics include:
  * - APY (Annual Percentage Yield)
  * - TVL (Total Value Locked)
  * - Yield rates
  * - Price changes
  * - Custom metrics
- * 
+ *
  * @example
  * ```typescript
  * const metricsAPI = new MetricsAPI(client);
- * 
+ *
  * // Get pool metrics
  * const poolMetrics = await metricsAPI.getPoolMetrics(1);
  * console.log(poolMetrics.metrics.apy?.value); // "4.25"
- * 
+ *
  * // Get metrics history
  * const history = await metricsAPI.getPoolMetricsHistory(1, 'apy', 30);
  * ```
@@ -34,10 +34,10 @@ export class MetricsAPI {
 
   /**
    * Get current metrics for a pool
-   * 
+   *
    * @param poolId - Pool ID
    * @returns Pool metrics including APY, TVL, etc.
-   * 
+   *
    * @example
    * ```typescript
    * const metrics = await metricsAPI.getPoolMetrics(1);
@@ -51,10 +51,10 @@ export class MetricsAPI {
 
   /**
    * Get current metrics for a token
-   * 
+   *
    * @param assetId - Asset Token ID (bytes32 hex string)
    * @returns Token metrics including yield, price changes, etc.
-   * 
+   *
    * @example
    * ```typescript
    * const metrics = await metricsAPI.getTokenMetrics('0x000002ca...');
@@ -67,12 +67,12 @@ export class MetricsAPI {
 
   /**
    * Get historical metrics for a pool (for charting)
-   * 
+   *
    * @param poolId - Pool ID
    * @param metricType - Type of metric (e.g., 'apy', 'tvl')
    * @param days - Number of days of history (default: 7)
    * @returns Time-series data points
-   * 
+   *
    * @example
    * ```typescript
    * const history = await metricsAPI.getPoolMetricsHistory(1, 'apy', 30);
@@ -87,15 +87,14 @@ export class MetricsAPI {
     metricType: string,
     days: number = 7
   ): Promise<MetricsHistoryResponse> {
-    return this.client.get<MetricsHistoryResponse>(
-      `/pools/${poolId}/metrics/history`,
-      { params: { metric_type: metricType, days: days.toString() } }
-    );
+    return this.client.get<MetricsHistoryResponse>(`/pools/${poolId}/metrics/history`, {
+      params: { metric_type: metricType, days: days.toString() },
+    });
   }
 
   /**
    * Get historical metrics for a token (for charting)
-   * 
+   *
    * @param assetId - Asset Token ID
    * @param metricType - Type of metric (e.g., 'yield', 'price_change_24h')
    * @param days - Number of days of history (default: 7)
@@ -106,18 +105,17 @@ export class MetricsAPI {
     metricType: string,
     days: number = 7
   ): Promise<MetricsHistoryResponse> {
-    return this.client.get<MetricsHistoryResponse>(
-      `/tokens/${assetId}/metrics/history`,
-      { params: { metric_type: metricType, days: days.toString() } }
-    );
+    return this.client.get<MetricsHistoryResponse>(`/tokens/${assetId}/metrics/history`, {
+      params: { metric_type: metricType, days: days.toString() },
+    });
   }
 
   /**
    * Get metrics for multiple pools at once (batch operation)
-   * 
+   *
    * @param poolIds - Array of pool IDs
    * @returns Map of pool ID to metrics
-   * 
+   *
    * @example
    * ```typescript
    * const metrics = await metricsAPI.getBatchPoolMetrics([1, 2, 3]);
@@ -133,10 +131,10 @@ export class MetricsAPI {
 
   /**
    * Get metrics for multiple tokens at once (batch operation)
-   * 
+   *
    * @param assetIds - Array of asset token IDs
    * @returns Map of asset ID to metrics
-   * 
+   *
    * @example
    * ```typescript
    * const metrics = await metricsAPI.getBatchTokenMetrics([
@@ -152,4 +150,3 @@ export class MetricsAPI {
     });
   }
 }
-

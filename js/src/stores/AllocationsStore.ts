@@ -35,8 +35,8 @@ export class AllocationsStore extends BaseStore<Allocation> {
    */
   @computed get byStatus(): Map<AllocationStatus, Allocation[]> {
     const grouped = new Map<AllocationStatus, Allocation[]>();
-    
-    this.all.forEach((allocation) => {
+
+    this.all.forEach(allocation => {
       const status = allocation.status;
       if (!grouped.has(status)) {
         grouped.set(status, []);
@@ -51,28 +51,28 @@ export class AllocationsStore extends BaseStore<Allocation> {
    * Get idle allocations (available for withdrawal)
    */
   @computed get idle(): Allocation[] {
-    return this.filter((a) => a.status === 'idle');
+    return this.filter(a => a.status === 'idle');
   }
 
   /**
    * Get pending allocations (part of active withdrawal request)
    */
   @computed get pending(): Allocation[] {
-    return this.filter((a) => a.status === 'pending');
+    return this.filter(a => a.status === 'pending');
   }
 
   /**
    * Get used allocations (successfully withdrawn)
    */
   @computed get used(): Allocation[] {
-    return this.filter((a) => a.status === 'used');
+    return this.filter(a => a.status === 'used');
   }
 
   /**
    * Get allocations by checkbook ID
    */
   getByCheckbookId(checkbookId: string): Allocation[] {
-    return this.filter((a) => a.checkbookId === checkbookId);
+    return this.filter(a => a.checkbookId === checkbookId);
   }
 
   /**
@@ -81,20 +81,15 @@ export class AllocationsStore extends BaseStore<Allocation> {
    * @param status - Allocation status
    * @returns Filtered allocations
    */
-  getByCheckbookIdAndStatus(
-    checkbookId: string,
-    status: AllocationStatus
-  ): Allocation[] {
-    return this.filter(
-      (a) => a.checkbookId === checkbookId && a.status === status
-    );
+  getByCheckbookIdAndStatus(checkbookId: string, status: AllocationStatus): Allocation[] {
+    return this.filter(a => a.checkbookId === checkbookId && a.status === status);
   }
 
   /**
    * Get allocations by token ID
    */
   getByTokenId(tokenId: string): Allocation[] {
-    return this.filter((a) => a.token.id === tokenId);
+    return this.filter(a => a.token.id === tokenId);
   }
 
   /**
@@ -104,7 +99,7 @@ export class AllocationsStore extends BaseStore<Allocation> {
    * @returns Filtered allocations
    */
   getByTokenIdAndStatus(tokenId: string, status: AllocationStatus): Allocation[] {
-    return this.filter((a) => a.token.id === tokenId && a.status === status);
+    return this.filter(a => a.token.id === tokenId && a.status === status);
   }
 
   /**
@@ -113,9 +108,7 @@ export class AllocationsStore extends BaseStore<Allocation> {
    * @returns Array of allocations
    */
   getByOwner(owner: string): Allocation[] {
-    return this.filter((a) => 
-      a.owner.address.toLowerCase() === owner.toLowerCase()
-    );
+    return this.filter(a => a.owner.address.toLowerCase() === owner.toLowerCase());
   }
 
   /**
@@ -124,7 +117,7 @@ export class AllocationsStore extends BaseStore<Allocation> {
    * @returns Array of allocations
    */
   getByWithdrawRequestId(withdrawRequestId: string): Allocation[] {
-    return this.filter((a) => a.withdrawRequestId === withdrawRequestId);
+    return this.filter(a => a.withdrawRequestId === withdrawRequestId);
   }
 
   /**
@@ -141,7 +134,7 @@ export class AllocationsStore extends BaseStore<Allocation> {
   }): Promise<Allocation[]> {
     return this.executeAction(async () => {
       const response = await this.api.listAllocations(filters);
-      this.updateItems(response.data, (a) => a.id);
+      this.updateItems(response.data, a => a.id);
       return response.data;
     }, 'Failed to fetch allocations list');
   }
@@ -152,16 +145,10 @@ export class AllocationsStore extends BaseStore<Allocation> {
    * @param status - Optional status filter
    * @returns Array of allocations
    */
-  async fetchByCheckbookId(
-    checkbookId: string,
-    status?: string
-  ): Promise<Allocation[]> {
+  async fetchByCheckbookId(checkbookId: string, status?: string): Promise<Allocation[]> {
     return this.executeAction(async () => {
-      const allocations = await this.api.getAllocationsByCheckbookId(
-        checkbookId,
-        status
-      );
-      this.updateItems(allocations, (a) => a.id);
+      const allocations = await this.api.getAllocationsByCheckbookId(checkbookId, status);
+      this.updateItems(allocations, a => a.id);
       return allocations;
     }, 'Failed to fetch allocations by checkbook ID');
   }
@@ -172,16 +159,10 @@ export class AllocationsStore extends BaseStore<Allocation> {
    * @param status - Allocation status
    * @returns Array of allocations
    */
-  async fetchByTokenIdAndStatus(
-    tokenId: string,
-    status: string
-  ): Promise<Allocation[]> {
+  async fetchByTokenIdAndStatus(tokenId: string, status: string): Promise<Allocation[]> {
     return this.executeAction(async () => {
-      const allocations = await this.api.getAllocationsByTokenIdAndStatus(
-        tokenId,
-        status
-      );
-      this.updateItems(allocations, (a) => a.id);
+      const allocations = await this.api.getAllocationsByTokenIdAndStatus(tokenId, status);
+      this.updateItems(allocations, a => a.id);
       return allocations;
     }, 'Failed to fetch allocations by token ID and status');
   }
@@ -201,10 +182,10 @@ export class AllocationsStore extends BaseStore<Allocation> {
   }): Promise<Allocation[]> {
     return this.executeAction(async () => {
       const response = await this.api.createAllocations(params);
-      
+
       // Update allocations in store
-      this.updateItems(response.allocations, (a) => a.id);
-      
+      this.updateItems(response.allocations, a => a.id);
+
       this.logger.info(`Created ${response.allocations.length} allocations`);
       return response.allocations;
     }, 'Failed to create allocations');
@@ -224,7 +205,7 @@ export class AllocationsStore extends BaseStore<Allocation> {
    * @param allocations - Array of allocations
    */
   updateAllocations(allocations: Allocation[]): void {
-    this.updateItems(allocations, (a) => a.id);
+    this.updateItems(allocations, a => a.id);
     this.logger.debug(`Updated ${allocations.length} allocations`);
   }
 
@@ -243,8 +224,8 @@ export class AllocationsStore extends BaseStore<Allocation> {
    * @returns Total amount as string
    */
   getTotalAmount(status?: AllocationStatus): string {
-    const allocations = status ? this.filter((a) => a.status === status) : this.all;
-    
+    const allocations = status ? this.filter(a => a.status === status) : this.all;
+
     return allocations
       .reduce((sum, allocation) => {
         return sum + BigInt(allocation.amount);
@@ -257,10 +238,10 @@ export class AllocationsStore extends BaseStore<Allocation> {
    * @param status - Optional status filter
    */
   getTotalByToken(status?: AllocationStatus): Map<string, string> {
-    const allocations = status ? this.filter((a) => a.status === status) : this.all;
+    const allocations = status ? this.filter(a => a.status === status) : this.all;
     const totals = new Map<string, bigint>();
 
-    allocations.forEach((allocation) => {
+    allocations.forEach(allocation => {
       const tokenId = allocation.token.id;
       const current = totals.get(tokenId) || 0n;
       totals.set(tokenId, current + BigInt(allocation.amount));
@@ -280,8 +261,8 @@ export class AllocationsStore extends BaseStore<Allocation> {
    */
   @computed get byCheckbook(): Map<string, Allocation[]> {
     const grouped = new Map<string, Allocation[]>();
-    
-    this.all.forEach((allocation) => {
+
+    this.all.forEach(allocation => {
       const checkbookId = allocation.checkbookId;
       if (!grouped.has(checkbookId)) {
         grouped.set(checkbookId, []);
@@ -297,8 +278,8 @@ export class AllocationsStore extends BaseStore<Allocation> {
    */
   @computed get byToken(): Map<string, Allocation[]> {
     const grouped = new Map<string, Allocation[]>();
-    
-    this.all.forEach((allocation) => {
+
+    this.all.forEach(allocation => {
       const tokenId = allocation.token.id;
       if (!grouped.has(tokenId)) {
         grouped.set(tokenId, []);
@@ -309,4 +290,3 @@ export class AllocationsStore extends BaseStore<Allocation> {
     return grouped;
   }
 }
-

@@ -45,7 +45,7 @@ const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
  * Sleep for specified milliseconds
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**
@@ -68,10 +68,7 @@ function calculateDelay(
  * @returns Result of successful function execution
  * @throws Last error if all retry attempts fail
  */
-export async function retry<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions = {}
-): Promise<T> {
+export async function retry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
   const opts = { ...DEFAULT_RETRY_OPTIONS, ...options };
   let lastError: Error;
 
@@ -92,18 +89,14 @@ export async function retry<T>(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
 
-      opts.logger.warn(
-        `Retry attempt ${attempt} failed: ${lastError.message}`
-      );
+      opts.logger.warn(`Retry attempt ${attempt} failed: ${lastError.message}`);
 
       // Check if we should retry
       const isLastAttempt = attempt === opts.maxAttempts;
       const shouldRetry = opts.shouldRetry(lastError, attempt);
 
       if (isLastAttempt || !shouldRetry) {
-        opts.logger.error(
-          `All retry attempts exhausted. Last error: ${lastError.message}`
-        );
+        opts.logger.error(`All retry attempts exhausted. Last error: ${lastError.message}`);
         throw lastError;
       }
 
@@ -134,8 +127,7 @@ export function retryable<T extends (...args: any[]) => Promise<any>>(
   fn: T,
   options: RetryOptions = {}
 ): T {
-  return ((...args: Parameters<T>) =>
-    retry(() => fn(...args), options)) as T;
+  return ((...args: Parameters<T>) => retry(() => fn(...args), options)) as T;
 }
 
 /**
@@ -153,7 +145,7 @@ export function shouldRetryNetworkError(error: Error): boolean {
   ];
 
   const errorMessage = error.message.toUpperCase();
-  return retryableErrors.some((code) => errorMessage.includes(code));
+  return retryableErrors.some(code => errorMessage.includes(code));
 }
 
 /**
@@ -194,12 +186,7 @@ export class ExponentialBackoff {
       return null;
     }
 
-    const delay = calculateDelay(
-      this.attempt,
-      this.initialDelay,
-      this.maxDelay,
-      this.multiplier
-    );
+    const delay = calculateDelay(this.attempt, this.initialDelay, this.maxDelay, this.multiplier);
 
     this.attempt++;
     return delay;
@@ -226,4 +213,3 @@ export class ExponentialBackoff {
     return this.attempt < this.maxAttempts;
   }
 }
-

@@ -5,9 +5,7 @@
 
 import type { ISigner, SignerInput, SignerCallback } from '../types/config';
 import { SignerError } from '../utils/errors';
-import {
-  validateNonEmptyString,
-} from '../utils/validation';
+import { validateNonEmptyString } from '../utils/validation';
 import { ensureHexPrefix } from '../utils/crypto';
 import { EVMPrivateKeyAdapter } from '@enclave-hq/wallet-sdk';
 
@@ -20,7 +18,7 @@ import { EVMPrivateKeyAdapter } from '@enclave-hq/wallet-sdk';
  *   - Wallet SDK adapters (e.g., EVMPrivateKeyAdapter, MetaMaskAdapter, TronLinkAdapter)
  *   - Custom ISigner implementations
  *   - ethers.js Signer (if compatible)
- * 
+ *
  * Note: Wallet SDK adapters now implement ISigner interface, so they can be used directly.
  * Example: new SignerAdapter(walletManager.getAdapter(WalletType.METAMASK))
  */
@@ -55,18 +53,19 @@ export class SignerAdapter implements ISigner {
     // Case 3: Signer object (ISigner compatible)
     else if (typeof input === 'object' && input !== null) {
       this.signer = input;
-    }
-    else {
-      throw new SignerError('Invalid signer input: must be private key, callback, or Signer object');
+    } else {
+      throw new SignerError(
+        'Invalid signer input: must be private key, callback, or Signer object'
+      );
     }
   }
 
   /**
    * Initialize signer from private key (lazy initialization)
-   * 
+   *
    * Note: This delegates to Wallet SDK's EVMPrivateKeyAdapter.
    * For TRON or other chains, users should use Wallet SDK's callback instead.
-   * 
+   *
    * @deprecated Private key string support is limited to EVM chains.
    *             For multi-chain support, use Wallet SDK's callback or connectWithPrivateKey.
    */
@@ -77,31 +76,31 @@ export class SignerAdapter implements ISigner {
 
     try {
       validateNonEmptyString(this.privateKeyInput, 'privateKey');
-      
+
       // Ensure 0x prefix
       const formattedKey = ensureHexPrefix(this.privateKeyInput);
-      
+
       // Delegate to Wallet SDK's EVMPrivateKeyAdapter
       // This removes the direct dependency on ethers.js
       const adapter = new EVMPrivateKeyAdapter();
       adapter.setPrivateKey(formattedKey);
-      
+
       // Connect to default EVM chain (Ethereum mainnet)
       // Note: This assumes EVM private key. For TRON, users should use Wallet SDK callback.
       const account = await adapter.connect(1); // Default to Ethereum mainnet
-      
+
       // Wallet SDK adapters now implement ISigner interface directly
       // So we can use the adapter as-is
       this.signer = adapter;
-      
+
       // Cache the address
       this.address = account.nativeAddress;
       this.privateKeyInitialized = true;
     } catch (error) {
       throw new SignerError(
         `Failed to initialize signer from private key: ${(error as Error).message}. ` +
-        `Note: Private key string support is limited to EVM chains. ` +
-        `For TRON or other chains, use Wallet SDK's callback or connectWithPrivateKey.`
+          `Note: Private key string support is limited to EVM chains. ` +
+          `For TRON or other chains, use Wallet SDK's callback or connectWithPrivateKey.`
       );
     }
   }
@@ -110,7 +109,7 @@ export class SignerAdapter implements ISigner {
    * Sign a message (raw message string, not hash)
    * @param message - Raw message string to sign
    * @returns Signature (hex string with 0x prefix)
-   * 
+   *
    * Note: This method delegates signature standard handling to the signer:
    * - If signer is a callback (e.g., from Wallet SDK), it should handle the signature standard (EIP-191/TIP-191) itself
    * - If signer is ethers.js Wallet, it will automatically add EIP-191 prefix and hash
@@ -146,9 +145,7 @@ export class SignerAdapter implements ISigner {
 
       throw new SignerError('No signing method available');
     } catch (error) {
-      throw new SignerError(
-        `Failed to sign message: ${(error as Error).message}`
-      );
+      throw new SignerError(`Failed to sign message: ${(error as Error).message}`);
     }
   }
 
@@ -179,9 +176,7 @@ export class SignerAdapter implements ISigner {
         'Cannot derive address from callback signer. Please provide address in config.'
       );
     } catch (error) {
-      throw new SignerError(
-        `Failed to get address: ${(error as Error).message}`
-      );
+      throw new SignerError(`Failed to get address: ${(error as Error).message}`);
     }
   }
 
@@ -247,12 +242,12 @@ export class SignerAdapter implements ISigner {
    *                 - Custom ISigner implementations
    *                 - ethers.js Signer (if compatible)
    * @returns SignerAdapter instance
-   * 
+   *
    * @example
    * // Using Wallet SDK adapter directly
    * const adapter = walletManager.getAdapter(WalletType.METAMASK);
    * const signer = SignerAdapter.fromSigner(adapter);
-   * 
+   *
    * @example
    * // Using Wallet SDK adapter directly in EnclaveClient
    * const client = new EnclaveClient({
@@ -264,4 +259,3 @@ export class SignerAdapter implements ISigner {
     return new SignerAdapter(signer);
   }
 }
-

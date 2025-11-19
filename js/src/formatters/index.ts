@@ -20,4 +20,3 @@ export {
   LANG_AR,
   LANG_PT,
 } from './CommitmentFormatter';
-

@@ -1,6 +1,6 @@
 /**
  * Contract Provider Interface
- * 
+ *
  * Abstraction layer for contract interactions.
  * Can be implemented by:
  * - @enclave-hq/wallet-sdk
@@ -26,7 +26,7 @@ export interface TransactionReceipt {
 
 /**
  * Contract Provider Interface
- * 
+ *
  * Provides unified interface for contract read/write operations
  */
 export interface IContractProvider {
@@ -72,10 +72,7 @@ export interface IContractProvider {
    * @param confirmations Number of confirmations to wait
    * @returns Transaction receipt
    */
-  waitForTransaction(
-    txHash: string,
-    confirmations?: number
-  ): Promise<TransactionReceipt>;
+  waitForTransaction(txHash: string, confirmations?: number): Promise<TransactionReceipt>;
 
   /**
    * Get current account address
@@ -97,5 +94,3 @@ export interface IContractProvider {
    */
   isConnected(): boolean;
 }
-
-

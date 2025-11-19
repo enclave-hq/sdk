@@ -65,7 +65,9 @@ import { validateRequired, validateUrl } from '../utils/validation';
  */
 export class EnclaveClient {
   // Configuration
-  private readonly config: Required<Omit<EnclaveConfig, 'address' | 'authToken' | 'headers' | 'storageAdapter' | 'wsAdapter'>>;
+  private readonly config: Required<
+    Omit<EnclaveConfig, 'address' | 'authToken' | 'headers' | 'storageAdapter' | 'wsAdapter'>
+  >;
   private readonly logger: ILogger;
 
   // Core components
@@ -123,7 +125,7 @@ export class EnclaveClient {
       maxReconnectAttempts: config.maxReconnectAttempts ?? 5,
       reconnectDelay: config.reconnectDelay ?? 1000,
       timeout: config.timeout ?? 300000, // 5 minutes (300 seconds) default timeout
-      logLevel: config.logLevel || 'info' as any,
+      logLevel: config.logLevel || ('info' as any),
       logger: this.logger,
       cacheAuth: config.cacheAuth ?? true,
       env: config.env || 'production',
@@ -280,14 +282,19 @@ export class EnclaveClient {
         await this.subscribeToChannels();
         this.logger.info('WebSocket connected and subscribed');
       } catch (wsError) {
-        this.logger.warn('WebSocket connection failed, continuing without real-time updates:', wsError);
+        this.logger.warn(
+          'WebSocket connection failed, continuing without real-time updates:',
+          wsError
+        );
         // Continue without WebSocket - API calls will still work
       }
 
       // Load initial data
       // Verify token is still available before loading data
       const tokenBeforeLoad = this.apiClient.getAuthToken();
-      this.logger.debug(`Token before loadInitialData: ${tokenBeforeLoad ? tokenBeforeLoad.substring(0, 20) + '...' : 'MISSING'}`);
+      this.logger.debug(
+        `Token before loadInitialData: ${tokenBeforeLoad ? tokenBeforeLoad.substring(0, 20) + '...' : 'MISSING'}`
+      );
       await this.loadInitialData();
 
       // Mark as connected
@@ -349,7 +356,7 @@ export class EnclaveClient {
       } catch (error) {
         const err = error as Error;
         this.logger.error(`Failed to get nonce from backend: ${err.message}`);
-        
+
         // Preserve original error type and details
         if (err instanceof NetworkError) {
           throw new NetworkError(
@@ -374,7 +381,7 @@ export class EnclaveClient {
       }
 
       const { nonce } = nonceResponse;
-      
+
       // Use message from backend if available, otherwise create one
       // Backend returns message in format: "ZKPay Authentication\nNonce: {nonce}\nTimestamp: {timestamp}"
       let message: string;
@@ -395,16 +402,16 @@ export class EnclaveClient {
       } catch (error) {
         const err = error as Error;
         const errorMessage = err.message.toLowerCase();
-        
+
         // Check if user rejected the signature request
-        const isUserRejection = 
-          errorMessage.includes('rejected') || 
+        const isUserRejection =
+          errorMessage.includes('rejected') ||
           errorMessage.includes('user rejected') ||
           errorMessage.includes('user denied') ||
           errorMessage.includes('4001') || // MetaMask rejection code
           errorMessage.includes('user cancelled') ||
           errorMessage.includes('user canceled');
-        
+
         if (isUserRejection) {
           this.logger.warn('User rejected signature request');
           throw new AuthError(
@@ -412,7 +419,7 @@ export class EnclaveClient {
             { step: 'sign_message', userRejected: true, originalError: err.message }
           );
         }
-        
+
         this.logger.error(`Failed to sign auth message: ${err.message}`);
         throw new AuthError(
           `Failed to sign authentication message: ${err.message}. Please ensure your wallet is unlocked and try again.`,
@@ -438,7 +445,7 @@ export class EnclaveClient {
       } catch (error) {
         const err = error as Error;
         this.logger.error(`Authentication API call failed: ${err.message}`);
-        
+
         // Preserve original error type
         if (err instanceof NetworkError) {
           throw new NetworkError(
@@ -455,38 +462,43 @@ export class EnclaveClient {
             { step: 'authenticate', originalError: err.message }
           );
         } else {
-          throw new AuthError(
-            `Authentication failed: ${err.message}`,
-            { step: 'authenticate', originalError: err.message }
-          );
+          throw new AuthError(`Authentication failed: ${err.message}`, {
+            step: 'authenticate',
+            originalError: err.message,
+          });
         }
       }
 
       // Verify token is set in API client BEFORE marking as authenticated
       const tokenInClient = this.apiClient.getAuthToken();
       if (!tokenInClient) {
-        throw new AuthError(
-          'Token was not set in API client after authentication',
-          { step: 'verify_token' }
-        );
+        throw new AuthError('Token was not set in API client after authentication', {
+          step: 'verify_token',
+        });
       }
-      
-      this.logger.info(`Authentication successful. Token in API client: ${tokenInClient.substring(0, 20)}...`);
+
+      this.logger.info(
+        `Authentication successful. Token in API client: ${tokenInClient.substring(0, 20)}...`
+      );
       this.authenticated = true;
       this.wsClient.setAuthToken(authResponse.token);
     } catch (error) {
       // If error is already an EnclaveError, re-throw it with details
-      if (error instanceof AuthError || error instanceof NetworkError || error instanceof APIError) {
+      if (
+        error instanceof AuthError ||
+        error instanceof NetworkError ||
+        error instanceof APIError
+      ) {
         throw error;
       }
-      
+
       // Otherwise, wrap it as AuthError with context
       const err = error as Error;
       this.logger.error(`Authentication failed: ${err.message}`, err);
-      throw new AuthError(
-        `Authentication failed: ${err.message}`,
-        { originalError: err.message, stack: err.stack }
-      );
+      throw new AuthError(`Authentication failed: ${err.message}`, {
+        originalError: err.message,
+        stack: err.stack,
+      });
     }
   }
 
@@ -496,15 +508,23 @@ export class EnclaveClient {
   private async subscribeToChannels(): Promise<void> {
     // Get owner address for WebSocket subscription (server will filter by JWT)
     const owner = await this.walletManager.getAddressString();
+    this.logger.info(`📡 [EnclaveClient] Subscribing to WebSocket channels for owner: ${owner}`);
 
     // Subscribe to user-specific channels
     // Note: owner parameter is used for WebSocket filtering, but API calls use JWT
     await this.wsClient.subscribe(WSChannel.CHECKBOOKS, { owner });
+    this.logger.info('✅ [EnclaveClient] Subscribed to CHECKBOOKS channel');
+    
     await this.wsClient.subscribe(WSChannel.ALLOCATIONS, { owner });
+    this.logger.info('✅ [EnclaveClient] Subscribed to ALLOCATIONS channel');
+    
     await this.wsClient.subscribe(WSChannel.WITHDRAWALS, { owner });
+    this.logger.info('✅ [EnclaveClient] Subscribed to WITHDRAWALS channel');
+    
     await this.wsClient.subscribe(WSChannel.PRICES);
+    this.logger.info('✅ [EnclaveClient] Subscribed to PRICES channel');
 
-    this.logger.info('Subscribed to WebSocket channels');
+    this.logger.info('✅ [EnclaveClient] All WebSocket channels subscribed successfully');
   }
 
   /**
@@ -514,25 +534,25 @@ export class EnclaveClient {
     // Load user data (address is automatically determined from JWT token)
     // Continue even if some endpoints fail with 404
     const loadPromises = [
-      this.stores.checkbooks.fetchList({ limit: 100 }).catch((err) => {
+      this.stores.checkbooks.fetchList({ limit: 100 }).catch(err => {
         this.logger.warn('Failed to load checkbooks:', err);
       }),
-      this.stores.allocations.fetchList({ limit: 100 }).catch((err) => {
+      this.stores.allocations.fetchList({ limit: 100 }).catch(err => {
         this.logger.warn('Failed to load allocations:', err);
       }),
-      this.stores.withdrawals.fetchList({ limit: 100 }).catch((err) => {
+      this.stores.withdrawals.fetchList({ limit: 100 }).catch(err => {
         this.logger.warn('Failed to load withdrawals:', err);
       }),
-      this.stores.prices.fetchPrices().catch((err) => {
+      this.stores.prices.fetchPrices().catch(err => {
         this.logger.warn('Failed to load prices (endpoint may not exist):', err);
       }),
-      this.stores.pools.fetchPools().catch((err) => {
+      this.stores.pools.fetchPools().catch(err => {
         this.logger.warn('Failed to load pools:', err);
       }),
-      this.stores.pools.fetchTokens().catch((err) => {
+      this.stores.pools.fetchTokens().catch(err => {
         this.logger.warn('Failed to load tokens (endpoint may not exist):', err);
       }),
-      this.stores.chainConfig.fetchChains().catch((err) => {
+      this.stores.chainConfig.fetchChains().catch(err => {
         this.logger.warn('Failed to load chain configurations:', err);
       }),
     ];
@@ -554,20 +574,20 @@ export class EnclaveClient {
    */
   private setupWebSocketHandlers(): void {
     // Handle WebSocket messages
-    this.wsClient.on('message', (message) => {
+    this.wsClient.on('message', message => {
       this.handleWebSocketMessage(message);
     });
 
     // Handle connection state changes
     this.wsClient.on('connected', () => {
-      this.logger.info('WebSocket connected');
+      this.logger.info('✅ [EnclaveClient] WebSocket connected successfully');
     });
 
     this.wsClient.on('disconnected', () => {
-      this.logger.warn('WebSocket disconnected');
+      this.logger.warn('❌ [EnclaveClient] WebSocket disconnected');
     });
 
-    this.wsClient.on('error', (error) => {
+    this.wsClient.on('error', error => {
       this.logger.error('WebSocket error:', error);
     });
   }
@@ -576,22 +596,27 @@ export class EnclaveClient {
    * Handle incoming WebSocket message
    */
   private handleWebSocketMessage(message: any): void {
+    this.logger.debug('📨 [EnclaveClient] Received WebSocket message:', message);
     const { type, data } = message;
 
     switch (type) {
       case WSMessageType.CHECKBOOK_UPDATE:
+        this.logger.info('📨 [EnclaveClient] Processing checkbook_update message');
         this.handleCheckbookUpdate(data);
         break;
 
       case WSMessageType.ALLOCATION_UPDATE:
+        this.logger.info('📨 [EnclaveClient] Processing allocation_update message');
         this.handleAllocationUpdate(data);
         break;
 
       case WSMessageType.WITHDRAWAL_UPDATE:
+        this.logger.info('📨 [EnclaveClient] Processing withdrawal_update message');
         this.handleWithdrawalUpdate(data);
         break;
 
       case WSMessageType.PRICE_UPDATE:
+        this.logger.info('📨 [EnclaveClient] Processing price_update message');
         this.handlePriceUpdate(data);
         break;
 
@@ -604,16 +629,26 @@ export class EnclaveClient {
    * Handle checkbook update from WebSocket
    */
   private handleCheckbookUpdate(data: any): void {
+    this.logger.debug('📨 [EnclaveClient] handleCheckbookUpdate called with data:', data);
     const { action, checkbook } = data;
+
+    if (!checkbook) {
+      this.logger.warn('📨 [EnclaveClient] checkbook_update message missing checkbook data');
+      return;
+    }
 
     switch (action) {
       case 'created':
       case 'updated':
+        this.logger.info(`📨 [EnclaveClient] Updating checkbook: ${checkbook.id}, action: ${action}`);
         this.stores.checkbooks.updateCheckbook(checkbook);
         break;
       case 'deleted':
+        this.logger.info(`📨 [EnclaveClient] Removing checkbook: ${checkbook.id}`);
         this.stores.checkbooks.removeCheckbook(checkbook.id);
         break;
+      default:
+        this.logger.warn(`📨 [EnclaveClient] Unknown checkbook action: ${action}`);
     }
   }
 
@@ -621,19 +656,29 @@ export class EnclaveClient {
    * Handle allocation update from WebSocket
    */
   private handleAllocationUpdate(data: any): void {
+    this.logger.debug('📨 [EnclaveClient] handleAllocationUpdate called with data:', data);
     const { action, allocation } = data;
+
+    if (!allocation) {
+      this.logger.warn('📨 [EnclaveClient] allocation_update message missing allocation data');
+      return;
+    }
 
     switch (action) {
       case 'created':
       case 'updated':
+        this.logger.info(`📨 [EnclaveClient] Updating allocation: ${allocation.id}, action: ${action}`);
         // Convert backend Check model to frontend Allocation format
         // WebSocket messages contain backend format (snake_case), need to normalize
         const normalized = this.allocationsAPI.convertAllocation(allocation);
         this.stores.allocations.updateAllocation(normalized);
         break;
       case 'deleted':
+        this.logger.info(`📨 [EnclaveClient] Removing allocation: ${allocation.id}`);
         this.stores.allocations.removeAllocation(allocation.id);
         break;
+      default:
+        this.logger.warn(`📨 [EnclaveClient] Unknown allocation action: ${action}`);
     }
   }
 
@@ -849,7 +894,7 @@ export class EnclaveClient {
    * ```typescript
    * // Get all pools and tokens
    * const allPools = await client.tokenRouting.getAllPoolsAndTokens();
-   * 
+   *
    * // Get allowed targets for specific source
    * const targets = await client.tokenRouting.getTargetsForSource(714, '0x...');
    * ```
@@ -858,4 +903,3 @@ export class EnclaveClient {
     return this.tokenRoutingAPI;
   }
 }
-

@@ -3,12 +3,7 @@
  * @module types/events
  */
 
-import type {
-  Checkbook,
-  Allocation,
-  WithdrawRequest,
-  TokenPrice,
-} from './models';
+import type { Checkbook, Allocation, WithdrawRequest, TokenPrice } from './models';
 import type { ConnectionInfo } from './config';
 
 // ============ Event Names ============
@@ -303,4 +298,3 @@ export interface EventMap {
   [EventName.ACTION_COMPLETED]: ActionCompletedEvent;
   [EventName.ACTION_FAILED]: ActionFailedEvent;
 }
-

@@ -57,23 +57,21 @@ export class PoolsStore extends BaseStore<Pool> {
    * @returns Token or undefined
    */
   getTokenBySymbol(symbol: string): Token | undefined {
-    return this.allTokens.find(
-      (t) => t.symbol.toLowerCase() === symbol.toLowerCase()
-    );
+    return this.allTokens.find(t => t.symbol.toLowerCase() === symbol.toLowerCase());
   }
 
   /**
    * Get active pools
    */
   @computed get activePools(): Pool[] {
-    return this.filter((p) => p.isActive);
+    return this.filter(p => p.isActive);
   }
 
   /**
    * Get active tokens
    */
   @computed get activeTokens(): Token[] {
-    return this.allTokens.filter((t) => t.isActive);
+    return this.allTokens.filter(t => t.isActive);
   }
 
   /**
@@ -82,7 +80,7 @@ export class PoolsStore extends BaseStore<Pool> {
    * @returns Array of tokens
    */
   getTokensByChain(chainId: number): Token[] {
-    return this.allTokens.filter((t) => t.chainId === chainId);
+    return this.allTokens.filter(t => t.chainId === chainId);
   }
 
   /**
@@ -91,7 +89,7 @@ export class PoolsStore extends BaseStore<Pool> {
    * @returns Pool or undefined
    */
   getPoolByTokenId(tokenId: string): Pool | undefined {
-    return this.find((p) => p.token.id === tokenId);
+    return this.find(p => p.token.id === tokenId);
   }
 
   /**
@@ -102,7 +100,7 @@ export class PoolsStore extends BaseStore<Pool> {
   async fetchPools(activeOnly: boolean = true): Promise<Pool[]> {
     return this.executeAction(async () => {
       const pools = await this.api.listPools({ isActive: activeOnly ? true : undefined });
-      this.updateItems(pools, (p) => p.id);
+      this.updateItems(pools, p => p.id);
       return pools;
     }, 'Failed to fetch pools');
   }
@@ -179,7 +177,7 @@ export class PoolsStore extends BaseStore<Pool> {
    */
   @action
   updatePools(pools: Pool[]): void {
-    this.updateItems(pools, (p) => p.id);
+    this.updateItems(pools, p => p.id);
     this.logger.debug(`Updated ${pools.length} pools`);
   }
 
@@ -198,7 +196,7 @@ export class PoolsStore extends BaseStore<Pool> {
    */
   @action
   updateTokens(tokens: Token[]): void {
-    tokens.forEach((token) => {
+    tokens.forEach(token => {
       this.tokens.set(token.id, token);
     });
     this.logger.debug(`Updated ${tokens.length} tokens`);
@@ -209,8 +207,8 @@ export class PoolsStore extends BaseStore<Pool> {
    */
   @computed get poolsByToken(): Map<string, Pool> {
     const grouped = new Map<string, Pool>();
-    
-    this.all.forEach((pool) => {
+
+    this.all.forEach(pool => {
       grouped.set(pool.token.symbol, pool);
     });
 
@@ -222,8 +220,8 @@ export class PoolsStore extends BaseStore<Pool> {
    */
   @computed get tokensByChain(): Map<number, Token[]> {
     const grouped = new Map<number, Token[]>();
-    
-    this.allTokens.forEach((token) => {
+
+    this.allTokens.forEach(token => {
       const chainId = token.chainId;
       if (!grouped.has(chainId)) {
         grouped.set(chainId, []);
@@ -264,4 +262,3 @@ export class PoolsStore extends BaseStore<Pool> {
     this.tokens.clear();
   }
 }
-

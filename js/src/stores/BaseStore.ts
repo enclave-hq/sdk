@@ -192,11 +192,9 @@ export abstract class BaseStore<T = any> {
       return result;
     } catch (error) {
       const err = error as Error;
-      const storeError = new StoreError(
-        `${errorMessage}: ${err.message}`,
-        this.name,
-        { originalError: error }
-      );
+      const storeError = new StoreError(`${errorMessage}: ${err.message}`, this.name, {
+        originalError: error,
+      });
 
       runInAction(() => {
         this.setLoading(false);
@@ -214,7 +212,7 @@ export abstract class BaseStore<T = any> {
    */
   @action
   protected updateItems(items: T[], getKey: (item: T) => string): void {
-    items.forEach((item) => {
+    items.forEach(item => {
       const key = getKey(item);
       this.data.set(key, item);
     });
@@ -226,7 +224,7 @@ export abstract class BaseStore<T = any> {
    */
   @action
   protected removeItems(ids: string[]): void {
-    ids.forEach((id) => this.data.delete(id));
+    ids.forEach(id => this.data.delete(id));
   }
 
   /**
@@ -274,4 +272,3 @@ export abstract class BaseStore<T = any> {
     };
   }
 }
-

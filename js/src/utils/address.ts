@@ -8,11 +8,11 @@ import { ValidationError } from './errors';
 import { isValidAddress } from './crypto';
 import { getChainName, getSlip44FromChainId, getChainType } from './chain';
 import type { UniversalAddress } from '../types/models';
-import { 
+import {
   evmConverter,
   tronConverter,
   type AddressConverter,
-  ChainType
+  ChainType,
 } from '@enclave-hq/chain-utils';
 
 // Re-export for backward compatibility
@@ -28,10 +28,7 @@ export function toChecksumAddress(address: string): string {
   try {
     return ethersGetAddress(address);
   } catch (error) {
-    throw new ValidationError(
-      `Invalid Ethereum address: ${address}`,
-      'address'
-    );
+    throw new ValidationError(`Invalid Ethereum address: ${address}`, 'address');
   }
 }
 
@@ -76,20 +73,22 @@ export function formatAddressShort(
  */
 export function createUniversalAddress(
   address: string,
-  chainId: number = 714  // Default to BSC (SLIP-44: 714)
+  chainId: number = 714 // Default to BSC (SLIP-44: 714)
 ): UniversalAddress {
   // Get chain type to determine which converter to use
   const chainType = getChainType(chainId);
   const slip44 = getSlip44FromChainId(chainId) ?? chainId;
-  
+
   // Select appropriate address converter based on chain type
   let converter: AddressConverter;
   let validatedAddress: string;
-  
+
   // Check if address format matches TRON (T... 34 chars) - do this first as fallback
-  const isTronFormat = address.length === 34 && address.startsWith('T') && 
+  const isTronFormat =
+    address.length === 34 &&
+    address.startsWith('T') &&
     /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(address);
-  
+
   // If address looks like TRON format, use TRON converter regardless of chainType
   // This handles cases where getChainType might return null for chainId 195
   if (isTronFormat) {
@@ -120,14 +119,16 @@ export function createUniversalAddress(
     }
     validatedAddress = toChecksumAddress(address);
   }
-  
+
   // Convert address to 32-byte format using chain-utils
   const addressBytes = converter.toBytes(validatedAddress);
-  
+
   // Convert to universal format (32 bytes as hex string)
-  const universalFormatHex = '0x' + Array.from(addressBytes)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  const universalFormatHex =
+    '0x' +
+    Array.from(addressBytes)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
 
   return {
     chainId: slip44,
@@ -145,9 +146,7 @@ export function createUniversalAddress(
  * @returns Universal address object
  * @throws ValidationError if invalid format
  */
-export function parseUniversalAddress(
-  addressString: string
-): UniversalAddress {
+export function parseUniversalAddress(addressString: string): UniversalAddress {
   const parts = addressString.split(':');
 
   if (parts.length !== 2) {
@@ -183,9 +182,7 @@ export function parseUniversalAddress(
  * @param universalAddress - Universal address object (chainId should be SLIP-44 chain ID)
  * @returns Formatted string (format: "slip44_chain_id:address")
  */
-export function formatUniversalAddress(
-  universalAddress: UniversalAddress
-): string {
+export function formatUniversalAddress(universalAddress: UniversalAddress): string {
   return `${universalAddress.chainId}:${universalAddress.address}`;
 }
 
@@ -195,14 +192,8 @@ export function formatUniversalAddress(
  * @param addr2 - Second universal address
  * @returns True if addresses are equal
  */
-export function universalAddressEquals(
-  addr1: UniversalAddress,
-  addr2: UniversalAddress
-): boolean {
-  return (
-    addr1.chainId === addr2.chainId &&
-    addressEquals(addr1.address, addr2.address)
-  );
+export function universalAddressEquals(addr1: UniversalAddress, addr2: UniversalAddress): boolean {
+  return addr1.chainId === addr2.chainId && addressEquals(addr1.address, addr2.address);
 }
 
 /**
@@ -210,9 +201,7 @@ export function universalAddressEquals(
  * @param address - Universal address to validate
  * @returns True if valid
  */
-export function isValidUniversalAddress(
-  address: UniversalAddress
-): boolean {
+export function isValidUniversalAddress(address: UniversalAddress): boolean {
   try {
     return (
       typeof address === 'object' &&
@@ -244,4 +233,3 @@ export function extractAddress(universalAddress: UniversalAddress): string {
 export function extractChainId(universalAddress: UniversalAddress): number {
   return universalAddress.chainId;
 }
-

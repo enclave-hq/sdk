@@ -4,7 +4,11 @@
  * @module utils/CommitmentCore
  */
 
-import { keccak256, hexToBytes as cryptoHexToBytes, bytesToHex as cryptoBytesToHex } from './crypto';
+import {
+  keccak256,
+  hexToBytes as cryptoHexToBytes,
+  bytesToHex as cryptoBytesToHex,
+} from './crypto';
 import type { UniversalAddress } from '../types/models';
 
 /**
@@ -69,22 +73,22 @@ export class CommitmentCore {
 
   /**
    * Generate commitment with owner (matching lib.rs generate_commitment_with_owner)
-   * 
+   *
    * Format:
    * 1. Hash deposit_id (32 bytes)
    * 2. Hash chain_id (4 bytes, big-endian)
-   * 3. Hash token_id (2 bytes, big-endian)
+   * 3. Hash token_key_hash (32 bytes, keccak256(token_key))
    * 4. Hash owner_address.chain_id (4 bytes, big-endian)
    * 5. Hash owner_address.data (32 bytes)
    * 6. Hash each allocation (after sorting by seq)
    *    - For each allocation: hash_allocation(allocation)
    *    - Then hash all allocation hashes
-   * 
+   *
    * @param allocations - Array of allocations
    * @param ownerAddress - Owner's universal address
    * @param depositId - Deposit ID (32 bytes)
    * @param chainId - Chain ID (u32)
-   * @param tokenId - Token ID (u16)
+   * @param tokenKey - Token key string (e.g., "USDT", "USDC")
    * @returns Commitment hash (32 bytes)
    */
   static generateCommitmentWithOwner(
@@ -92,7 +96,7 @@ export class CommitmentCore {
     ownerAddress: UniversalAddress,
     depositId: Uint8Array,
     chainId: number,
-    tokenId: number
+    tokenKey: string
   ): Uint8Array {
     // Validate sequence
     if (!this.validateAllocationSequence(allocations)) {
@@ -103,11 +107,15 @@ export class CommitmentCore {
     const depositIdBuf = Buffer.from(depositId);
     const chainIdBuf = Buffer.allocUnsafe(4);
     chainIdBuf.writeUInt32BE(chainId, 0);
-    const tokenIdBuf = Buffer.allocUnsafe(2);
-    tokenIdBuf.writeUInt16BE(tokenId, 0);
+    
+    // Calculate token_key_hash: keccak256(token_key.as_bytes())
+    // Matching lib.rs: let token_key_hash: [u8; 32] = Keccak256::digest(input_token_key.as_bytes()).into();
+    const tokenKeyHash = keccak256(Buffer.from(tokenKey, 'utf-8'));
+    const tokenKeyHashBuf = Buffer.from(tokenKeyHash);
+    
     const ownerChainIdBuf = Buffer.allocUnsafe(4);
     ownerChainIdBuf.writeUInt32BE(ownerAddress.chainId, 0);
-    
+
     // Convert owner address to 32 bytes (right-aligned, left-padded with zeros)
     const ownerDataBuf = this.addressToBytes32(ownerAddress.address);
 
@@ -122,11 +130,11 @@ export class CommitmentCore {
 
     // Build the final hash
     const data = Buffer.concat([
-      depositIdBuf,           // 32 bytes
-      chainIdBuf,             // 4 bytes
-      tokenIdBuf,             // 2 bytes
-      ownerChainIdBuf,        // 4 bytes
-      ownerDataBuf,           // 32 bytes
+      depositIdBuf, // 32 bytes
+      chainIdBuf, // 4 bytes
+      tokenKeyHashBuf, // 32 bytes (keccak256(token_key))
+      ownerChainIdBuf, // 4 bytes
+      ownerDataBuf, // 32 bytes
       ...allocationHashes.map(h => Buffer.from(h)), // All allocation hashes
     ]);
 
@@ -136,25 +144,22 @@ export class CommitmentCore {
 
   /**
    * Generate nullifier (matching lib.rs generate_nullifier)
-   * 
+   *
    * Format: keccak256(commitment (32 bytes) || allocation.seq (1 byte) || allocation.amount (32 bytes))
-   * 
+   *
    * @param commitment - Commitment hash (32 bytes)
    * @param allocation - Allocation
    * @returns Nullifier hash (32 bytes)
    */
-  static generateNullifier(
-    commitment: Uint8Array,
-    allocation: Allocation
-  ): Uint8Array {
+  static generateNullifier(commitment: Uint8Array, allocation: Allocation): Uint8Array {
     const commitmentBuf = Buffer.from(commitment);
     const seqBuf = Buffer.from([allocation.seq]);
     const amountBuf = Buffer.from(allocation.amount);
 
     const data = Buffer.concat([
-      commitmentBuf,  // 32 bytes
-      seqBuf,         // 1 byte
-      amountBuf,       // 32 bytes
+      commitmentBuf, // 32 bytes
+      seqBuf, // 1 byte
+      amountBuf, // 32 bytes
     ]);
 
     const hash = keccak256(data);
@@ -163,9 +168,9 @@ export class CommitmentCore {
 
   /**
    * Generate commitment from credential (matching lib.rs generate_commitment_from_credential)
-   * 
+   *
    * Rebuilds the full commitment from a single allocation + credential
-   * 
+   *
    * @param allocation - Current allocation
    * @param ownerAddress - Owner address
    * @param credential - Credential with left_hashes, right_hashes, deposit_id, chain_id, token_id
@@ -187,15 +192,15 @@ export class CommitmentCore {
 
     // Hash all allocations in order: left_hashes + current + right_hashes
     const allocationHashes: Uint8Array[] = [];
-    
+
     // Left hashes (before current allocation)
     for (const leftHash of credential.left_hashes) {
       allocationHashes.push(new Uint8Array(leftHash));
     }
-    
+
     // Current allocation hash
     allocationHashes.push(this.hashAllocation(allocation));
-    
+
     // Right hashes (after current allocation)
     for (const rightHash of credential.right_hashes) {
       allocationHashes.push(new Uint8Array(rightHash));
@@ -216,9 +221,9 @@ export class CommitmentCore {
 
   /**
    * Generate nullifier from credential (matching lib.rs generate_nullifier_from_credential)
-   * 
+   *
    * Convenience function: rebuild commitment from credential, then generate nullifier
-   * 
+   *
    * @param allocation - Current allocation
    * @param ownerAddress - Owner address
    * @param credential - Credential
@@ -230,11 +235,7 @@ export class CommitmentCore {
     credential: Credential
   ): Uint8Array {
     // Step 1: Rebuild commitment from credential
-    const commitment = this.generateCommitmentFromCredential(
-      allocation,
-      ownerAddress,
-      credential
-    );
+    const commitment = this.generateCommitmentFromCredential(allocation, ownerAddress, credential);
 
     // Step 2: Generate nullifier
     return this.generateNullifier(commitment, allocation);
@@ -242,9 +243,9 @@ export class CommitmentCore {
 
   /**
    * Generate nullifier from allocations (matching lib.rs generate_nullifier_from_allocations)
-   * 
+   *
    * Convenience function: generate commitment from all allocations, then generate nullifier for target
-   * 
+   *
    * @param allAllocations - All allocations
    * @param ownerAddress - Owner address
    * @param depositId - Deposit ID (32 bytes)
@@ -276,9 +277,9 @@ export class CommitmentCore {
 
   /**
    * Generate nullifiers batch (matching lib.rs generate_nullifiers_batch)
-   * 
+   *
    * Generate all nullifiers for all allocations (performance optimized - only compute commitment once)
-   * 
+   *
    * @param allocations - All allocations
    * @param ownerAddress - Owner address
    * @param depositId - Deposit ID (32 bytes)
@@ -303,9 +304,7 @@ export class CommitmentCore {
     );
 
     // Step 2: Generate nullifier for each allocation
-    return allocations.map((allocation) =>
-      this.generateNullifier(commitment, allocation)
-    );
+    return allocations.map(allocation => this.generateNullifier(commitment, allocation));
   }
 
   /**
@@ -315,15 +314,15 @@ export class CommitmentCore {
   private static addressToBytes32(address: string): Buffer {
     // Remove 0x prefix if present
     const hex = address.startsWith('0x') ? address.slice(2) : address;
-    
+
     // Convert to buffer (20 bytes for Ethereum address)
     const addressBuf = Buffer.from(hex, 'hex');
-    
+
     // Right-align in 32 bytes (left-pad with zeros)
     const result = Buffer.allocUnsafe(32);
     result.fill(0);
     addressBuf.copy(result, 12); // Copy to bytes 12-31 (right-aligned)
-    
+
     return result;
   }
 
@@ -348,12 +347,12 @@ export class CommitmentCore {
     const amountBigInt = typeof amount === 'string' ? BigInt(amount) : amount;
     const buf = Buffer.allocUnsafe(32);
     buf.fill(0);
-    
+
     // Convert to hex and pad to 64 hex chars (32 bytes)
     const hex = amountBigInt.toString(16).padStart(64, '0');
     const hexBuf = Buffer.from(hex, 'hex');
     hexBuf.copy(buf, 32 - hexBuf.length); // Right-align (big-endian)
-    
+
     return new Uint8Array(buf);
   }
 
@@ -364,4 +363,3 @@ export class CommitmentCore {
     return BigInt('0x' + Buffer.from(bytes).toString('hex'));
   }
 }
-

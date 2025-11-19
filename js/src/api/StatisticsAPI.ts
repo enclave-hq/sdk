@@ -32,4 +32,3 @@ export class StatisticsAPI {
     return response.data;
   }
 }
-

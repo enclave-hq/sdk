@@ -140,7 +140,7 @@ export class ChainConfigStore extends BaseStore<ChainConfig> {
 
     try {
       const chains = await this.api.listChains();
-      
+
       // Update store with fetched chains
       for (const chain of chains) {
         this.data.set(chain.chain_id.toString(), chain);
@@ -171,7 +171,7 @@ export class ChainConfigStore extends BaseStore<ChainConfig> {
 
     try {
       const chain = await this.api.getChainConfig(chainId);
-      
+
       // Update store
       this.data.set(chain.chain_id.toString(), chain);
       this.lastSync = Date.now();
@@ -179,7 +179,10 @@ export class ChainConfigStore extends BaseStore<ChainConfig> {
       this.logger.info(`Loaded chain configuration for chain ${chainId}`);
       return chain;
     } catch (err) {
-      const error = err instanceof Error ? err : new Error(`Failed to fetch chain configuration for chain ${chainId}`);
+      const error =
+        err instanceof Error
+          ? err
+          : new Error(`Failed to fetch chain configuration for chain ${chainId}`);
       this.error = error;
       this.logger.error(`Failed to fetch chain configuration for chain ${chainId}:`, error);
       throw error;
@@ -196,4 +199,3 @@ export class ChainConfigStore extends BaseStore<ChainConfig> {
     await this.fetchChains();
   }
 }
-

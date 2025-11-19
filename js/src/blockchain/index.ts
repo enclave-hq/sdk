@@ -5,4 +5,3 @@
 
 export * from './SignerAdapter';
 export * from './WalletManager';
-

@@ -12,17 +12,11 @@ import { ValidationError } from './errors';
  * @param decimals - Token decimals (default: 18)
  * @returns Formatted amount string
  */
-export function formatAmount(
-  amount: string | bigint,
-  decimals: number = 18
-): string {
+export function formatAmount(amount: string | bigint, decimals: number = 18): string {
   try {
     return formatUnits(amount, decimals);
   } catch (error) {
-    throw new ValidationError(
-      `Failed to format amount: ${(error as Error).message}`,
-      'amount'
-    );
+    throw new ValidationError(`Failed to format amount: ${(error as Error).message}`, 'amount');
   }
 }
 
@@ -36,10 +30,7 @@ export function parseAmount(amount: string, decimals: number = 18): string {
   try {
     return parseUnits(amount, decimals).toString();
   } catch (error) {
-    throw new ValidationError(
-      `Failed to parse amount: ${(error as Error).message}`,
-      'amount'
-    );
+    throw new ValidationError(`Failed to parse amount: ${(error as Error).message}`, 'amount');
   }
 }
 
@@ -55,10 +46,7 @@ export function addAmounts(a: string | bigint, b: string | bigint): string {
     const bBig = typeof b === 'string' ? BigInt(b) : b;
     return (aBig + bBig).toString();
   } catch (error) {
-    throw new ValidationError(
-      `Failed to add amounts: ${(error as Error).message}`,
-      'amount'
-    );
+    throw new ValidationError(`Failed to add amounts: ${(error as Error).message}`, 'amount');
   }
 }
 
@@ -69,10 +57,7 @@ export function addAmounts(a: string | bigint, b: string | bigint): string {
  * @returns Difference as string
  * @throws ValidationError if result would be negative
  */
-export function subtractAmounts(
-  a: string | bigint,
-  b: string | bigint
-): string {
+export function subtractAmounts(a: string | bigint, b: string | bigint): string {
   try {
     const aBig = typeof a === 'string' ? BigInt(a) : a;
     const bBig = typeof b === 'string' ? BigInt(b) : b;
@@ -84,10 +69,7 @@ export function subtractAmounts(
     return (aBig - bBig).toString();
   } catch (error) {
     if (error instanceof ValidationError) throw error;
-    throw new ValidationError(
-      `Failed to subtract amounts: ${(error as Error).message}`,
-      'amount'
-    );
+    throw new ValidationError(`Failed to subtract amounts: ${(error as Error).message}`, 'amount');
   }
 }
 
@@ -97,19 +79,13 @@ export function subtractAmounts(
  * @param factor - Multiplication factor
  * @returns Result as string
  */
-export function multiplyAmount(
-  amount: string | bigint,
-  factor: number | bigint
-): string {
+export function multiplyAmount(amount: string | bigint, factor: number | bigint): string {
   try {
     const amountBig = typeof amount === 'string' ? BigInt(amount) : amount;
     const factorBig = typeof factor === 'number' ? BigInt(Math.floor(factor)) : factor;
     return (amountBig * factorBig).toString();
   } catch (error) {
-    throw new ValidationError(
-      `Failed to multiply amount: ${(error as Error).message}`,
-      'amount'
-    );
+    throw new ValidationError(`Failed to multiply amount: ${(error as Error).message}`, 'amount');
   }
 }
 
@@ -119,10 +95,7 @@ export function multiplyAmount(
  * @param divisor - Division divisor
  * @returns Result as string (integer division)
  */
-export function divideAmount(
-  amount: string | bigint,
-  divisor: number | bigint
-): string {
+export function divideAmount(amount: string | bigint, divisor: number | bigint): string {
   try {
     const amountBig = typeof amount === 'string' ? BigInt(amount) : amount;
     const divisorBig = typeof divisor === 'number' ? BigInt(Math.floor(divisor)) : divisor;
@@ -134,10 +107,7 @@ export function divideAmount(
     return (amountBig / divisorBig).toString();
   } catch (error) {
     if (error instanceof ValidationError) throw error;
-    throw new ValidationError(
-      `Failed to divide amount: ${(error as Error).message}`,
-      'amount'
-    );
+    throw new ValidationError(`Failed to divide amount: ${(error as Error).message}`, 'amount');
   }
 }
 
@@ -147,10 +117,7 @@ export function divideAmount(
  * @param b - Second amount
  * @returns -1 if a < b, 0 if a === b, 1 if a > b
  */
-export function compareAmounts(
-  a: string | bigint,
-  b: string | bigint
-): -1 | 0 | 1 {
+export function compareAmounts(a: string | bigint, b: string | bigint): -1 | 0 | 1 {
   try {
     const aBig = typeof a === 'string' ? BigInt(a) : a;
     const bBig = typeof b === 'string' ? BigInt(b) : b;
@@ -159,10 +126,7 @@ export function compareAmounts(
     if (aBig > bBig) return 1;
     return 0;
   } catch (error) {
-    throw new ValidationError(
-      `Failed to compare amounts: ${(error as Error).message}`,
-      'amount'
-    );
+    throw new ValidationError(`Failed to compare amounts: ${(error as Error).message}`, 'amount');
   }
 }
 
@@ -196,10 +160,7 @@ export function isGreaterThan(a: string | bigint, b: string | bigint): boolean {
  * @param b - Second amount
  * @returns True if a >= b
  */
-export function isGreaterThanOrEqual(
-  a: string | bigint,
-  b: string | bigint
-): boolean {
+export function isGreaterThanOrEqual(a: string | bigint, b: string | bigint): boolean {
   const cmp = compareAmounts(a, b);
   return cmp === 1 || cmp === 0;
 }
@@ -220,10 +181,7 @@ export function isLessThan(a: string | bigint, b: string | bigint): boolean {
  * @param b - Second amount
  * @returns True if a <= b
  */
-export function isLessThanOrEqual(
-  a: string | bigint,
-  b: string | bigint
-): boolean {
+export function isLessThanOrEqual(a: string | bigint, b: string | bigint): boolean {
   const cmp = compareAmounts(a, b);
   return cmp === -1 || cmp === 0;
 }
@@ -308,10 +266,7 @@ export function sumAmounts(...amounts: (string | bigint)[]): string {
  * @param decimals - Number of decimal places to show
  * @returns Formatted amount with separators
  */
-export function formatAmountWithSeparators(
-  amount: string,
-  decimals: number = 2
-): string {
+export function formatAmountWithSeparators(amount: string, decimals: number = 2): string {
   const num = parseFloat(amount);
   if (isNaN(num)) return amount;
 
@@ -320,4 +275,3 @@ export function formatAmountWithSeparators(
     maximumFractionDigits: decimals,
   });
 }
-

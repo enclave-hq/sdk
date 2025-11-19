@@ -58,7 +58,7 @@ export class WithdrawFormatter {
     // Validate inputs
     validateNonEmptyArray(allocations, 'allocations');
     validateNonEmptyString(tokenSymbol, 'tokenSymbol');
-    
+
     // Validate intent object
     if (!intent || typeof intent !== 'object') {
       throw new Error('Intent must be a valid object');
@@ -71,7 +71,7 @@ export class WithdrawFormatter {
 
     // Sort allocations by ID (IMPORTANT: for consistency)
     const sortedAllocations = this.sortAllocationsById(allocations);
-    const allocationIds = sortedAllocations.map((a) => a.id);
+    const allocationIds = sortedAllocations.map(a => a.id);
 
     // Generate nullifier (matching lib.rs generate_nullifier)
     // Nullifier = keccak256(commitment || allocation.seq || allocation.amount)
@@ -79,7 +79,7 @@ export class WithdrawFormatter {
     // Note: In practice, each allocation should have its own nullifier
     // For withdrawal with multiple allocations, we may need to handle this differently
     let nullifier = '0x0000000000000000000000000000000000000000000000000000000000000000';
-    
+
     if (sortedAllocations.length > 0) {
       const firstAllocation = sortedAllocations[0];
       if (!firstAllocation) {
@@ -88,13 +88,10 @@ export class WithdrawFormatter {
 
       // If commitment is available, generate proper nullifier (matching lib.rs)
       if (firstAllocation.commitment) {
-        nullifier = this.generateNullifier(
-          firstAllocation.commitment,
-          {
-            seq: firstAllocation.seq,
-            amount: firstAllocation.amount,
-          }
-        );
+        nullifier = this.generateNullifier(firstAllocation.commitment, {
+          seq: firstAllocation.seq,
+          amount: firstAllocation.amount,
+        });
       } else {
         // If no commitment, we cannot generate a proper nullifier
         // This should not happen in production - allocation should have commitment
@@ -130,7 +127,6 @@ export class WithdrawFormatter {
     };
   }
 
-
   /**
    * Sort allocations by ID (ascending, lexicographically)
    * CRITICAL: This ensures consistency with lib.rs
@@ -149,10 +145,10 @@ export class WithdrawFormatter {
 
   /**
    * Generate nullifier hash for withdrawal (matching lib.rs generate_nullifier)
-   * 
+   *
    * Note: This requires commitment and allocation information.
    * For withdrawal, we need to get the commitment from the allocation's credential.
-   * 
+   *
    * @param commitment - Commitment hash (32 bytes hex string)
    * @param allocation - Allocation with seq and amount
    * @returns Nullifier hash (hex string)
@@ -246,7 +242,9 @@ export class WithdrawFormatter {
     }
 
     // Sort allocations by seq for display (matching lib.rs behavior)
-    const sortedBySeq = [...allocationsWithInfo].sort((a, b) => a.allocation.seq - b.allocation.seq);
+    const sortedBySeq = [...allocationsWithInfo].sort(
+      (a, b) => a.allocation.seq - b.allocation.seq
+    );
 
     for (const { allocation, depositId: depId } of sortedBySeq) {
       // Convert amount string to bytes32 format for formatting
@@ -332,9 +330,10 @@ export class WithdrawFormatter {
     }
 
     // 6. Min Output
-    const minOutputTokenSymbol = intent.type === 'RawToken' 
-      ? (intent.tokenSymbol || tokenSymbol)
-      : ((intent as any).assetTokenSymbol || tokenSymbol);
+    const minOutputTokenSymbol =
+      intent.type === 'RawToken'
+        ? intent.tokenSymbol || tokenSymbol
+        : (intent as any).assetTokenSymbol || tokenSymbol;
     const minOutputBytes = this.amountToBytes32(minOutput);
     const minOutputFormatted = this.formatAmount(minOutputBytes, 18, minOutputTokenSymbol);
 
@@ -350,21 +349,17 @@ export class WithdrawFormatter {
     return message;
   }
 
-
   /**
    * Format beneficiary address according to lib.rs format_address
    * IMPORTANT: Address must be lowercase to match Rust hex::encode behavior
    */
-  private static formatBeneficiaryAddress(
-    address: UniversalAddress,
-    lang: number
-  ): string {
+  private static formatBeneficiaryAddress(address: UniversalAddress, lang: number): string {
     // Normalize address to lowercase to match Rust hex::encode behavior
     // Rust uses: format!("0x{}", hex::encode(self.to_ethereum_address()))
     // which always produces lowercase hex
     const chainName = this.getChainName(address.chainId);
     let addrStr = address.address;
-    
+
     // Convert to lowercase if it's an EVM address (starts with 0x)
     // This ensures consistency with Rust's hex::encode which always produces lowercase
     if (addrStr.startsWith('0x') || addrStr.startsWith('0X')) {
@@ -414,9 +409,13 @@ export class WithdrawFormatter {
    * @param symbol - Token symbol for display
    * @returns Formatted amount string
    */
-  private static formatAmount(amountBytes: string | Uint8Array, decimals: number = 18, symbol: string): string {
+  private static formatAmount(
+    amountBytes: string | Uint8Array,
+    decimals: number = 18,
+    symbol: string
+  ): string {
     let amountBigInt: bigint;
-    
+
     if (typeof amountBytes === 'string') {
       // If it's already a string, try to parse as BigInt
       if (amountBytes.startsWith('0x')) {
@@ -447,7 +446,7 @@ export class WithdrawFormatter {
     const divisor = BigInt(10) ** BigInt(decimals);
     const integerPart = amountBigInt / divisor;
     const decimalPart = amountBigInt % divisor;
-    
+
     // Format matching lib.rs get_deposit_data_to_sign and get_withdraw_data_to_sign (最多6位小数)
     // lib.rs logic: format!("{:.6}", display_amount).trim_end_matches('0').trim_end_matches('.')
     if (decimalPart === 0n) {
@@ -468,13 +467,13 @@ export class WithdrawFormatter {
    */
   private static amountToBytes32(amount: string): string {
     let amountBigInt: bigint;
-    
+
     if (amount.startsWith('0x')) {
       amountBigInt = BigInt(amount);
     } else {
       amountBigInt = BigInt(amount);
     }
-    
+
     // Convert to hex and pad to 64 chars (32 bytes)
     const hex = amountBigInt.toString(16);
     return hex.padStart(64, '0');
@@ -550,7 +549,10 @@ export class WithdrawFormatter {
       // Note: Nullifier verification requires commitment and allocation info
       // This is a simplified check - full verification should use CommitmentCore
       // TODO: Implement full nullifier verification with CommitmentCore
-      if (!data.nullifier || data.nullifier === '0x0000000000000000000000000000000000000000000000000000000000000000') {
+      if (
+        !data.nullifier ||
+        data.nullifier === '0x0000000000000000000000000000000000000000000000000000000000000000'
+      ) {
         // Placeholder nullifier is acceptable for now
         // In production, should verify against CommitmentCore
       }
@@ -570,10 +572,7 @@ export class WithdrawFormatter {
   /**
    * Format intent parameters based on intent type
    */
-  static formatIntent(
-    intent: string,
-    params?: Record<string, any>
-  ): string {
+  static formatIntent(intent: string, params?: Record<string, any>): string {
     if (!params) {
       return intent;
     }
@@ -596,7 +595,7 @@ export class WithdrawFormatter {
 
     if (parts.length > 1) {
       const paramsStr = parts.slice(1).join(':');
-      paramsStr.split(',').forEach((pair) => {
+      paramsStr.split(',').forEach(pair => {
         const [key, value] = pair.split('=');
         if (key && value) {
           params[key] = value;

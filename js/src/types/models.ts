@@ -88,29 +88,29 @@ export enum WithdrawRequestStatus {
   Proving = 'proving',
   ProofFailed = 'proof_failed',
   ProofGenerated = 'proof_generated',
-  
+
   // Stage 2: On-chain Verification
   Submitting = 'submitting',
-  SubmitFailed = 'submit_failed',        // RPC/Network error - Can retry
-  VerifyFailed = 'verify_failed',        // Proof invalid/Nullifier used - Cannot retry, must cancel
+  SubmitFailed = 'submit_failed', // RPC/Network error - Can retry
+  VerifyFailed = 'verify_failed', // Proof invalid/Nullifier used - Cannot retry, must cancel
   Submitted = 'submitted',
   ExecuteConfirmed = 'execute_confirmed',
-  
+
   // Stage 3: Intent Execution (Payout)
   WaitingForPayout = 'waiting_for_payout',
   PayoutProcessing = 'payout_processing',
   PayoutFailed = 'payout_failed',
   PayoutCompleted = 'payout_completed',
-  
+
   // Stage 4: Hook Purchase (Optional)
   HookProcessing = 'hook_processing',
   HookFailed = 'hook_failed',
-  
+
   // Terminal States
   Completed = 'completed',
   CompletedWithHookFailed = 'completed_with_hook_failed',
   FailedPermanent = 'failed_permanent',
-  ManuallyResolved = 'manually_resolved',  // ⭐ Manually resolved by admin
+  ManuallyResolved = 'manually_resolved', // ⭐ Manually resolved by admin
   Cancelled = 'cancelled',
 }
 
@@ -151,8 +151,8 @@ export enum ExecuteStatus {
   Pending = 'pending',
   Submitted = 'submitted',
   Success = 'success',
-  SubmitFailed = 'submit_failed',    // Can retry
-  VerifyFailed = 'verify_failed',    // Cannot retry
+  SubmitFailed = 'submit_failed', // Can retry
+  VerifyFailed = 'verify_failed', // Cannot retry
 }
 
 /**
@@ -400,37 +400,39 @@ export interface Allocation {
 export interface WithdrawRequest {
   /** Unique withdraw request ID */
   id: string;
-  
+
   // ============ Main Status ============
   /** Backend status (18 states) */
   status: WithdrawRequestStatus;
   /** Frontend display status (7 states, computed from backend status) */
   frontendStatus: WithdrawRequestFrontendStatus;
-  
+
   // ============ Stage 1: Proof Generation ============
   proofStatus: ProofStatus;
   proof?: string;
   publicValues?: string;
   commitmentRoot?: string;
   proofGeneratedAt?: number;
-  
+
   // ============ Stage 2: On-chain Verification ============
   executeStatus: ExecuteStatus;
+  executeChainId?: number; // Chain ID (SLIP44) where executeWithdraw TX was submitted
   executeTxHash?: string;
   executeBlockNumber?: number;
   executeConfirmedAt?: number;
-  
+
   // ============ Stage 3: Intent Execution (Payout) ============
   payoutStatus: PayoutStatus;
+  payoutChainId?: number; // Chain ID (SLIP44) where payout TX was executed (may differ from target chain)
   payoutTxHash?: string;
   payoutMethod?: 'direct' | 'lifi' | 'adapter';
   payoutCompletedAt?: number;
-  
+
   // ============ Stage 4: Hook Purchase (Optional) ============
   hookStatus: HookStatus;
   hookTxHash?: string;
   hookCompletedAt?: number;
-  
+
   // ============ Retry Mechanism ============
   proofRetryCount: number;
   executeRetryCount: number;
@@ -439,26 +441,26 @@ export interface WithdrawRequest {
   maxRetries: number;
   lastRetryAt?: number;
   nextRetryAfter?: number;
-  
+
   // ============ Related Data ============
   /** On-chain request ID (first nullifier) */
   onChainRequestId?: string;
-  
+
   /** Intent information */
   intent: Intent;
-  
+
   /** Beneficiary address */
   beneficiary: UniversalAddress;
-  
+
   /** Owner's universal address */
   owner: UniversalAddress;
-  
+
   /** Total withdrawal amount */
   amount: string;
-  
+
   /** Array of allocation IDs included in this request */
   allocationIds: string[];
-  
+
   // ============ Timestamps ============
   /** Request creation timestamp */
   createdAt: number;
@@ -634,4 +636,3 @@ export interface PaginatedResponse<T> {
     hasPrev: boolean;
   };
 }
-

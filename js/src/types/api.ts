@@ -595,8 +595,8 @@ export interface RouteAndFeesRequest {
   intent: {
     type: 'RawToken' | 'AssetToken';
     beneficiary: UniversalAddress;
-    tokenSymbol?: string;  // For RawToken: token symbol (e.g., "USDT")
-    assetId?: string;      // For AssetToken: 32-byte Asset ID
+    tokenSymbol?: string; // For RawToken: token symbol (e.g., "USDT")
+    assetId?: string; // For AssetToken: 32-byte Asset ID
     assetTokenSymbol?: string; // For AssetToken: asset token symbol (e.g., "aUSDT")
   };
   /** Amount to withdraw */
@@ -779,5 +779,3 @@ export interface StatisticsOverviewResponse {
   /** Total volume amount in wei (raw, not converted to USD) */
   total_volume_amount: string;
 }
-
-

@@ -3,12 +3,7 @@
  * @module types/websocket
  */
 
-import type {
-  Checkbook,
-  Allocation,
-  WithdrawRequest,
-  TokenPrice,
-} from './models';
+import type { Checkbook, Allocation, WithdrawRequest, TokenPrice } from './models';
 
 // ============ WebSocket Message Types ============
 
@@ -215,10 +210,7 @@ export interface WSWithdrawalUpdateMessage {
 /**
  * All client message types
  */
-export type WSClientMessage =
-  | WSSubscribeMessage
-  | WSUnsubscribeMessage
-  | WSPingMessage;
+export type WSClientMessage = WSSubscribeMessage | WSUnsubscribeMessage | WSPingMessage;
 
 /**
  * All server message types
@@ -265,4 +257,3 @@ export interface SubscriptionOptions {
   /** Status filter */
   status?: string;
 }
-

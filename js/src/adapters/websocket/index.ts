@@ -5,4 +5,3 @@
 
 export * from './BrowserWebSocketAdapter';
 export * from './NodeWebSocketAdapter';
-

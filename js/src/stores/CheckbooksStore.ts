@@ -35,8 +35,8 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
    */
   @computed get byStatus(): Map<CheckbookStatus, Checkbook[]> {
     const grouped = new Map<CheckbookStatus, Checkbook[]>();
-    
-    this.all.forEach((checkbook) => {
+
+    this.all.forEach(checkbook => {
       const status = checkbook.status;
       if (!grouped.has(status)) {
         grouped.set(status, []);
@@ -51,21 +51,21 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
    * Get pending checkbooks
    */
   @computed get pending(): Checkbook[] {
-    return this.filter((c) => c.status === 'pending');
+    return this.filter(c => c.status === 'pending');
   }
 
   /**
    * Get unsigned checkbooks
    */
   @computed get unsigned(): Checkbook[] {
-    return this.filter((c) => c.status === 'unsigned');
+    return this.filter(c => c.status === 'unsigned');
   }
 
   /**
    * Get active checkbooks (with_checkbook status)
    */
   @computed get active(): Checkbook[] {
-    return this.filter((c) => c.status === 'with_checkbook');
+    return this.filter(c => c.status === 'with_checkbook');
   }
 
   /**
@@ -83,7 +83,7 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
    * Get checkbooks by token ID
    */
   getByTokenId(tokenId: string): Checkbook[] {
-    return this.filter((c) => c.token.id === tokenId);
+    return this.filter(c => c.token.id === tokenId);
   }
 
   /**
@@ -92,9 +92,7 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
    * @returns Array of checkbooks
    */
   getByOwner(owner: string): Checkbook[] {
-    return this.filter((c) => 
-      c.owner.address.toLowerCase() === owner.toLowerCase()
-    );
+    return this.filter(c => c.owner.address.toLowerCase() === owner.toLowerCase());
   }
 
   /**
@@ -105,15 +103,11 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
    * @returns Array of checkbooks
    * @deprecated Use fetchList() instead - owner is now determined from JWT token
    */
-  async fetchByOwner(
-    owner: string,
-    tokenId?: string,
-    status?: string
-  ): Promise<Checkbook[]> {
+  async fetchByOwner(owner: string, tokenId?: string, status?: string): Promise<Checkbook[]> {
     return this.executeAction(async () => {
       // Owner parameter is ignored - address is taken from JWT token
       const checkbooks = await this.api.getCheckbooksByOwner(owner, tokenId, status);
-      this.updateItems(checkbooks, (c) => c.id);
+      this.updateItems(checkbooks, c => c.id);
       return checkbooks;
     }, 'Failed to fetch checkbooks');
   }
@@ -132,7 +126,7 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
   }): Promise<{ data: Checkbook[]; pagination?: any }> {
     return this.executeAction(async () => {
       const response = await this.api.listCheckbooks(filters);
-      
+
       // 如果是分页查询（有 page 参数），先清空 Store，只保留当前页的数据
       // 这样可以避免不同页的数据累加导致重复显示
       // 注意：分页查询时，Store 应该只保留当前页的数据，而不是累加所有页的数据
@@ -143,12 +137,12 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
           this.logger.debug(`Cleared checkbooks store for paginated query (page: ${filters.page})`);
         });
       }
-      
+
       // 更新 Store 中的数据（在 action 上下文中）
       runInAction(() => {
-        this.updateItems(response.data, (c) => c.id);
+        this.updateItems(response.data, c => c.id);
       });
-      
+
       return {
         data: response.data,
         pagination: response.pagination,
@@ -183,7 +177,7 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
    * @param checkbooks - Array of checkbooks
    */
   updateCheckbooks(checkbooks: Checkbook[]): void {
-    this.updateItems(checkbooks, (c) => c.id);
+    this.updateItems(checkbooks, c => c.id);
     this.logger.debug(`Updated ${checkbooks.length} checkbooks`);
   }
 
@@ -228,7 +222,7 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
   @computed get totalByToken(): Map<string, string> {
     const totals = new Map<string, bigint>();
 
-    this.all.forEach((checkbook) => {
+    this.all.forEach(checkbook => {
       const tokenId = checkbook.token.id;
       const current = totals.get(tokenId) || 0n;
       totals.set(tokenId, current + BigInt(checkbook.depositAmount));
@@ -243,5 +237,3 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
     return result;
   }
 }
-
-

@@ -80,9 +80,7 @@ export class WalletManager {
       this.logger.info(`Derived address: ${address}`);
       return this.address;
     } catch (error) {
-      throw new SignerError(
-        `Failed to get address: ${(error as Error).message}`
-      );
+      throw new SignerError(`Failed to get address: ${(error as Error).message}`);
     }
   }
 
@@ -109,9 +107,7 @@ export class WalletManager {
       return signature;
     } catch (error) {
       this.logger.error('Failed to sign message:', error);
-      throw new SignerError(
-        `Failed to sign message: ${(error as Error).message}`
-      );
+      throw new SignerError(`Failed to sign message: ${(error as Error).message}`);
     }
   }
 
@@ -130,9 +126,7 @@ export class WalletManager {
       return signature;
     } catch (error) {
       this.logger.error('Failed to sign auth message:', error);
-      throw new SignerError(
-        `Failed to sign auth message: ${(error as Error).message}`
-      );
+      throw new SignerError(`Failed to sign auth message: ${(error as Error).message}`);
     }
   }
 
@@ -145,9 +139,9 @@ export class WalletManager {
     // Convert to SLIP-44 if needed
     const slip44 = getSlip44FromChainId(chainId);
     const finalChainId = slip44 ?? chainId; // Use SLIP-44 if conversion available, otherwise use as-is
-    
+
     this.defaultChainId = finalChainId;
-    
+
     // Update address if already cached
     if (this.address) {
       this.address = {
@@ -193,13 +187,13 @@ export class WalletManager {
   updateSigner(signer: SignerInput): void {
     // Create new signer adapter
     const newAdapter = new SignerAdapter(signer);
-    
+
     // Reset address cache
     this.address = null;
-    
+
     // Replace signer adapter
     Object.assign(this.signerAdapter, newAdapter);
-    
+
     this.logger.info('Signer updated');
   }
 
@@ -211,4 +205,3 @@ export class WalletManager {
     this.logger.debug('Address cache cleared');
   }
 }
-

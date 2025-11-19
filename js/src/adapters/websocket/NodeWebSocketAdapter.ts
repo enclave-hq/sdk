@@ -31,9 +31,7 @@ export class NodeWebSocketAdapter implements IWebSocketAdapter {
         const wsModule = await import('ws');
         this.WebSocketClass = wsModule.default || wsModule.WebSocket;
       } catch (error) {
-        throw new WebSocketError(
-          'Failed to load ws package. Please install: npm install ws'
-        );
+        throw new WebSocketError('Failed to load ws package. Please install: npm install ws');
       }
     }
 
@@ -42,33 +40,28 @@ export class NodeWebSocketAdapter implements IWebSocketAdapter {
         this.ws = new this.WebSocketClass(url, protocols);
 
         this.ws.on('open', () => {
-          this.connectHandlers.forEach((handler) => handler());
+          this.connectHandlers.forEach(handler => handler());
           resolve();
         });
 
         this.ws.on('message', (data: any) => {
           const message = typeof data === 'string' ? data : data.toString();
-          this.messageHandlers.forEach((handler) => handler(message));
+          this.messageHandlers.forEach(handler => handler(message));
         });
 
         this.ws.on('close', (code: number, reason: Buffer) => {
-          this.disconnectHandlers.forEach((handler) =>
-            handler(code, reason.toString())
-          );
+          this.disconnectHandlers.forEach(handler => handler(code, reason.toString()));
         });
 
         this.ws.on('error', (error: Error) => {
-          const wsError = new WebSocketError(
-            `WebSocket error: ${error.message}`,
-            { originalError: error }
-          );
-          this.errorHandlers.forEach((handler) => handler(wsError));
+          const wsError = new WebSocketError(`WebSocket error: ${error.message}`, {
+            originalError: error,
+          });
+          this.errorHandlers.forEach(handler => handler(wsError));
           reject(wsError);
         });
       } catch (error) {
-        reject(
-          new WebSocketError(`Failed to create WebSocket: ${error.message}`)
-        );
+        reject(new WebSocketError(`Failed to create WebSocket: ${error.message}`));
       }
     });
   }
@@ -133,4 +126,3 @@ export class NodeWebSocketAdapter implements IWebSocketAdapter {
     );
   }
 }
-

@@ -3,18 +3,8 @@
  * @module api/APIClient
  */
 
-import axios, {
-  AxiosInstance,
-  AxiosRequestConfig,
-  AxiosResponse,
-  AxiosError,
-} from 'axios';
-import {
-  APIError,
-  NetworkError,
-  AuthError,
-  TimeoutError,
-} from '../utils/errors';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import { APIError, NetworkError, AuthError, TimeoutError } from '../utils/errors';
 import type { ILogger } from '../types/config';
 import { getLogger } from '../utils/logger';
 import { retry, shouldRetryHttpStatus } from '../utils/retry';
@@ -69,27 +59,34 @@ export class APIClient {
 
     // Add request interceptor for logging and auth
     this.axios.interceptors.request.use(
-      (config) => {
+      config => {
         this.logger.debug(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
 
         // Add auth token if available
         if (this.authToken) {
           config.headers.Authorization = `Bearer ${this.authToken}`;
-          this.logger.debug(`Added Authorization header: Bearer ${this.authToken.substring(0, 20)}... for ${config.method?.toUpperCase()} ${config.url}`);
+          this.logger.debug(
+            `Added Authorization header: Bearer ${this.authToken.substring(0, 20)}... for ${config.method?.toUpperCase()} ${config.url}`
+          );
         } else {
           // Only warn for endpoints that require auth, debug for public endpoints
           const url = config.url || '';
-          const isPublicEndpoint = url.includes('/api/auth/nonce') || url.includes('/api/auth/login');
+          const isPublicEndpoint =
+            url.includes('/api/auth/nonce') || url.includes('/api/auth/login');
           if (isPublicEndpoint) {
-            this.logger.debug(`No auth token for public endpoint: ${config.method?.toUpperCase()} ${config.url}`);
+            this.logger.debug(
+              `No auth token for public endpoint: ${config.method?.toUpperCase()} ${config.url}`
+            );
           } else {
-            this.logger.warn(`No auth token available for request: ${config.method?.toUpperCase()} ${config.url}`);
+            this.logger.warn(
+              `No auth token available for request: ${config.method?.toUpperCase()} ${config.url}`
+            );
           }
         }
 
         return config;
       },
-      (error) => {
+      error => {
         this.logger.error('API Request Error:', error);
         return Promise.reject(error);
       }
@@ -97,13 +94,11 @@ export class APIClient {
 
     // Add response interceptor for logging and error handling
     this.axios.interceptors.response.use(
-      (response) => {
-        this.logger.debug(
-          `API Response: ${response.status} ${response.config.url}`
-        );
+      response => {
+        this.logger.debug(`API Response: ${response.status} ${response.config.url}`);
         return response;
       },
-      (error) => {
+      error => {
         return Promise.reject(this.handleError(error));
       }
     );
@@ -146,11 +141,9 @@ export class APIClient {
         );
       }
 
-      return new NetworkError(
-        error.message || 'Network error',
-        undefined,
-        { originalError: error.message }
-      );
+      return new NetworkError(error.message || 'Network error', undefined, {
+        originalError: error.message,
+      });
     }
 
     const response = error.response;
@@ -162,7 +155,7 @@ export class APIClient {
       // Only clear token if it's not an auth endpoint (to avoid clearing token during login)
       const url = error.config?.url || '';
       const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/refresh');
-      
+
       if (!isAuthEndpoint) {
         // Clear token only for non-auth endpoints (token expired or invalid)
         this.clearAuthToken();
@@ -171,14 +164,11 @@ export class APIClient {
         // For auth endpoints, log but don't clear (might not have token yet)
         this.logger.debug(`401 error on auth endpoint ${url} - token not cleared`);
       }
-      
-      return new AuthError(
-        data?.error || data?.message || 'Authentication required',
-        {
-          statusCode: status,
-          endpoint: url,
-        }
-      );
+
+      return new AuthError(data?.error || data?.message || 'Authentication required', {
+        statusCode: status,
+        endpoint: url,
+      });
     }
 
     // API error with structured response
@@ -193,19 +183,15 @@ export class APIClient {
     }
 
     // Generic HTTP error
-    return new NetworkError(
-      `HTTP ${status}: ${error.message}`,
-      status,
-      { endpoint: error.config?.url }
-    );
+    return new NetworkError(`HTTP ${status}: ${error.message}`, status, {
+      endpoint: error.config?.url,
+    });
   }
 
   /**
    * Execute request with optional retry
    */
-  private async executeRequest<T>(
-    requestFn: () => Promise<AxiosResponse<T>>
-  ): Promise<T> {
+  private async executeRequest<T>(requestFn: () => Promise<AxiosResponse<T>>): Promise<T> {
     if (this.enableRetry) {
       return retry(
         async () => {
@@ -216,34 +202,39 @@ export class APIClient {
             // If we get an AuthError and have a re-auth callback, try to re-authenticate
             if (error instanceof AuthError && this.onAuthError && !this.isReauthenticating) {
               const url = (error as any).details?.endpoint || '';
-              const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/refresh');
-              
+              const isAuthEndpoint =
+                url.includes('/api/auth/login') || url.includes('/api/auth/refresh');
+
               // Only re-authenticate for non-auth endpoints
               if (!isAuthEndpoint) {
                 this.logger.info('Attempting to re-authenticate after 401 error...');
                 this.isReauthenticating = true;
                 try {
                   await this.onAuthError();
-                  
+
                   // Verify token was set after re-authentication
                   const newToken = this.getAuthToken();
                   if (!newToken) {
                     this.logger.error('Re-authentication completed but token is still missing');
                     throw new Error('Token not set after re-authentication');
                   }
-                  
-                  this.logger.info(`Re-authentication successful. New token: ${newToken.substring(0, 20)}..., retrying request to ${url}...`);
-                  
+
+                  this.logger.info(
+                    `Re-authentication successful. New token: ${newToken.substring(0, 20)}..., retrying request to ${url}...`
+                  );
+
                   // Small delay to ensure token is fully set (though it should be immediate)
                   await new Promise(resolve => setTimeout(resolve, 10));
-                  
+
                   // Verify token is still available before retry
                   const tokenBeforeRetry = this.getAuthToken();
                   if (!tokenBeforeRetry || tokenBeforeRetry !== newToken) {
-                    this.logger.error(`Token changed or missing before retry. Expected: ${newToken.substring(0, 20)}..., Got: ${tokenBeforeRetry ? tokenBeforeRetry.substring(0, 20) + '...' : 'MISSING'}`);
+                    this.logger.error(
+                      `Token changed or missing before retry. Expected: ${newToken.substring(0, 20)}..., Got: ${tokenBeforeRetry ? tokenBeforeRetry.substring(0, 20) + '...' : 'MISSING'}`
+                    );
                     throw new Error('Token not available for retry');
                   }
-                  
+
                   // Retry the original request after re-authentication
                   const response = await requestFn();
                   this.logger.info(`Request retry successful after re-authentication`);
@@ -266,10 +257,7 @@ export class APIClient {
             if (error instanceof AuthError) return false;
 
             // Retry network and timeout errors
-            if (
-              error instanceof NetworkError ||
-              error instanceof TimeoutError
-            ) {
+            if (error instanceof NetworkError || error instanceof TimeoutError) {
               return true;
             }
 
@@ -292,53 +280,35 @@ export class APIClient {
   /**
    * GET request
    */
-  async get<T = any>(
-    url: string,
-    config?: AxiosRequestConfig
-  ): Promise<T> {
+  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
     return this.executeRequest(() => this.axios.get<T>(url, config));
   }
 
   /**
    * POST request
    */
-  async post<T = any>(
-    url: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<T> {
+  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     return this.executeRequest(() => this.axios.post<T>(url, data, config));
   }
 
   /**
    * PUT request
    */
-  async put<T = any>(
-    url: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<T> {
+  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     return this.executeRequest(() => this.axios.put<T>(url, data, config));
   }
 
   /**
    * PATCH request
    */
-  async patch<T = any>(
-    url: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<T> {
+  async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     return this.executeRequest(() => this.axios.patch<T>(url, data, config));
   }
 
   /**
    * DELETE request
    */
-  async delete<T = any>(
-    url: string,
-    config?: AxiosRequestConfig
-  ): Promise<T> {
+  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
     return this.executeRequest(() => this.axios.delete<T>(url, config));
   }
 
@@ -349,4 +319,3 @@ export class APIClient {
     return this.executeRequest(() => this.axios.request<T>(config));
   }
 }
-

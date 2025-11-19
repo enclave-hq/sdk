@@ -115,10 +115,10 @@ export class TokenRoutingAPI {
 
   /**
    * Get allowed target chains and tokens for a source chain+token
-   * 
+   *
    * **Scenario 1: With parameters** - Returns allowed targets for specific source
    * **Scenario 2: Without parameters** - Returns all active pools and tokens grouped by chain
-   * 
+   *
    * @param request - Optional request with source chain and token
    * @returns Allowed targets or all pools and tokens
    * @example
@@ -153,7 +153,7 @@ export class TokenRoutingAPI {
    * //     }
    * //   ]
    * // }
-   * 
+   *
    * // Scenario 2: Get all pools and tokens
    * const allPools = await client.tokenRouting.getAllowedTargets();
    * // {
@@ -209,17 +209,16 @@ export class TokenRoutingAPI {
       if (request.intent.tokenKey) {
         body.target_token_key = request.intent.tokenKey;
       }
-      
+
       // 将 Intent 信息合并到 params 中（作为查询参数）
       Object.assign(params, body);
     }
 
-    const response = await this.client.get<GetAllowedTargetsResponse | GetAllPoolsAndTokensResponse>(
-      '/api/token-routing/allowed-targets',
-      {
-        params,
-      }
-    );
+    const response = await this.client.get<
+      GetAllowedTargetsResponse | GetAllPoolsAndTokensResponse
+    >('/api/token-routing/allowed-targets', {
+      params,
+    });
 
     return response;
   }
@@ -235,12 +234,12 @@ export class TokenRoutingAPI {
    */
   async getAllPoolsAndTokens(): Promise<GetAllPoolsAndTokensResponse> {
     const response = await this.getAllowedTargets();
-    
+
     // Type guard: check if response has 'chains' property
     if ('chains' in response) {
       return response as GetAllPoolsAndTokensResponse;
     }
-    
+
     // If parameters were provided, this shouldn't happen, but handle gracefully
     throw new Error('Unexpected response format: expected all pools and tokens');
   }
@@ -261,18 +260,17 @@ export class TokenRoutingAPI {
     sourceTokenId: string
   ): Promise<GetAllowedTargetsResponse> {
     validateChainId(sourceChainId, 'sourceChainId');
-    
+
     const response = await this.getAllowedTargets({
       source_chain_id: sourceChainId,
       source_token_key: sourceTokenId,
     });
-    
+
     // Type guard: check if response has 'allowed_targets' property
     if ('allowed_targets' in response) {
       return response as GetAllowedTargetsResponse;
     }
-    
+
     throw new Error('Unexpected response format: expected allowed targets');
   }
 }
-

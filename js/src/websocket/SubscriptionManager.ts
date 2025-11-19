@@ -102,4 +102,3 @@ export class SubscriptionManager {
     return Array.from(this.subscriptions.keys());
   }
 }
-

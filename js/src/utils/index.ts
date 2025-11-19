@@ -35,4 +35,3 @@ export * from './withdraw-status';
 
 // Checkbook status utilities
 export * from './checkbook-status';
-

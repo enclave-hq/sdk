@@ -68,7 +68,7 @@ export function EnclaveProvider({
             setIsConnecting(false);
             setError(null);
           })
-          .catch((err) => {
+          .catch(err => {
             setError(err);
             setIsConnecting(false);
           });
@@ -94,11 +94,7 @@ export function EnclaveProvider({
     error,
   };
 
-  return (
-    <EnclaveContext.Provider value={contextValue}>
-      {children}
-    </EnclaveContext.Provider>
-  );
+  return <EnclaveContext.Provider value={contextValue}>{children}</EnclaveContext.Provider>;
 }
 
 /**
@@ -108,7 +104,7 @@ export function EnclaveProvider({
  */
 export function useEnclave(): EnclaveContextType {
   const context = useContext(EnclaveContext);
-  
+
   if (context === undefined) {
     throw new Error('useEnclave must be used within an EnclaveProvider');
   }
@@ -124,4 +120,3 @@ export function useEnclaveClient(): EnclaveClient | null {
   const { client } = useEnclave();
   return client;
 }
-

@@ -36,8 +36,8 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    */
   @computed get byStatus(): Map<WithdrawRequestStatus, WithdrawRequest[]> {
     const grouped = new Map<WithdrawRequestStatus, WithdrawRequest[]>();
-    
-    this.all.forEach((withdrawal) => {
+
+    this.all.forEach(withdrawal => {
       const status = withdrawal.status;
       if (!grouped.has(status)) {
         grouped.set(status, []);
@@ -52,11 +52,12 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * Get pending withdrawal requests (in progress)
    */
   @computed get pending(): WithdrawRequest[] {
-    return this.filter((w) => 
-      w.frontendStatus === 'proving' ||
-      w.frontendStatus === 'submitting' ||
-      w.frontendStatus === 'pending' ||
-      w.frontendStatus === 'processing'
+    return this.filter(
+      w =>
+        w.frontendStatus === 'proving' ||
+        w.frontendStatus === 'submitting' ||
+        w.frontendStatus === 'pending' ||
+        w.frontendStatus === 'processing'
     );
   }
 
@@ -64,16 +65,15 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * Get completed withdrawal requests
    */
   @computed get completed(): WithdrawRequest[] {
-    return this.filter((w) => w.frontendStatus === 'completed');
+    return this.filter(w => w.frontendStatus === 'completed');
   }
 
   /**
    * Get failed withdrawal requests
    */
   @computed get failed(): WithdrawRequest[] {
-    return this.filter((w) => 
-      w.frontendStatus === 'failed' ||
-      w.frontendStatus === 'failed_permanent'
+    return this.filter(
+      w => w.frontendStatus === 'failed' || w.frontendStatus === 'failed_permanent'
     );
   }
 
@@ -93,9 +93,7 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * @returns Array of withdrawal requests
    */
   getByOwner(owner: string): WithdrawRequest[] {
-    return this.filter((w) => 
-      w.owner.address.toLowerCase() === owner.toLowerCase()
-    );
+    return this.filter(w => w.owner.address.toLowerCase() === owner.toLowerCase());
   }
 
   /**
@@ -104,7 +102,7 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * @returns Array of withdrawal requests
    */
   getByTargetChain(targetChain: number): WithdrawRequest[] {
-    return this.filter((w) => w.beneficiary.chainId === targetChain);
+    return this.filter(w => w.beneficiary.chainId === targetChain);
   }
 
   /**
@@ -113,7 +111,7 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * @returns Withdrawal request or undefined
    */
   getByOnChainRequestId(requestId: string): WithdrawRequest | undefined {
-    return this.find((w) => w.onChainRequestId === requestId);
+    return this.find(w => w.onChainRequestId === requestId);
   }
 
   /**
@@ -137,7 +135,7 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
         ...w,
         frontendStatus: mapToFrontendStatus(w.status),
       }));
-      this.updateItems(items, (w) => w.id);
+      this.updateItems(items, w => w.id);
       return items;
     }, 'Failed to fetch withdrawal requests list');
   }
@@ -178,21 +176,23 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
   async create(params: {
     checkbookId: string;
     allocationIds: string[];
-    intent: {
-      type: number; // 0=RawToken, 1=AssetToken
-      beneficiaryChainId: number; // SLIP-44 Chain ID (flat format from convertIntentToBackendFormat)
-      beneficiaryAddress: string; // Universal Address format (32-byte hex string without 0x prefix)
-      tokenSymbol?: string; // For RawToken
-      assetId?: string; // For AssetToken
-    } | {
-      type: number; // 0=RawToken, 1=AssetToken
-      beneficiary: {
-        chain_id: number;
-        address: string;
-      };
-      tokenIdentifier?: string; // For RawToken (legacy format)
-      assetId?: string; // For AssetToken
-    };
+    intent:
+      | {
+          type: number; // 0=RawToken, 1=AssetToken
+          beneficiaryChainId: number; // SLIP-44 Chain ID (flat format from convertIntentToBackendFormat)
+          beneficiaryAddress: string; // Universal Address format (32-byte hex string without 0x prefix)
+          tokenSymbol?: string; // For RawToken
+          assetId?: string; // For AssetToken
+        }
+      | {
+          type: number; // 0=RawToken, 1=AssetToken
+          beneficiary: {
+            chain_id: number;
+            address: string;
+          };
+          tokenIdentifier?: string; // For RawToken (legacy format)
+          assetId?: string; // For AssetToken
+        };
     signature: string; // Required for ZKVM proof generation
     chainId: number; // Required: Chain ID for signature (SLIP-44)
     message?: string;
@@ -209,7 +209,7 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
         tokenSymbol: string;
         assetId?: string;
       };
-      
+
       // Check if intent is in flat format (from convertIntentToBackendFormat)
       if ('beneficiaryChainId' in params.intent && 'beneficiaryAddress' in params.intent) {
         // Flat format (new format from convertIntentToBackendFormat)
@@ -230,9 +230,11 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
           assetId: params.intent.assetId,
         };
       } else {
-        throw new Error('Invalid intent format: must have either beneficiaryChainId/beneficiaryAddress (flat) or beneficiary (nested)');
+        throw new Error(
+          'Invalid intent format: must have either beneficiaryChainId/beneficiaryAddress (flat) or beneficiary (nested)'
+        );
       }
-      
+
       const request: import('../types/api').CreateWithdrawRequestRequest = {
         checkbookId: params.checkbookId,
         allocationIds: params.allocationIds,
@@ -316,7 +318,7 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
       ...w,
       frontendStatus: mapToFrontendStatus(w.status),
     }));
-    this.updateItems(items, (w) => w.id);
+    this.updateItems(items, w => w.id);
     this.logger.debug(`Updated ${withdrawals.length} withdrawal requests`);
   }
 
@@ -335,8 +337,8 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * @returns Total amount as string
    */
   getTotalAmount(status?: WithdrawRequestStatus): string {
-    const withdrawals = status ? this.filter((w) => w.status === status) : this.all;
-    
+    const withdrawals = status ? this.filter(w => w.status === status) : this.all;
+
     return withdrawals
       .reduce((sum, withdrawal) => {
         return sum + BigInt(withdrawal.amount);
@@ -349,10 +351,10 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * @param status - Optional status filter
    */
   getTotalByChain(status?: WithdrawRequestStatus): Map<number, string> {
-    const withdrawals = status ? this.filter((w) => w.status === status) : this.all;
+    const withdrawals = status ? this.filter(w => w.status === status) : this.all;
     const totals = new Map<number, bigint>();
 
-    withdrawals.forEach((withdrawal) => {
+    withdrawals.forEach(withdrawal => {
       const chainId = withdrawal.beneficiary.chainId;
       const current = totals.get(chainId) || 0n;
       totals.set(chainId, current + BigInt(withdrawal.amount));
@@ -372,8 +374,8 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    */
   @computed get byOwnerChain(): Map<number, WithdrawRequest[]> {
     const grouped = new Map<number, WithdrawRequest[]>();
-    
-    this.all.forEach((withdrawal) => {
+
+    this.all.forEach(withdrawal => {
       const chainId = withdrawal.owner.chainId;
       if (!grouped.has(chainId)) {
         grouped.set(chainId, []);
@@ -389,8 +391,8 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    */
   @computed get byBeneficiaryChain(): Map<number, WithdrawRequest[]> {
     const grouped = new Map<number, WithdrawRequest[]>();
-    
-    this.all.forEach((withdrawal) => {
+
+    this.all.forEach(withdrawal => {
       const chainId = withdrawal.beneficiary.chainId;
       if (!grouped.has(chainId)) {
         grouped.set(chainId, []);
@@ -406,8 +408,8 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    */
   @computed get countByStatus(): Map<WithdrawRequestStatus, number> {
     const counts = new Map<WithdrawRequestStatus, number>();
-    
-    this.all.forEach((withdrawal) => {
+
+    this.all.forEach(withdrawal => {
       const status = withdrawal.status;
       counts.set(status, (counts.get(status) || 0) + 1);
     });
@@ -415,4 +417,3 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
     return counts;
   }
 }
-

@@ -74,7 +74,7 @@ export class MessageHandler {
     const handlers = this.handlers.get(type);
     if (!handlers || handlers.size === 0) return;
 
-    handlers.forEach((handler) => {
+    handlers.forEach(handler => {
       try {
         handler(message);
       } catch (error) {
@@ -108,4 +108,3 @@ export class MessageHandler {
     return Array.from(this.handlers.keys());
   }
 }
-

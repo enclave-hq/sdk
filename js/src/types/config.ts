@@ -10,7 +10,7 @@ import type { UniversalAddress } from './models';
 /**
  * Signature callback function type
  * Allows external signing (e.g., hardware wallet, remote service, Wallet SDK)
- * 
+ *
  * @param message - Raw message string to sign (not hashed)
  *                  The callback should handle the appropriate signature standard:
  *                  - EIP-191 for EVM chains
@@ -23,12 +23,12 @@ export type SignerCallback = (message: string) => Promise<string>;
 /**
  * Signer interface
  * Compatible with ethers.js Signer, Wallet SDK adapters, and similar abstractions
- * 
+ *
  * Note: The signer should handle the appropriate signature standard:
  * - EIP-191 for EVM chains (ethers.js does this automatically)
  * - TIP-191 for TRON (Wallet SDK handles this)
  * - Other standards for other chains
- * 
+ *
  * Wallet SDK adapters (e.g., EVMPrivateKeyAdapter, MetaMaskAdapter, TronLinkAdapter)
  * now implement this interface, so they can be used directly as signers.
  */
@@ -334,4 +334,3 @@ export type EventHandler<T = any> = (data: T) => void;
  * Event unsubscribe function
  */
 export type EventUnsubscribe = () => void;
-

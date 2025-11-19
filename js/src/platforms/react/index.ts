@@ -5,4 +5,3 @@
 
 export * from './EnclaveProvider';
 export * from './hooks';
-

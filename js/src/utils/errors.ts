@@ -49,11 +49,7 @@ export class AuthError extends EnclaveError {
 export class NetworkError extends EnclaveError {
   public readonly statusCode?: number;
 
-  constructor(
-    message: string,
-    statusCode?: number,
-    details?: Record<string, any>
-  ) {
+  constructor(message: string, statusCode?: number, details?: Record<string, any>) {
     super(message, 'NETWORK_ERROR', details);
     this.name = 'NetworkError';
     this.statusCode = statusCode;
@@ -120,11 +116,7 @@ export class SignerError extends EnclaveError {
 export class StoreError extends EnclaveError {
   public readonly storeName?: string;
 
-  constructor(
-    message: string,
-    storeName?: string,
-    details?: Record<string, any>
-  ) {
+  constructor(message: string, storeName?: string, details?: Record<string, any>) {
     super(message, 'STORE_ERROR', details);
     this.name = 'StoreError';
     this.storeName = storeName;
@@ -137,11 +129,7 @@ export class StoreError extends EnclaveError {
 export class TransactionError extends EnclaveError {
   public readonly txHash?: string;
 
-  constructor(
-    message: string,
-    txHash?: string,
-    details?: Record<string, any>
-  ) {
+  constructor(message: string, txHash?: string, details?: Record<string, any>) {
     super(message, 'TRANSACTION_ERROR', details);
     this.name = 'TransactionError';
     this.txHash = txHash;
@@ -188,12 +176,7 @@ export class InsufficientBalanceError extends EnclaveError {
   public readonly required: string;
   public readonly available: string;
 
-  constructor(
-    message: string,
-    required: string,
-    available: string,
-    details?: Record<string, any>
-  ) {
+  constructor(message: string, required: string, available: string, details?: Record<string, any>) {
     super(message, 'INSUFFICIENT_BALANCE', details);
     this.name = 'InsufficientBalanceError';
     this.required = required;
@@ -244,4 +227,3 @@ export function formatError(error: any): string {
 
   return String(error);
 }
-

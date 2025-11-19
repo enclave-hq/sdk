@@ -34,18 +34,33 @@ export class AllocationsAPI {
    */
   convertAllocation(backendAllocation: any): Allocation {
     // Convert backend token format to SDK Token interface
-    let token = { id: '', symbol: '', name: '', decimals: 18, contractAddress: '', chainId: 0, isActive: true };
+    let token = {
+      id: '',
+      symbol: '',
+      name: '',
+      decimals: 18,
+      contractAddress: '',
+      chainId: 0,
+      isActive: true,
+    };
     if (backendAllocation.token) {
       const backendToken = backendAllocation.token;
       token = {
-        id: backendToken.id || `token_${backendAllocation.checkbook?.token_id || backendAllocation.token_id || 'unknown'}`,
+        id:
+          backendToken.id ||
+          `token_${backendAllocation.checkbook?.token_id || backendAllocation.token_id || 'unknown'}`,
         symbol: backendToken.symbol || 'UNKNOWN',
         name: backendToken.name || backendToken.symbol || 'Unknown Token',
         decimals: backendToken.decimals || 18,
         contractAddress: backendToken.address || backendToken.contractAddress || '',
         chainId: backendToken.chain_id || backendToken.chainId || 0,
         // iconUrl: undefined, // Removed - not in Token type
-        isActive: backendToken.is_active !== undefined ? Boolean(backendToken.is_active) : (backendToken.isActive !== undefined ? Boolean(backendToken.isActive) : true),
+        isActive:
+          backendToken.is_active !== undefined
+            ? Boolean(backendToken.is_active)
+            : backendToken.isActive !== undefined
+              ? Boolean(backendToken.isActive)
+              : true,
         // metrics: undefined, // Removed - not in Token type
       };
     }
@@ -57,10 +72,15 @@ export class AllocationsAPI {
       amount: backendAllocation.amount,
       status: backendAllocation.status,
       nullifier: backendAllocation.nullifier,
-      withdrawRequestId: backendAllocation.withdraw_request_id || backendAllocation.withdrawRequestId,
+      withdrawRequestId:
+        backendAllocation.withdraw_request_id || backendAllocation.withdrawRequestId,
       commitment: backendAllocation.commitment,
-      createdAt: backendAllocation.created_at ? new Date(backendAllocation.created_at).getTime() : (backendAllocation.createdAt || Date.now()),
-      updatedAt: backendAllocation.updated_at ? new Date(backendAllocation.updated_at).getTime() : (backendAllocation.updatedAt || Date.now()),
+      createdAt: backendAllocation.created_at
+        ? new Date(backendAllocation.created_at).getTime()
+        : backendAllocation.createdAt || Date.now(),
+      updatedAt: backendAllocation.updated_at
+        ? new Date(backendAllocation.updated_at).getTime()
+        : backendAllocation.updatedAt || Date.now(),
       // Owner and token - now token is included in backend response
       owner: backendAllocation.owner || { chainId: 0, address: '' },
       token: token,
@@ -74,9 +94,7 @@ export class AllocationsAPI {
    * @param request - List request with filters
    * @returns Paginated list of allocations
    */
-  async listAllocations(
-    request: ListAllocationsRequest = {}
-  ): Promise<ListAllocationsResponse> {
+  async listAllocations(request: ListAllocationsRequest = {}): Promise<ListAllocationsResponse> {
     // Validate pagination params
     if (request.page || request.limit) {
       validatePagination(request.page, request.limit);
@@ -91,25 +109,25 @@ export class AllocationsAPI {
         total: number;
         pages: number;
       };
-    }>(
-      '/api/allocations',
-      {
-        params: {
-          checkbookId: request.checkbookId,
-          tokenId: request.tokenId,
-          status: request.status,
-          page: request.page || 1,
-          limit: request.limit || 20,
-        },
-      }
-    );
+    }>('/api/allocations', {
+      params: {
+        checkbookId: request.checkbookId,
+        tokenId: request.tokenId,
+        status: request.status,
+        page: request.page || 1,
+        limit: request.limit || 20,
+      },
+    });
 
     // Convert backend snake_case to frontend camelCase
-    const convertedData = (response.data || []).map(allocation => this.convertAllocation(allocation));
+    const convertedData = (response.data || []).map(allocation =>
+      this.convertAllocation(allocation)
+    );
 
     // Convert backend pagination format to frontend format
     const backendPagination = response.pagination;
-    const totalPages = backendPagination.pages || Math.ceil(backendPagination.total / backendPagination.limit);
+    const totalPages =
+      backendPagination.pages || Math.ceil(backendPagination.total / backendPagination.limit);
     const pagination = {
       page: backendPagination.page,
       limit: backendPagination.limit,
@@ -130,9 +148,7 @@ export class AllocationsAPI {
    * @param request - Create request with signed commitment
    * @returns Created allocations and updated checkbook
    */
-  async createAllocations(
-    request: CreateAllocationsRequest
-  ): Promise<CreateAllocationsResponse> {
+  async createAllocations(request: CreateAllocationsRequest): Promise<CreateAllocationsResponse> {
     // Validate request
     validateNonEmptyString(request.checkbookId, 'checkbookId');
     validateNonEmptyArray(request.amounts, 'amounts');
@@ -149,20 +165,19 @@ export class AllocationsAPI {
       success: boolean;
       allocations: any[];
       checkbook: any;
-    }>(
-      '/api/allocations',
-      {
-        checkbookId: request.checkbookId,
-        amounts: request.amounts,
-        tokenKey: request.tokenKey, // Use tokenKey instead of tokenId
-        signature: request.signature,
-        message: request.message,
-        commitments: request.commitments,
-      }
-    );
+    }>('/api/allocations', {
+      checkbookId: request.checkbookId,
+      amounts: request.amounts,
+      tokenKey: request.tokenKey, // Use tokenKey instead of tokenId
+      signature: request.signature,
+      message: request.message,
+      commitments: request.commitments,
+    });
 
     // Convert backend snake_case to frontend camelCase
-    const convertedAllocations = (response.allocations || []).map(allocation => this.convertAllocation(allocation));
+    const convertedAllocations = (response.allocations || []).map(allocation =>
+      this.convertAllocation(allocation)
+    );
 
     return {
       allocations: convertedAllocations,
@@ -176,10 +191,7 @@ export class AllocationsAPI {
    * @param status - Optional status filter
    * @returns List of allocations
    */
-  async getAllocationsByCheckbookId(
-    checkbookId: string,
-    status?: string
-  ): Promise<Allocation[]> {
+  async getAllocationsByCheckbookId(checkbookId: string, status?: string): Promise<Allocation[]> {
     validateNonEmptyString(checkbookId, 'checkbookId');
 
     const response = await this.listAllocations({
@@ -197,10 +209,7 @@ export class AllocationsAPI {
    * @param status - Allocation status
    * @returns List of allocations
    */
-  async getAllocationsByTokenIdAndStatus(
-    tokenId: string,
-    status: string
-  ): Promise<Allocation[]> {
+  async getAllocationsByTokenIdAndStatus(tokenId: string, status: string): Promise<Allocation[]> {
     validateNonEmptyString(tokenId, 'tokenId');
     validateNonEmptyString(status, 'status');
 
@@ -213,4 +222,3 @@ export class AllocationsAPI {
     return response.data;
   }
 }
-

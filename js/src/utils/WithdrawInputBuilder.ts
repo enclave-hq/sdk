@@ -1,6 +1,6 @@
 /**
  * Utility for building WithdrawInput structure matching lib.rs get_withdraw_data_to_sign
- * 
+ *
  * This module constructs the WithdrawInput structure from SDK allocations and checkbooks,
  * which can then be used to generate the withdrawal signature message.
  */
@@ -12,11 +12,11 @@ import { CommitmentCore } from './CommitmentCore';
  * Credential structure matching lib.rs Credential
  */
 export interface Credential {
-  left_hashes: string[];  // Array of hex strings (32 bytes each)
+  left_hashes: string[]; // Array of hex strings (32 bytes each)
   right_hashes: string[]; // Array of hex strings (32 bytes each)
-  deposit_id: string;      // 32 bytes hex string
-  chain_id: number;       // SLIP-44 chain ID
-  token_key: string;       // Token key (e.g., "USDT", "USDC")
+  deposit_id: string; // 32 bytes hex string
+  chain_id: number; // SLIP-44 chain ID
+  token_key: string; // Token key (e.g., "USDT", "USDC")
 }
 
 /**
@@ -24,8 +24,8 @@ export interface Credential {
  */
 export interface AllocationWithCredential {
   allocation: {
-    seq: number;          // 0-255
-    amount: string;        // 32 bytes hex string (U256)
+    seq: number; // 0-255
+    amount: string; // 32 bytes hex string (U256)
   };
   credential: Credential;
 }
@@ -35,8 +35,8 @@ export interface AllocationWithCredential {
  */
 export interface AllocationsFromCommitment {
   allocations: AllocationWithCredential[];
-  root_before_commitment: string;  // 32 bytes hex string
-  commitments_after: string[];     // Array of 32 bytes hex strings
+  root_before_commitment: string; // 32 bytes hex string
+  commitments_after: string[]; // Array of 32 bytes hex strings
 }
 
 /**
@@ -64,10 +64,10 @@ export interface BuildWithdrawInputOptions {
 
 /**
  * Build WithdrawInput from allocations and checkbooks
- * 
+ *
  * This function groups allocations by checkbook, builds credentials for each allocation,
  * and constructs the WithdrawInput structure that matches lib.rs get_withdraw_data_to_sign.
- * 
+ *
  * @param allocations - Array of allocations to withdraw
  * @param checkbooks - Map of checkbook ID to Checkbook object (must include commitment)
  * @param ownerAddress - Owner's universal address
@@ -114,7 +114,7 @@ export function buildWithdrawInput(
     if (!commitment) {
       throw new Error(
         `Checkbook ${checkbookId} has no commitment. ` +
-        `Cannot build withdraw input. Checkbook status: ${checkbook.status}`
+          `Cannot build withdraw input. Checkbook status: ${checkbook.status}`
       );
     }
 
@@ -211,14 +211,17 @@ export function buildWithdrawInput(
         // Already hex, pad to 64 chars (32 bytes)
         amountHex = allocation.amount.slice(2).padStart(64, '0');
         if (amountHex.length > 64) {
-          throw new Error(`Allocation ${allocation.id} amount is too large (${amountHex.length / 2} bytes, max 32 bytes)`);
+          throw new Error(
+            `Allocation ${allocation.id} amount is too large (${amountHex.length / 2} bytes, max 32 bytes)`
+          );
         }
         amountHex = '0x' + amountHex;
       } else {
         // Decimal string, convert to hex
         const amountBigInt = BigInt(allocation.amount);
         amountHex = '0x' + amountBigInt.toString(16).padStart(64, '0');
-        if (amountHex.length > 66) { // 0x + 64 chars
+        if (amountHex.length > 66) {
+          // 0x + 64 chars
           throw new Error(`Allocation ${allocation.id} amount is too large`);
         }
       }
@@ -257,10 +260,10 @@ export function buildWithdrawInput(
 
 /**
  * Convert WithdrawInput to JSON format for ZKVM service
- * 
+ *
  * This function converts the TypeScript WithdrawInput structure to the JSON format
  * expected by the ZKVM service's get_withdraw_data_to_sign endpoint.
- * 
+ *
  * @param withdrawInput - WithdrawInput structure
  * @param options - Options including min_output, lang, chain names
  * @returns JSON-serializable object ready for ZKVM service
@@ -283,7 +286,8 @@ export function withdrawInputToZKVMFormat(
       RawToken: {
         beneficiary: {
           chain_id: withdrawInput.intent.beneficiary.chainId,
-          address: withdrawInput.intent.beneficiary.data || withdrawInput.intent.beneficiary.address,
+          address:
+            withdrawInput.intent.beneficiary.data || withdrawInput.intent.beneficiary.address,
         },
         token_symbol: withdrawInput.intent.tokenSymbol || 'UNKNOWN',
       },
@@ -294,7 +298,9 @@ export function withdrawInputToZKVMFormat(
     if (withdrawInput.intent.assetId.startsWith('0x')) {
       assetIdBytes32 = withdrawInput.intent.assetId.slice(2).padStart(64, '0');
       if (assetIdBytes32.length > 64) {
-        throw new Error(`Invalid asset ID length: ${assetIdBytes32.length / 2} bytes, expected 32 bytes`);
+        throw new Error(
+          `Invalid asset ID length: ${assetIdBytes32.length / 2} bytes, expected 32 bytes`
+        );
       }
       assetIdBytes32 = '0x' + assetIdBytes32;
     } else {
@@ -307,7 +313,8 @@ export function withdrawInputToZKVMFormat(
         asset_id: assetIdBytes32,
         beneficiary: {
           chain_id: withdrawInput.intent.beneficiary.chainId,
-          address: withdrawInput.intent.beneficiary.data || withdrawInput.intent.beneficiary.address,
+          address:
+            withdrawInput.intent.beneficiary.data || withdrawInput.intent.beneficiary.address,
         },
         asset_token_symbol: withdrawInput.intent.assetTokenSymbol || 'UNKNOWN',
       },
@@ -317,8 +324,8 @@ export function withdrawInputToZKVMFormat(
   }
 
   // Convert commitment groups to ZKVM format
-  const commitmentGroupsFormat = withdrawInput.commitment_groups.map((group) => ({
-    allocations: group.allocations.map((allocWithCred) => ({
+  const commitmentGroupsFormat = withdrawInput.commitment_groups.map(group => ({
+    allocations: group.allocations.map(allocWithCred => ({
       allocation: {
         seq: allocWithCred.allocation.seq,
         amount: allocWithCred.allocation.amount,
@@ -347,11 +354,11 @@ export function withdrawInputToZKVMFormat(
       owner_address: ownerAddressFormat,
       intent: intentFormat,
     },
-    source_token_symbol: withdrawInput.commitment_groups[0]?.allocations[0]?.credential.token_key || 'UNKNOWN',
+    source_token_symbol:
+      withdrawInput.commitment_groups[0]?.allocations[0]?.credential.token_key || 'UNKNOWN',
     min_output: min_output,
     lang: lang,
     source_chain_name: source_chain_name || null,
     target_chain_name: target_chain_name || null,
   };
 }
-

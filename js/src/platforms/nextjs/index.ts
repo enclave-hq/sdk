@@ -47,4 +47,3 @@ export function isClient(): boolean {
 // Re-export React integration for Next.js app router
 export { EnclaveProvider, useEnclave, useEnclaveClient } from '../react/EnclaveProvider';
 export * from '../react/hooks';
-

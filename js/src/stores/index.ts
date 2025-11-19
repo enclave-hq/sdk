@@ -11,4 +11,3 @@ export * from './PricesStore';
 export * from './PoolsStore';
 export * from './ChainConfigStore';
 export * from './StatisticsStore';
-

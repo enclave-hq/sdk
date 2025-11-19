@@ -33,14 +33,11 @@ export class PoolsAPI {
    * @returns List of pools
    */
   async listPools(request: ListPoolsRequest = {}): Promise<Pool[]> {
-    const response = await this.client.get<ListPoolsResponse>(
-      '/api/pools',
-      {
-        params: {
-          isActive: request.isActive,
-        },
-      }
-    );
+    const response = await this.client.get<ListPoolsResponse>('/api/pools', {
+      params: {
+        isActive: request.isActive,
+      },
+    });
 
     return response.pools;
   }
@@ -53,9 +50,7 @@ export class PoolsAPI {
   async getPoolById(request: GetPoolRequest): Promise<Pool> {
     validateNonEmptyString(request.id, 'id');
 
-    const response = await this.client.get<GetPoolResponse>(
-      `/api/pools/${request.id}`
-    );
+    const response = await this.client.get<GetPoolResponse>(`/api/pools/${request.id}`);
 
     return response.pool;
   }
@@ -77,10 +72,7 @@ export class PoolsAPI {
       params.chainId = request.chainId;
     }
 
-    const response = await this.client.get<ListTokensResponse>(
-      '/api/tokens',
-      { params }
-    );
+    const response = await this.client.get<ListTokensResponse>('/api/tokens', { params });
 
     return response.tokens;
   }
@@ -93,9 +85,7 @@ export class PoolsAPI {
   async getTokenById(request: GetTokenRequest): Promise<Token> {
     validateNonEmptyString(request.id, 'id');
 
-    const response = await this.client.get<GetTokenResponse>(
-      `/api/tokens/${request.id}`
-    );
+    const response = await this.client.get<GetTokenResponse>(`/api/tokens/${request.id}`);
 
     return response.token;
   }
@@ -109,4 +99,3 @@ export class PoolsAPI {
     return this.listTokens({ isActive: true, chainId });
   }
 }
-

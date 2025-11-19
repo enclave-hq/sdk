@@ -80,10 +80,10 @@ export class WithdrawalsAPI {
   /**
    * Normalize backend response - only do minimal necessary conversions
    * Keep data structure as close to backend as possible
-   * 
+   *
    * Only converts:
    * - allocation_ids (JSON string) -> allocationIds (array) for convenience
-   * 
+   *
    * Other fields remain as backend format:
    * - intent_type, token_identifier, asset_id (flat fields)
    * - recipient_* (embedded fields from GORM)
@@ -92,7 +92,7 @@ export class WithdrawalsAPI {
   normalizeWithdrawRequest(data: unknown): WithdrawRequestDetail {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const obj = data as any;
-    
+
     // Debug: Log available fields to understand backend structure
     if (process.env.NODE_ENV === 'development' || process.env.DEBUG) {
       const recipientFields = Object.keys(obj).filter(k => k.includes('recipient'));
@@ -106,7 +106,7 @@ export class WithdrawalsAPI {
         });
       }
     }
-    
+
     // Only convert allocation_ids JSON string to array (necessary for type safety)
     if (obj.allocation_ids && typeof obj.allocation_ids === 'string') {
       try {
@@ -124,21 +124,20 @@ export class WithdrawalsAPI {
 
     // Build convenience getters (but keep original backend fields)
     // These are computed properties that don't modify the original data
-    
+
     // Build beneficiary from recipient_* if not already present
     // GORM embedded fields with prefix: recipient_slip44_chain_id, recipient_data
     // UniversalAddress fields: slip44_chain_id, evm_chain_id, data
     if (!obj.beneficiary) {
       // Try different possible field names (GORM embedded with prefix)
-      const recipientChainId = obj.recipient_slip44_chain_id || 
-                               obj.recipient_chain_id || 
-                               obj.target_slip44_chain_id || 
-                               0;
+      const recipientChainId =
+        obj.recipient_slip44_chain_id || obj.recipient_chain_id || obj.target_slip44_chain_id || 0;
       // recipient_data is the Data field from UniversalAddress with prefix
-      const recipientData = obj.recipient_data || 
-                           (obj.recipient && typeof obj.recipient === 'object' ? obj.recipient.data : null) || 
-                           '';
-      
+      const recipientData =
+        obj.recipient_data ||
+        (obj.recipient && typeof obj.recipient === 'object' ? obj.recipient.data : null) ||
+        '';
+
       if (recipientData) {
         obj.beneficiary = {
           chainId: recipientChainId,
@@ -162,7 +161,7 @@ export class WithdrawalsAPI {
         };
       }
     }
-    
+
     // Ensure beneficiary always has address field (fallback to data if address is missing)
     if (obj.beneficiary) {
       if (!obj.beneficiary.address) {
@@ -176,13 +175,9 @@ export class WithdrawalsAPI {
     // Build owner from owner_* if not already present
     // GORM embedded fields with prefix: owner_slip44_chain_id, owner_data
     if (!obj.owner) {
-      const ownerChainId = obj.owner_slip44_chain_id || 
-                          obj.owner_chain_id || 
-                          0;
-      const ownerData = obj.owner_data || 
-                       obj.owner_address?.data || 
-                       '';
-      
+      const ownerChainId = obj.owner_slip44_chain_id || obj.owner_chain_id || 0;
+      const ownerData = obj.owner_data || obj.owner_address?.data || '';
+
       if (ownerData) {
         obj.owner = {
           chainId: ownerChainId,
@@ -198,7 +193,7 @@ export class WithdrawalsAPI {
         };
       }
     }
-    
+
     // Ensure owner has address field (fallback to data if address is missing)
     if (obj.owner && !obj.owner.address && obj.owner.data) {
       obj.owner.address = obj.owner.data;
@@ -208,7 +203,11 @@ export class WithdrawalsAPI {
     if (!obj.intent) {
       const intentType = obj.intent_type ?? 0;
       const beneficiary = obj.beneficiary || {
-        chainId: obj.recipient_slip44_chain_id || obj.recipient_chain_id || obj.target_slip44_chain_id || 0,
+        chainId:
+          obj.recipient_slip44_chain_id ||
+          obj.recipient_chain_id ||
+          obj.target_slip44_chain_id ||
+          0,
         address: obj.recipient_data || '',
         data: obj.recipient_data || '',
       };
@@ -246,9 +245,7 @@ export class WithdrawalsAPI {
    * @param request - Get request with withdrawal ID
    * @returns Withdrawal request detail
    */
-  async getWithdrawRequestById(
-    request: GetWithdrawRequestRequest
-  ): Promise<WithdrawRequestDetail> {
+  async getWithdrawRequestById(request: GetWithdrawRequestRequest): Promise<WithdrawRequestDetail> {
     validateNonEmptyString(request.id, 'id');
 
     // Unified API endpoint
@@ -310,7 +307,7 @@ export class WithdrawalsAPI {
     // Validate request
     validateNonEmptyString(request.checkbookId, 'checkbookId');
     validateNonEmptyArray(request.allocationIds, 'allocationIds');
-    
+
     // Validate intent
     if (!request.intent) {
       throw new Error('intent is required');
@@ -335,11 +332,11 @@ export class WithdrawalsAPI {
       signature: request.signature,
       chainId: request.chainId,
     };
-    
+
     // Debug: Log request body (without signature for security)
     const debugBody = { ...requestBody, signature: '[REDACTED]' };
     console.log('🔍 [DEBUG] Sending withdraw request:', JSON.stringify(debugBody, null, 2));
-    
+
     const response = await this.client.post<CreateWithdrawRequestResponse>(
       '/api/withdraws/submit',
       requestBody
@@ -367,9 +364,7 @@ export class WithdrawalsAPI {
    * @param request - Retry request with withdrawal ID
    * @returns Updated withdrawal request
    */
-  async retryWithdrawRequest(
-    request: RetryWithdrawRequestRequest
-  ): Promise<WithdrawRequest> {
+  async retryWithdrawRequest(request: RetryWithdrawRequestRequest): Promise<WithdrawRequest> {
     validateNonEmptyString(request.id, 'id');
 
     // Unified API endpoint
@@ -386,9 +381,7 @@ export class WithdrawalsAPI {
    * @param request - Cancel request with withdrawal ID
    * @returns Cancelled withdrawal request
    */
-  async cancelWithdrawRequest(
-    request: CancelWithdrawRequestRequest
-  ): Promise<WithdrawRequest> {
+  async cancelWithdrawRequest(request: CancelWithdrawRequestRequest): Promise<WithdrawRequest> {
     validateNonEmptyString(request.id, 'id');
 
     // Unified API endpoint
@@ -408,9 +401,7 @@ export class WithdrawalsAPI {
    * @param request - Stats request with optional filters
    * @returns Withdrawal statistics
    */
-  async getWithdrawStats(
-    request: GetWithdrawStatsRequest = {}
-  ): Promise<GetWithdrawStatsResponse> {
+  async getWithdrawStats(request: GetWithdrawStatsRequest = {}): Promise<GetWithdrawStatsResponse> {
     // Owner is now automatically determined from JWT token - no need to pass it
     const response = await this.client.get<GetWithdrawStatsResponse>(
       '/api/my/withdraw-requests/stats',
@@ -423,6 +414,4 @@ export class WithdrawalsAPI {
 
     return response;
   }
-
 }
-

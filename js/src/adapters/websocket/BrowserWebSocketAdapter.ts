@@ -29,32 +29,28 @@ export class BrowserWebSocketAdapter implements IWebSocketAdapter {
         this.ws = new WebSocket(url, protocols);
 
         this.ws.onopen = () => {
-          this.connectHandlers.forEach((handler) => handler());
+          this.connectHandlers.forEach(handler => handler());
           resolve();
         };
 
-        this.ws.onmessage = (event) => {
+        this.ws.onmessage = event => {
           const data = typeof event.data === 'string' ? event.data : String(event.data);
-          this.messageHandlers.forEach((handler) => handler(data));
+          this.messageHandlers.forEach(handler => handler(data));
         };
 
-        this.ws.onclose = (event) => {
-          this.disconnectHandlers.forEach((handler) =>
-            handler(event.code, event.reason)
-          );
+        this.ws.onclose = event => {
+          this.disconnectHandlers.forEach(handler => handler(event.code, event.reason));
         };
 
-        this.ws.onerror = (event) => {
+        this.ws.onerror = event => {
           const error = new WebSocketError('WebSocket error', {
             event: event.type,
           });
-          this.errorHandlers.forEach((handler) => handler(error));
+          this.errorHandlers.forEach(handler => handler(error));
           reject(error);
         };
       } catch (error) {
-        reject(
-          new WebSocketError(`Failed to create WebSocket: ${error.message}`)
-        );
+        reject(new WebSocketError(`Failed to create WebSocket: ${error.message}`));
       }
     });
   }
@@ -115,4 +111,3 @@ export class BrowserWebSocketAdapter implements IWebSocketAdapter {
     return this.ws !== undefined && this.ws.readyState === WebSocket.OPEN;
   }
 }
-

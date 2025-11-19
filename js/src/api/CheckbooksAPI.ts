@@ -10,10 +10,7 @@ import type {
   GetCheckbookRequest,
 } from '../types/api';
 import type { Checkbook } from '../types/models';
-import {
-  validateNonEmptyString,
-  validatePagination,
-} from '../utils/validation';
+import { validateNonEmptyString, validatePagination } from '../utils/validation';
 
 /**
  * Checkbooks API endpoints
@@ -30,9 +27,7 @@ export class CheckbooksAPI {
    * @param request - List request with filters
    * @returns Paginated list of checkbooks
    */
-  async listCheckbooks(
-    request: ListCheckbooksRequest = {}
-  ): Promise<ListCheckbooksResponse> {
+  async listCheckbooks(request: ListCheckbooksRequest = {}): Promise<ListCheckbooksResponse> {
     // Validate pagination params
     if (request.page || request.limit) {
       validatePagination(request.page, request.limit);
@@ -42,33 +37,36 @@ export class CheckbooksAPI {
     const response = await this.client.get<{
       data: any[];
       pagination: any;
-    }>(
-      '/api/checkbooks',
-      {
-        params: {
-          status: request.status,
-          tokenId: request.tokenId,
-          page: request.page || 1,
-          limit: request.limit || 20,
-          deleted: request.deleted !== undefined ? String(request.deleted) : undefined,
-        },
-      }
-    );
+    }>('/api/checkbooks', {
+      params: {
+        status: request.status,
+        tokenId: request.tokenId,
+        page: request.page || 1,
+        limit: request.limit || 20,
+        deleted: request.deleted !== undefined ? String(request.deleted) : undefined,
+      },
+    });
 
     // Convert backend snake_case to frontend camelCase, including timestamps and amount fields
     const convertedData = (response.data || []).map((backendCheckbook: any) => {
       const checkbook: any = { ...backendCheckbook };
-      
+
       // Convert local_deposit_id to localDepositId
-      if (backendCheckbook.local_deposit_id !== undefined && backendCheckbook.local_deposit_id !== null) {
+      if (
+        backendCheckbook.local_deposit_id !== undefined &&
+        backendCheckbook.local_deposit_id !== null
+      ) {
         checkbook.localDepositId = backendCheckbook.local_deposit_id;
       }
-      
+
       // Convert slip44_chain_id to slip44ChainId
-      if (backendCheckbook.slip44_chain_id !== undefined && backendCheckbook.slip44_chain_id !== null) {
+      if (
+        backendCheckbook.slip44_chain_id !== undefined &&
+        backendCheckbook.slip44_chain_id !== null
+      ) {
         checkbook.slip44ChainId = backendCheckbook.slip44_chain_id;
       }
-      
+
       // Convert amount fields: gross_amount, allocatable_amount, fee_total_locked
       if (backendCheckbook.gross_amount !== undefined && backendCheckbook.gross_amount !== null) {
         checkbook.grossAmount = String(backendCheckbook.gross_amount);
@@ -76,63 +74,82 @@ export class CheckbooksAPI {
         if (!checkbook.depositAmount) {
           checkbook.depositAmount = String(backendCheckbook.gross_amount);
         }
-      } else if (backendCheckbook.amount !== undefined && backendCheckbook.amount !== null && !checkbook.depositAmount) {
+      } else if (
+        backendCheckbook.amount !== undefined &&
+        backendCheckbook.amount !== null &&
+        !checkbook.depositAmount
+      ) {
         // Fallback to amount if gross_amount is not available
         checkbook.depositAmount = String(backendCheckbook.amount);
       }
-      
-      if (backendCheckbook.allocatable_amount !== undefined && backendCheckbook.allocatable_amount !== null) {
+
+      if (
+        backendCheckbook.allocatable_amount !== undefined &&
+        backendCheckbook.allocatable_amount !== null
+      ) {
         checkbook.allocatableAmount = String(backendCheckbook.allocatable_amount);
       }
-      
-      if (backendCheckbook.fee_total_locked !== undefined && backendCheckbook.fee_total_locked !== null) {
+
+      if (
+        backendCheckbook.fee_total_locked !== undefined &&
+        backendCheckbook.fee_total_locked !== null
+      ) {
         checkbook.feeTotalLocked = String(backendCheckbook.fee_total_locked);
       }
-      
+
       // Convert created_at to createdAt (timestamp)
       if (backendCheckbook.created_at) {
-        checkbook.createdAt = typeof backendCheckbook.created_at === 'string'
-          ? new Date(backendCheckbook.created_at).getTime()
-          : (backendCheckbook.created_at instanceof Date
-            ? backendCheckbook.created_at.getTime()
-            : backendCheckbook.created_at);
+        checkbook.createdAt =
+          typeof backendCheckbook.created_at === 'string'
+            ? new Date(backendCheckbook.created_at).getTime()
+            : backendCheckbook.created_at instanceof Date
+              ? backendCheckbook.created_at.getTime()
+              : backendCheckbook.created_at;
       } else if (backendCheckbook.createdAt) {
         // Already in camelCase, ensure it's a number
-        checkbook.createdAt = typeof backendCheckbook.createdAt === 'string'
-          ? new Date(backendCheckbook.createdAt).getTime()
-          : backendCheckbook.createdAt;
+        checkbook.createdAt =
+          typeof backendCheckbook.createdAt === 'string'
+            ? new Date(backendCheckbook.createdAt).getTime()
+            : backendCheckbook.createdAt;
       }
-      
+
       // Convert updated_at to updatedAt (timestamp)
       if (backendCheckbook.updated_at) {
-        checkbook.updatedAt = typeof backendCheckbook.updated_at === 'string'
-          ? new Date(backendCheckbook.updated_at).getTime()
-          : (backendCheckbook.updated_at instanceof Date
-            ? backendCheckbook.updated_at.getTime()
-            : backendCheckbook.updated_at);
+        checkbook.updatedAt =
+          typeof backendCheckbook.updated_at === 'string'
+            ? new Date(backendCheckbook.updated_at).getTime()
+            : backendCheckbook.updated_at instanceof Date
+              ? backendCheckbook.updated_at.getTime()
+              : backendCheckbook.updated_at;
       } else if (backendCheckbook.updatedAt) {
         // Already in camelCase, ensure it's a number
-        checkbook.updatedAt = typeof backendCheckbook.updatedAt === 'string'
-          ? new Date(backendCheckbook.updatedAt).getTime()
-          : backendCheckbook.updatedAt;
+        checkbook.updatedAt =
+          typeof backendCheckbook.updatedAt === 'string'
+            ? new Date(backendCheckbook.updatedAt).getTime()
+            : backendCheckbook.updatedAt;
       }
-      
+
       return checkbook;
     });
 
     // Convert pagination format: backend uses "size" and "pages", frontend expects "limit" and "totalPages"
-    const pagination = response.pagination ? {
-      page: response.pagination.page || 1,
-      limit: response.pagination.limit || response.pagination.size || 20,
-      total: response.pagination.total || 0,
-      totalPages: response.pagination.totalPages || response.pagination.pages || 1,
-      hasNext: response.pagination.hasNext !== undefined 
-        ? response.pagination.hasNext 
-        : (response.pagination.page || 1) < (response.pagination.totalPages || response.pagination.pages || 1),
-      hasPrev: response.pagination.hasPrev !== undefined 
-        ? response.pagination.hasPrev 
-        : (response.pagination.page || 1) > 1,
-    } : undefined;
+    const pagination = response.pagination
+      ? {
+          page: response.pagination.page || 1,
+          limit: response.pagination.limit || response.pagination.size || 20,
+          total: response.pagination.total || 0,
+          totalPages: response.pagination.totalPages || response.pagination.pages || 1,
+          hasNext:
+            response.pagination.hasNext !== undefined
+              ? response.pagination.hasNext
+              : (response.pagination.page || 1) <
+                (response.pagination.totalPages || response.pagination.pages || 1),
+          hasPrev:
+            response.pagination.hasPrev !== undefined
+              ? response.pagination.hasPrev
+              : (response.pagination.page || 1) > 1,
+        }
+      : undefined;
 
     return {
       ...response,
@@ -146,9 +163,7 @@ export class CheckbooksAPI {
    * @param request - Get request with checkbook ID
    * @returns Checkbook data
    */
-  async getCheckbookById(
-    request: GetCheckbookRequest
-  ): Promise<Checkbook> {
+  async getCheckbookById(request: GetCheckbookRequest): Promise<Checkbook> {
     validateNonEmptyString(request.id, 'id');
 
     const response = await this.client.get<{
@@ -191,7 +206,7 @@ export class CheckbooksAPI {
       // Ensure all checkbook fields are preserved from backend response
       // Backend returns: local_deposit_id, slip44_chain_id, gross_amount, allocatable_amount, fee_total_locked
       const backendCheckbook = response.data.checkbook as any;
-      
+
       // Log backend response for debugging
       console.log('📋 [CheckbooksAPI.getCheckbookById] Backend checkbook data:', {
         id: backendCheckbook.id,
@@ -199,24 +214,45 @@ export class CheckbooksAPI {
         local_deposit_id_type: typeof backendCheckbook.local_deposit_id,
         slip44_chain_id: backendCheckbook.slip44_chain_id,
       });
-      
-      if (backendCheckbook.local_deposit_id !== undefined && backendCheckbook.local_deposit_id !== null) {
+
+      if (
+        backendCheckbook.local_deposit_id !== undefined &&
+        backendCheckbook.local_deposit_id !== null
+      ) {
         (checkbook as any).localDepositId = backendCheckbook.local_deposit_id;
-        console.log('✅ [CheckbooksAPI.getCheckbookById] Set localDepositId:', backendCheckbook.local_deposit_id);
+        console.log(
+          '✅ [CheckbooksAPI.getCheckbookById] Set localDepositId:',
+          backendCheckbook.local_deposit_id
+        );
       } else {
-        console.warn('⚠️ [CheckbooksAPI.getCheckbookById] Backend checkbook missing local_deposit_id:', {
-          checkbookId: backendCheckbook.id,
-          hasLocalDepositId: backendCheckbook.local_deposit_id !== undefined,
-          localDepositIdValue: backendCheckbook.local_deposit_id,
-        });
+        console.warn(
+          '⚠️ [CheckbooksAPI.getCheckbookById] Backend checkbook missing local_deposit_id:',
+          {
+            checkbookId: backendCheckbook.id,
+            hasLocalDepositId: backendCheckbook.local_deposit_id !== undefined,
+            localDepositIdValue: backendCheckbook.local_deposit_id,
+          }
+        );
       }
       if (backendCheckbook.slip44_chain_id !== undefined) {
         (checkbook as any).slip44ChainId = backendCheckbook.slip44_chain_id;
         // Also set token.chainId from slip44_chain_id if not already set
-        if (!checkbook.token?.chainId) {
+        // IMPORTANT: Always ensure token object exists with proper structure
           if (!checkbook.token) {
-            (checkbook as any).token = {};
-          }
+          // Create a minimal token object if it doesn't exist
+          (checkbook as any).token = {
+            id: `token_${checkbook.id || 'unknown'}`,
+            symbol: response.data.token?.symbol || 'UNKNOWN',
+            name: response.data.token?.name || 'Unknown Token',
+            decimals: response.data.token?.decimals || 18,
+            contractAddress: response.data.token?.address || '',
+            chainId: backendCheckbook.slip44_chain_id, // Set from slip44_chain_id
+            iconUrl: undefined,
+            isActive: response.data.token?.is_active !== undefined ? Boolean(response.data.token.is_active) : true,
+            metrics: undefined,
+          };
+        } else if (!checkbook.token.chainId) {
+          // Token exists but chainId is missing, set it from slip44_chain_id
           (checkbook.token as any).chainId = backendCheckbook.slip44_chain_id;
         }
       }
@@ -230,48 +266,62 @@ export class CheckbooksAPI {
         // Fallback to amount if gross_amount is not available
         (checkbook as any).depositAmount = String(backendCheckbook.amount);
       }
-      if (backendCheckbook.allocatable_amount !== undefined && backendCheckbook.allocatable_amount !== null) {
+      if (
+        backendCheckbook.allocatable_amount !== undefined &&
+        backendCheckbook.allocatable_amount !== null
+      ) {
         (checkbook as any).allocatableAmount = String(backendCheckbook.allocatable_amount);
       }
-      if (backendCheckbook.fee_total_locked !== undefined && backendCheckbook.fee_total_locked !== null) {
+      if (
+        backendCheckbook.fee_total_locked !== undefined &&
+        backendCheckbook.fee_total_locked !== null
+      ) {
         (checkbook as any).feeTotalLocked = String(backendCheckbook.fee_total_locked);
       }
-      
+
       // Preserve commitment field from backend
       if (backendCheckbook.commitment !== undefined && backendCheckbook.commitment !== null) {
         (checkbook as any).commitment = String(backendCheckbook.commitment);
       }
-      
+
       // Convert created_at to createdAt (timestamp)
       if (backendCheckbook.created_at) {
-        (checkbook as any).createdAt = typeof backendCheckbook.created_at === 'string'
-          ? new Date(backendCheckbook.created_at).getTime()
-          : (backendCheckbook.created_at instanceof Date
-            ? backendCheckbook.created_at.getTime()
-            : backendCheckbook.created_at);
+        (checkbook as any).createdAt =
+          typeof backendCheckbook.created_at === 'string'
+            ? new Date(backendCheckbook.created_at).getTime()
+            : backendCheckbook.created_at instanceof Date
+              ? backendCheckbook.created_at.getTime()
+              : backendCheckbook.created_at;
       } else if (!checkbook.createdAt && backendCheckbook.createdAt) {
         // Already in camelCase, ensure it's a number
-        (checkbook as any).createdAt = typeof backendCheckbook.createdAt === 'string'
-          ? new Date(backendCheckbook.createdAt).getTime()
-          : backendCheckbook.createdAt;
+        (checkbook as any).createdAt =
+          typeof backendCheckbook.createdAt === 'string'
+            ? new Date(backendCheckbook.createdAt).getTime()
+            : backendCheckbook.createdAt;
       }
-      
+
       // Convert updated_at to updatedAt (timestamp)
       if (backendCheckbook.updated_at) {
-        (checkbook as any).updatedAt = typeof backendCheckbook.updated_at === 'string'
-          ? new Date(backendCheckbook.updated_at).getTime()
-          : (backendCheckbook.updated_at instanceof Date
-            ? backendCheckbook.updated_at.getTime()
-            : backendCheckbook.updated_at);
+        (checkbook as any).updatedAt =
+          typeof backendCheckbook.updated_at === 'string'
+            ? new Date(backendCheckbook.updated_at).getTime()
+            : backendCheckbook.updated_at instanceof Date
+              ? backendCheckbook.updated_at.getTime()
+              : backendCheckbook.updated_at;
       } else if (!checkbook.updatedAt && backendCheckbook.updatedAt) {
         // Already in camelCase, ensure it's a number
-        (checkbook as any).updatedAt = typeof backendCheckbook.updatedAt === 'string'
-          ? new Date(backendCheckbook.updatedAt).getTime()
-          : backendCheckbook.updatedAt;
+        (checkbook as any).updatedAt =
+          typeof backendCheckbook.updatedAt === 'string'
+            ? new Date(backendCheckbook.updatedAt).getTime()
+            : backendCheckbook.updatedAt;
       }
-      
+
       // Log for debugging
-      if (!backendCheckbook.allocatable_amount || backendCheckbook.allocatable_amount === '0' || backendCheckbook.allocatable_amount === '') {
+      if (
+        !backendCheckbook.allocatable_amount ||
+        backendCheckbook.allocatable_amount === '0' ||
+        backendCheckbook.allocatable_amount === ''
+      ) {
         console.warn('⚠️ Checkbook missing or zero allocatable_amount', {
           checkbookId: checkbook.id,
           allocatable_amount: backendCheckbook.allocatable_amount,
@@ -317,7 +367,9 @@ export class CheckbooksAPI {
    * @param id - Checkbook ID
    * @returns Success response
    */
-  async deleteCheckbook(id: string): Promise<{ success: boolean; message: string; checkbook_id: string }> {
+  async deleteCheckbook(
+    id: string
+  ): Promise<{ success: boolean; message: string; checkbook_id: string }> {
     validateNonEmptyString(id, 'id');
 
     return this.client.delete<{ success: boolean; message: string; checkbook_id: string }>(
@@ -325,4 +377,3 @@ export class CheckbooksAPI {
     );
   }
 }
-

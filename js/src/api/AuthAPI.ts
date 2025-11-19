@@ -44,20 +44,19 @@ export class AuthAPI {
 
     // Use Universal Address format (32-byte) for user_address - REQUIRED
     if (!request.address.universalFormat) {
-      throw new Error('Universal Address format is required. request.address.universalFormat is missing.');
+      throw new Error(
+        'Universal Address format is required. request.address.universalFormat is missing.'
+      );
     }
     const userAddress = request.address.universalFormat.replace(/^0x/, '');
-    
-    const response = await this.client.post<any>(
-      '/api/auth/login',
-      {
-        // Backend expects user_address as Universal Address (32-byte), chain_id as SLIP-44
-        user_address: userAddress, // 32-byte Universal Address (required)
-        chain_id: request.chainId, // SLIP-44 Chain ID
-        message: request.message,
-        signature: request.signature,
-      }
-    );
+
+    const response = await this.client.post<any>('/api/auth/login', {
+      // Backend expects user_address as Universal Address (32-byte), chain_id as SLIP-44
+      user_address: userAddress, // 32-byte Universal Address (required)
+      chain_id: request.chainId, // SLIP-44 Chain ID
+      message: request.message,
+      signature: request.signature,
+    });
 
     // Backend returns { success: bool, token: string, message: string }
     // Check if authentication was successful
@@ -73,7 +72,7 @@ export class AuthAPI {
 
     // Store token in client
     this.client.setAuthToken(response.token);
-    
+
     // Verify token was set
     const verifyToken = this.client.getAuthToken();
     if (!verifyToken) {
@@ -92,15 +91,12 @@ export class AuthAPI {
    * @param request - Refresh token request
    * @returns New authentication response
    */
-  async refreshToken(
-    request: RefreshTokenRequest
-  ): Promise<RefreshTokenResponse> {
+  async refreshToken(request: RefreshTokenRequest): Promise<RefreshTokenResponse> {
     validateNonEmptyString(request.token, 'token');
 
-    const response = await this.client.post<RefreshTokenResponse>(
-      '/api/auth/refresh',
-      { token: request.token }
-    );
+    const response = await this.client.post<RefreshTokenResponse>('/api/auth/refresh', {
+      token: request.token,
+    });
 
     // Update token in client
     this.client.setAuthToken(response.token);
@@ -126,9 +122,7 @@ export class AuthAPI {
    */
   async verifyToken(): Promise<boolean> {
     try {
-      const response = await this.client.get<{ valid: boolean }>(
-        '/api/auth/verify'
-      );
+      const response = await this.client.get<{ valid: boolean }>('/api/auth/verify');
       return response.valid === true;
     } catch {
       return false;
@@ -140,48 +134,45 @@ export class AuthAPI {
    * @param address - User's address
    * @returns Nonce for signing with message
    */
-  async getNonce(address?: string): Promise<{ nonce: string; timestamp: string; message?: string }> {
+  async getNonce(
+    address?: string
+  ): Promise<{ nonce: string; timestamp: string; message?: string }> {
     const params = address ? { owner: address } : {};
-    
+
     try {
       // Backend returns { success: bool, nonce: string, message: string, timestamp: number }
-      const response = await this.client.get<any>(
-        '/api/auth/nonce',
-        { params }
-      );
-      
+      const response = await this.client.get<any>('/api/auth/nonce', { params });
+
       // Handle backend response format
       if (response.success === false || !response.nonce) {
         // If backend returns success: false, it's an API error
         const errorMessage = response.message || 'Failed to get nonce from backend';
         // Re-throw as APIError with 200 status (backend returned error in response body)
-        throw new APIError(
-          errorMessage,
-          200,
-          'NONCE_ERROR',
-          '/api/auth/nonce',
-          { response }
-        );
+        throw new APIError(errorMessage, 200, 'NONCE_ERROR', '/api/auth/nonce', { response });
       }
-      
+
       // Convert timestamp to string if it's a number
       return {
         nonce: response.nonce,
-        timestamp: typeof response.timestamp === 'number' 
-          ? response.timestamp.toString() 
-          : response.timestamp || Date.now().toString(),
+        timestamp:
+          typeof response.timestamp === 'number'
+            ? response.timestamp.toString()
+            : response.timestamp || Date.now().toString(),
         message: response.message, // Include message from backend
       };
     } catch (error) {
       // Re-throw NetworkError, APIError, and AuthError as-is
       // These are already properly formatted by APIClient
-      if (error instanceof NetworkError || error instanceof APIError || error instanceof AuthError) {
+      if (
+        error instanceof NetworkError ||
+        error instanceof APIError ||
+        error instanceof AuthError
+      ) {
         throw error;
       }
-      
+
       // For other errors, wrap them
       throw new Error(`Failed to get nonce: ${(error as Error).message}`);
     }
   }
 }
-

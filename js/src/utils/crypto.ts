@@ -109,7 +109,7 @@ export function hexToBytes(hex: string): Uint8Array {
  */
 export function bytesToHex(bytes: Uint8Array, prefix: boolean = true): string {
   const hex = Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
+    .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 
   return prefix ? `0x${hex}` : hex;
@@ -149,10 +149,7 @@ export function padHex(hex: string, length: number): string {
   const targetLength = length * 2;
 
   if (cleaned.length > targetLength) {
-    throw new ValidationError(
-      `Hex string too long: ${cleaned.length} > ${targetLength}`,
-      'hex'
-    );
+    throw new ValidationError(`Hex string too long: ${cleaned.length} > ${targetLength}`, 'hex');
   }
 
   return ensureHexPrefix(cleaned.padStart(targetLength, '0'));
@@ -164,7 +161,7 @@ export function padHex(hex: string, length: number): string {
  * @returns Concatenated hex string with 0x prefix
  */
 export function concatHex(...hexStrings: string[]): string {
-  const cleaned = hexStrings.map((h) => removeHexPrefix(h)).join('');
+  const cleaned = hexStrings.map(h => removeHexPrefix(h)).join('');
   return ensureHexPrefix(cleaned);
 }
 
@@ -179,10 +176,7 @@ export function xorHex(hex1: string, hex2: string): string {
   const bytes2 = hexToBytes(hex2);
 
   if (bytes1.length !== bytes2.length) {
-    throw new ValidationError(
-      'Hex strings must be of equal length for XOR',
-      'hex'
-    );
+    throw new ValidationError('Hex strings must be of equal length for XOR', 'hex');
   }
 
   const result = new Uint8Array(bytes1.length);
@@ -196,4 +190,3 @@ export function xorHex(hex1: string, hex2: string): string {
 
   return bytesToHex(result);
 }
-

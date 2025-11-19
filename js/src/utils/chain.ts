@@ -50,7 +50,7 @@ export function getSlip44FromChainId(chainId: number): number | null {
   if (mapping) {
     return mapping.slip44;
   }
-  
+
   // Fall back to chain-utils
   return nativeToSlip44(chainId);
 }
@@ -113,14 +113,14 @@ export function getChainName(chainId: number): string {
   if (mapping) {
     return mapping.name;
   }
-  
+
   // Check if it's a SLIP-44 ID by looking through mappings
   for (const mapping of Object.values(CHAIN_MAPPINGS)) {
     if (mapping.slip44 === chainId) {
       return mapping.name;
     }
   }
-  
+
   // Special handling for SLIP-44 chain IDs to match lib.rs
   // lib.rs uses full names like "Binance Smart Chain" not "BSC"
   const slip44ChainNames: Record<number, string> = {
@@ -139,23 +139,23 @@ export function getChainName(chainId: number): string {
     8453: 'Base',
     324: 'zkSync Era',
   };
-  
+
   if (slip44ChainNames[chainId]) {
     return slip44ChainNames[chainId];
   }
-  
+
   // Fall back to chain-utils
   const info = getChainInfoByNative(chainId);
   if (info) {
     return info.name;
   }
-  
+
   // Try SLIP-44 lookup
   const slip44Info = getChainInfoBySlip44(chainId);
   if (slip44Info) {
     return slip44Info.name;
   }
-  
+
   return `Chain ${chainId}`;
 }
 
@@ -198,9 +198,9 @@ export function getAllSupportedChains(): SDKChainInfo[] {
     .map(chainId => {
       const info = getChainInfo(chainId);
       const mapping = CHAIN_MAPPINGS[chainId];
-      
+
       if (!info) return null;
-      
+
       return {
         ...info,
         displayName: mapping?.name,
@@ -209,5 +209,3 @@ export function getAllSupportedChains(): SDKChainInfo[] {
     })
     .filter((info): info is SDKChainInfo => info !== null);
 }
-
-

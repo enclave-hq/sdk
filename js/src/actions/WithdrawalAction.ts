@@ -62,22 +62,22 @@ export class WithdrawalAction {
    * @param lang - Language code (default: LANG_EN)
    * @returns Withdrawal sign data
    */
-  async prepareWithdraw(
-    params: WithdrawalParams,
-    lang: number = LANG_EN
-  ) {
+  async prepareWithdraw(params: WithdrawalParams, lang: number = LANG_EN) {
     // Validate params
     validateNonEmptyArray(params.allocationIds, 'allocationIds');
     this.validateIntent(params.intent);
-    
+
     // Validate beneficiary from intent
     validateChainId(params.intent.beneficiary.chainId, 'intent.beneficiary.chainId');
     // Accept universalFormat (preferred), data (legacy), or address (for display)
-    const beneficiaryAddress = params.intent.beneficiary.universalFormat || 
-                                params.intent.beneficiary.data || 
-                                params.intent.beneficiary.address;
+    const beneficiaryAddress =
+      params.intent.beneficiary.universalFormat ||
+      params.intent.beneficiary.data ||
+      params.intent.beneficiary.address;
     if (!beneficiaryAddress) {
-      throw new Error('intent.beneficiary.universalFormat, intent.beneficiary.data, or intent.beneficiary.address is required');
+      throw new Error(
+        'intent.beneficiary.universalFormat, intent.beneficiary.data, or intent.beneficiary.address is required'
+      );
     }
     validateNonEmptyString(beneficiaryAddress, 'intent.beneficiary.address');
 
@@ -107,12 +107,12 @@ export class WithdrawalAction {
     // All allocations in a withdraw request should be from the same checkbook, so we use the first allocation's checkbook
     const firstAllocation = allocations[0];
     let tokenSymbol: string;
-    
+
     // Get checkbook to access token symbol (tokenKey)
     // Always fetch from API to ensure we have the latest token information
     let checkbook = this.checkbooksStore.get(firstAllocation.checkbookId);
     const needsRefresh = !checkbook || !checkbook.token?.symbol;
-    
+
     if (needsRefresh) {
       // Fetch from API to get token information
       this.logger.debug('Fetching checkbook from API to get token info', {
@@ -122,11 +122,11 @@ export class WithdrawalAction {
       });
       checkbook = await this.checkbooksStore.fetchById(firstAllocation.checkbookId);
     }
-    
+
     if (!checkbook) {
       throw new Error(`Checkbook ${firstAllocation.checkbookId} not found`);
     }
-    
+
     // Log checkbook token info for debugging
     this.logger.debug('Checkbook token info', {
       checkbookId: checkbook.id,
@@ -136,7 +136,7 @@ export class WithdrawalAction {
       tokenName: checkbook.token?.name,
       allocationTokenSymbol: firstAllocation?.token?.symbol,
     });
-    
+
     // Use token symbol from checkbook (tokenKey = token.symbol)
     if (checkbook.token?.symbol) {
       tokenSymbol = checkbook.token.symbol;
@@ -161,8 +161,8 @@ export class WithdrawalAction {
         } else {
           throw new Error(
             `Cannot get token symbol: checkbook ${checkbook.id} has no token.symbol, ` +
-            `allocation ${firstAllocation.id} has no token, and intent.tokenSymbol is missing. ` +
-            `Please provide tokenSymbol in RawToken intent or ensure checkbook has token information.`
+              `allocation ${firstAllocation.id} has no token, and intent.tokenSymbol is missing. ` +
+              `Please provide tokenSymbol in RawToken intent or ensure checkbook has token information.`
           );
         }
       } else if (params.intent.type === 'AssetToken') {
@@ -170,20 +170,20 @@ export class WithdrawalAction {
         if (params.intent.assetTokenSymbol) {
           tokenSymbol = params.intent.assetTokenSymbol;
           this.logger.debug('Using assetTokenSymbol from AssetToken intent', {
-          checkbookId: checkbook.id,
+            checkbookId: checkbook.id,
             tokenSymbol: tokenSymbol,
-        });
+          });
         } else {
-        throw new Error(
-          `Cannot get token symbol: checkbook ${checkbook.id} has no token.symbol, ` +
-            `allocation ${firstAllocation.id} has no token, and intent.assetTokenSymbol is missing. ` +
-            `Please provide assetTokenSymbol in AssetToken intent or ensure checkbook has token information.`
-        );
+          throw new Error(
+            `Cannot get token symbol: checkbook ${checkbook.id} has no token.symbol, ` +
+              `allocation ${firstAllocation.id} has no token, and intent.assetTokenSymbol is missing. ` +
+              `Please provide assetTokenSymbol in AssetToken intent or ensure checkbook has token information.`
+          );
         }
       } else {
         throw new Error(
           `Cannot get token symbol: checkbook ${checkbook.id} has no token.symbol, ` +
-          `and allocation ${firstAllocation.id} has no token`
+            `and allocation ${firstAllocation.id} has no token`
         );
       }
     }
@@ -208,14 +208,14 @@ export class WithdrawalAction {
         // But if it's missing, we can't proceed
         throw new Error(
           `Checkbook ${checkbook.id} has no commitment. ` +
-          `Cannot proceed with withdrawal. ` +
-          `Checkbook status: ${checkbook.status}. ` +
-          `If checkbook is in 'with_checkbook' status, it should have a commitment. ` +
-          `Please ensure the checkbook has been properly committed.`
+            `Cannot proceed with withdrawal. ` +
+            `Checkbook status: ${checkbook.status}. ` +
+            `If checkbook is in 'with_checkbook' status, it should have a commitment. ` +
+            `Please ensure the checkbook has been properly committed.`
         );
       }
     }
-    
+
     // Fill in commitment for allocations that don't have it
     for (const allocation of allocations) {
       if (!allocation.commitment) {
@@ -270,9 +270,7 @@ export class WithdrawalAction {
     }
 
     if (intent.type !== 'RawToken' && intent.type !== 'AssetToken') {
-      throw new Error(
-        `Invalid intent type: ${intent.type}. Must be 'RawToken' or 'AssetToken'`
-      );
+      throw new Error(`Invalid intent type: ${intent.type}. Must be 'RawToken' or 'AssetToken'`);
     }
 
     // Validate beneficiary
@@ -290,10 +288,13 @@ export class WithdrawalAction {
     if (!intent.beneficiary.universalFormat && !intent.beneficiary.data) {
       throw new Error('Intent.beneficiary.universalFormat or Intent.beneficiary.data is required');
     }
-    
+
     // If universalFormat is provided, use it; otherwise use data
     const beneficiaryData = intent.beneficiary.universalFormat || intent.beneficiary.data;
-    validateNonEmptyString(beneficiaryData, 'Intent.beneficiary.universalFormat or Intent.beneficiary.data');
+    validateNonEmptyString(
+      beneficiaryData,
+      'Intent.beneficiary.universalFormat or Intent.beneficiary.data'
+    );
 
     // Type-specific validation
     if (intent.type === 'RawToken') {
@@ -303,9 +304,7 @@ export class WithdrawalAction {
 
       // Validate asset ID (should be 32 bytes = 64 hex chars + 0x prefix)
       if (!intent.assetId.match(/^0x[0-9a-fA-F]{64}$/)) {
-        throw new Error(
-          'Intent.assetId must be a valid 32-byte hex value (0x + 64 chars)'
-        );
+        throw new Error('Intent.assetId must be a valid 32-byte hex value (0x + 64 chars)');
       }
 
       validateNonEmptyString(intent.assetTokenSymbol, 'Intent.assetTokenSymbol');
@@ -318,10 +317,7 @@ export class WithdrawalAction {
    * @param signature - User's signature
    * @returns Created withdrawal request
    */
-  async submitWithdraw(
-    params: WithdrawalParams,
-    signature: string
-  ): Promise<WithdrawRequest> {
+  async submitWithdraw(params: WithdrawalParams, signature: string): Promise<WithdrawRequest> {
     validateNonEmptyString(signature, 'signature');
 
     this.logger.info('Submitting withdrawal to backend', {
@@ -347,7 +343,9 @@ export class WithdrawalAction {
     // Get tokenSymbol from prepareWithdraw result (already fetched and validated)
     const tokenSymbol = signData.tokenSymbol;
     if (!tokenSymbol) {
-      throw new Error('tokenSymbol is required but not found in signData. This should not happen if prepareWithdraw succeeded.');
+      throw new Error(
+        'tokenSymbol is required but not found in signData. This should not happen if prepareWithdraw succeeded.'
+      );
     }
 
     // Convert Intent to backend v2 format
@@ -382,10 +380,7 @@ export class WithdrawalAction {
    * @param lang - Language code (default: LANG_EN)
    * @returns Created withdrawal request
    */
-  async withdraw(
-    params: WithdrawalParams,
-    lang: number = LANG_EN
-  ): Promise<WithdrawRequest> {
+  async withdraw(params: WithdrawalParams, lang: number = LANG_EN): Promise<WithdrawRequest> {
     this.logger.info('Creating withdrawal (full flow)', {
       allocationCount: params.allocationIds.length,
       beneficiaryChainId: params.intent.beneficiary.chainId,
@@ -401,7 +396,7 @@ export class WithdrawalAction {
     // Log the message in a readable format (split by lines for better readability)
     // Filter out empty lines to match Rust's lines() behavior (which ignores trailing empty line)
     const messageLines = signData.message.split('\n').filter(line => line.length > 0);
-    messageLines.forEach((line) => {
+    messageLines.forEach(line => {
       this.logger.info(line);
     });
     this.logger.info('─'.repeat(60));
@@ -414,7 +409,9 @@ export class WithdrawalAction {
     // ethers.js Wallet.signMessage() will automatically add EIP-191 prefix and hash it
     // This matches ZKVM's generate_message_hash() which expects raw message and adds EIP-191 prefix
     const signature = await this.wallet.signMessage(signData.message);
-    this.logger.info(`✅ Signature received: ${signature.substring(0, 20)}...${signature.substring(signature.length - 10)}`);
+    this.logger.info(
+      `✅ Signature received: ${signature.substring(0, 20)}...${signature.substring(signature.length - 10)}`
+    );
 
     // Step 3: Submit to backend
     const withdrawal = await this.submitWithdraw(params, signature);
@@ -469,7 +466,6 @@ export class WithdrawalAction {
     return this.store.fetchStats(owner, tokenId);
   }
 
-
   /**
    * Verify withdrawal signature
    * @param params - Withdrawal parameters
@@ -522,7 +518,10 @@ export class WithdrawalAction {
    * @param intent - SDK Intent object
    * @returns Backend v2 intent format
    */
-  private convertIntentToBackendFormat(intent: Intent, tokenSymbol: string): {
+  private convertIntentToBackendFormat(
+    intent: Intent,
+    tokenSymbol: string
+  ): {
     type: number;
     beneficiaryChainId: number;
     beneficiaryAddress: string;
@@ -533,11 +532,13 @@ export class WithdrawalAction {
     // Accept either universalFormat (preferred) or data (legacy)
     const universalAddress = intent.beneficiary.universalFormat || intent.beneficiary.data;
     if (!universalAddress) {
-      throw new Error('Universal Address format is required. intent.beneficiary.universalFormat or intent.beneficiary.data is missing.');
+      throw new Error(
+        'Universal Address format is required. intent.beneficiary.universalFormat or intent.beneficiary.data is missing.'
+      );
     }
     // Remove 0x prefix if present, backend expects hex string without prefix
     const beneficiaryAddress = universalAddress.replace(/^0x/, '');
-    
+
     if (intent.type === 'RawToken') {
       return {
         type: 0, // RawToken
@@ -558,4 +559,3 @@ export class WithdrawalAction {
     }
   }
 }
-

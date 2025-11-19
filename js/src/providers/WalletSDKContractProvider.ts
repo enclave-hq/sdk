@@ -1,6 +1,6 @@
 /**
  * Contract Provider implementation using @enclave-hq/wallet-sdk
- * 
+ *
  * This adapter bridges @enclave-hq/wallet-sdk's WalletManager to SDK's IContractProvider interface.
  * wallet-sdk remains independent and does not depend on SDK types.
  */
@@ -19,7 +19,7 @@ interface WalletManagerLike {
     args?: any[],
     chainType?: any
   ): Promise<T>;
-  
+
   writeContract(
     address: string,
     abi: any[],
@@ -32,35 +32,31 @@ interface WalletManagerLike {
     },
     chainType?: any
   ): Promise<string>;
-  
-  waitForTransaction(
-    txHash: string,
-    confirmations?: number,
-    chainType?: any
-  ): Promise<any>;
-  
+
+  waitForTransaction(txHash: string, confirmations?: number, chainType?: any): Promise<any>;
+
   getCurrentAccount(): { nativeAddress: string; chainId: number } | null;
-  
+
   isConnected(): boolean;
 }
 
 /**
  * Wallet SDK Contract Provider
- * 
+ *
  * Adapter that wraps @enclave-hq/wallet-sdk to provide IContractProvider interface.
  * This allows SDK to use wallet-sdk without tight coupling.
- * 
+ *
  * @example
  * ```typescript
  * import { WalletManager } from '@enclave-hq/wallet-sdk';
  * import { WalletSDKContractProvider } from '@enclave-hq/sdk';
- * 
+ *
  * const walletManager = new WalletManager();
  * await walletManager.connect(WalletType.METAMASK);
- * 
+ *
  * // Create adapter
  * const contractProvider = new WalletSDKContractProvider(walletManager);
- * 
+ *
  * // Use with SDK
  * const client = new EnclaveClient({
  *   contractProvider,
@@ -93,25 +89,18 @@ export class WalletSDKContractProvider implements IContractProvider {
     }
   ): Promise<string> {
     // Convert options format
-    const walletOptions = options ? {
-      value: options.value?.toString(),
-      gas: options.gas ? Number(options.gas) : undefined,
-      gasPrice: options.gasPrice?.toString(),
-    } : undefined;
-    
-    return this.walletManager.writeContract(
-      address,
-      abi,
-      functionName,
-      args,
-      walletOptions
-    );
+    const walletOptions = options
+      ? {
+          value: options.value?.toString(),
+          gas: options.gas ? Number(options.gas) : undefined,
+          gasPrice: options.gasPrice?.toString(),
+        }
+      : undefined;
+
+    return this.walletManager.writeContract(address, abi, functionName, args, walletOptions);
   }
 
-  async waitForTransaction(
-    txHash: string,
-    confirmations?: number
-  ): Promise<TransactionReceipt> {
+  async waitForTransaction(txHash: string, confirmations?: number): Promise<TransactionReceipt> {
     // Directly delegate to wallet-sdk
     return this.walletManager.waitForTransaction(txHash, confirmations);
   }
@@ -141,4 +130,3 @@ export class WalletSDKContractProvider implements IContractProvider {
     return this.walletManager.isConnected();
   }
 }
-

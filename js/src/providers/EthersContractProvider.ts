@@ -7,7 +7,7 @@ import type { Provider, Signer } from 'ethers';
 
 /**
  * Ethers Contract Provider
- * 
+ *
  * Wraps ethers.js to provide IContractProvider interface
  */
 export class EthersContractProvider implements IContractProvider {
@@ -24,7 +24,7 @@ export class EthersContractProvider implements IContractProvider {
   ): Promise<T> {
     // Dynamic import to avoid bundling ethers if not used
     const { Contract } = await import('ethers');
-    
+
     const contract = new Contract(address, abi, this.providerOrSigner);
     const func = contract[functionName];
     if (!func || typeof func !== 'function') {
@@ -46,20 +46,20 @@ export class EthersContractProvider implements IContractProvider {
     }
   ): Promise<string> {
     const { Contract } = await import('ethers');
-    
+
     // Check if we have a signer
     if (!('sendTransaction' in this.providerOrSigner)) {
       throw new Error('Signer required for write operations');
     }
-    
+
     const contract = new Contract(address, abi, this.providerOrSigner as Signer);
-    
+
     // Build transaction options
     const txOptions: any = {};
     if (options?.value) txOptions.value = options.value;
     if (options?.gas) txOptions.gasLimit = options.gas;
     if (options?.gasPrice) txOptions.gasPrice = options.gasPrice;
-    
+
     const func = contract[functionName];
     if (!func || typeof func !== 'function') {
       throw new Error(`Function ${functionName} not found in contract ABI`);
@@ -68,10 +68,7 @@ export class EthersContractProvider implements IContractProvider {
     return tx.hash;
   }
 
-  async waitForTransaction(
-    txHash: string,
-    confirmations: number = 1
-  ): Promise<TransactionReceipt> {
+  async waitForTransaction(txHash: string, confirmations: number = 1): Promise<TransactionReceipt> {
     // Get provider from signer if needed
     let provider: Provider;
     if ('provider' in this.providerOrSigner && this.providerOrSigner.provider) {
@@ -79,13 +76,13 @@ export class EthersContractProvider implements IContractProvider {
     } else {
       provider = this.providerOrSigner as Provider;
     }
-    
+
     const receipt = await provider.waitForTransaction(txHash, confirmations);
-    
+
     if (!receipt) {
       throw new Error('Transaction not found');
     }
-    
+
     return {
       transactionHash: receipt.hash,
       blockNumber: receipt.blockNumber,
@@ -102,12 +99,12 @@ export class EthersContractProvider implements IContractProvider {
     if (this.address) {
       return this.address;
     }
-    
+
     if ('getAddress' in this.providerOrSigner) {
       this.address = await this.providerOrSigner.getAddress();
       return this.address;
     }
-    
+
     throw new Error('Address not available');
   }
 
@@ -123,7 +120,7 @@ export class EthersContractProvider implements IContractProvider {
     } else {
       provider = this.providerOrSigner as Provider;
     }
-    
+
     const network = await provider.getNetwork();
     return Number(network.chainId); // Returns EVM Chain ID
   }
@@ -132,5 +129,3 @@ export class EthersContractProvider implements IContractProvider {
     return true; // ethers doesn't have a clear "connected" state
   }
 }
-
-

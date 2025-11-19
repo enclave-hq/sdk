@@ -4,10 +4,7 @@
  */
 
 import type { APIClient } from './APIClient';
-import type {
-  GetTokenPricesRequest,
-  GetTokenPricesResponse,
-} from '../types/api';
+import type { GetTokenPricesRequest, GetTokenPricesResponse } from '../types/api';
 import type { TokenPrice } from '../types/models';
 
 /**
@@ -25,19 +22,14 @@ export class PricesAPI {
    * @param request - Request with optional symbol filters
    * @returns Token prices
    */
-  async getTokenPrices(
-    request: GetTokenPricesRequest = {}
-  ): Promise<TokenPrice[]> {
+  async getTokenPrices(request: GetTokenPricesRequest = {}): Promise<TokenPrice[]> {
     const params: any = {};
 
     if (request.symbols && request.symbols.length > 0) {
       params.symbols = request.symbols.join(',');
     }
 
-    const response = await this.client.get<GetTokenPricesResponse>(
-      '/api/prices',
-      { params }
-    );
+    const response = await this.client.get<GetTokenPricesResponse>('/api/prices', { params });
 
     return response.prices;
   }
@@ -49,7 +41,7 @@ export class PricesAPI {
    */
   async getTokenPrice(symbol: string): Promise<TokenPrice | undefined> {
     const prices = await this.getTokenPrices({ symbols: [symbol] });
-    return prices.find((p) => p.symbol === symbol);
+    return prices.find(p => p.symbol === symbol);
   }
 
   /**
@@ -60,4 +52,3 @@ export class PricesAPI {
     return this.getTokenPrices();
   }
 }
-

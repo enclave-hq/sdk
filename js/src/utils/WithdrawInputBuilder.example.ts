@@ -1,6 +1,6 @@
 /**
  * Example usage of WithdrawInputBuilder
- * 
+ *
  * This file demonstrates how to use buildWithdrawInput to create
  * the WithdrawInput structure that matches lib.rs get_withdraw_data_to_sign.
  */
@@ -18,18 +18,12 @@ export async function exampleBuildWithdrawInput(
   intent: Intent
 ) {
   // Build WithdrawInput structure
-  const withdrawInput = buildWithdrawInput(
-    allocations,
-    checkbooks,
-    ownerAddress,
-    intent,
-    {
-      min_output: '0x' + '0'.repeat(64), // Default: all zeros
-      lang: 1, // English
-      source_chain_name: 'Binance Smart Chain',
-      target_chain_name: 'Ethereum',
-    }
-  );
+  const withdrawInput = buildWithdrawInput(allocations, checkbooks, ownerAddress, intent, {
+    min_output: '0x' + '0'.repeat(64), // Default: all zeros
+    lang: 1, // English
+    source_chain_name: 'Binance Smart Chain',
+    target_chain_name: 'Ethereum',
+  });
 
   // Convert to ZKVM service format
   const zkvmFormat = withdrawInputToZKVMFormat(withdrawInput, {
@@ -62,12 +56,7 @@ export async function exampleBuildFromSingleCheckbook(
   checkbooks.set(checkbook.id, checkbook);
 
   // Build WithdrawInput
-  const withdrawInput = buildWithdrawInput(
-    allocations,
-    checkbooks,
-    ownerAddress,
-    intent
-  );
+  const withdrawInput = buildWithdrawInput(allocations, checkbooks, ownerAddress, intent);
 
   return withdrawInput;
 }
@@ -89,16 +78,7 @@ export async function exampleBuildFromMultipleCheckbooks(
   }
 
   // Build WithdrawInput (will group allocations by checkbook automatically)
-  const withdrawInput = buildWithdrawInput(
-    allocations,
-    checkbooks,
-    ownerAddress,
-    intent
-  );
+  const withdrawInput = buildWithdrawInput(allocations, checkbooks, ownerAddress, intent);
 
   return withdrawInput;
 }
-
-
-
-

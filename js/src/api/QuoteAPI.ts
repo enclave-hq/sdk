@@ -41,11 +41,7 @@ export class QuoteAPI {
    * @returns Asset information including APY, fees, and protocol health
    */
   async getHookAsset(request: HookAssetRequest): Promise<HookAssetResponse> {
-    const response = await this.client.post<HookAssetResponse>(
-      '/api/quote/hook-asset',
-      request
-    );
+    const response = await this.client.post<HookAssetResponse>('/api/quote/hook-asset', request);
     return response;
   }
 }
-

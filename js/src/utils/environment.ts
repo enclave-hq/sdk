@@ -19,27 +19,17 @@ export enum RuntimeEnvironment {
  */
 export function detectEnvironment(): RuntimeEnvironment {
   // Check for React Native
-  if (
-    typeof navigator !== 'undefined' &&
-    navigator.product === 'ReactNative'
-  ) {
+  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
     return RuntimeEnvironment.REACT_NATIVE;
   }
 
   // Check for browser
-  if (
-    typeof window !== 'undefined' &&
-    typeof window.document !== 'undefined'
-  ) {
+  if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
     return RuntimeEnvironment.BROWSER;
   }
 
   // Check for Node.js
-  if (
-    typeof process !== 'undefined' &&
-    process.versions != null &&
-    process.versions.node != null
-  ) {
+  if (typeof process !== 'undefined' && process.versions != null && process.versions.node != null) {
     return RuntimeEnvironment.NODE;
   }
 
@@ -197,4 +187,3 @@ export function getRuntimeInfo(): RuntimeInfo {
     version: typeof process !== 'undefined' ? process.version : undefined,
   };
 }
-

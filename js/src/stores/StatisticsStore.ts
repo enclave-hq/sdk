@@ -176,7 +176,7 @@ export class StatisticsStore {
     }
 
     this.logger.info(`Starting auto-refresh with interval: ${refreshInterval}ms`);
-    
+
     this.refreshIntervalId = setInterval(async () => {
       try {
         await this.fetchOverview();
@@ -216,4 +216,3 @@ export class StatisticsStore {
     this.clear();
   }
 }
-

@@ -32,13 +32,10 @@ export class KMSAPI {
     validateNonEmptyString(request.data, 'data');
     validateHex(request.data, 'data');
 
-    const response = await this.client.post<KMSSignResponse>(
-      '/api/kms/sign',
-      {
-        data: request.data,
-        keyId: request.keyId,
-      }
-    );
+    const response = await this.client.post<KMSSignResponse>('/api/kms/sign', {
+      data: request.data,
+      keyId: request.keyId,
+    });
 
     return response;
   }
@@ -48,19 +45,13 @@ export class KMSAPI {
    * @param request - Request with optional key ID
    * @returns Public key
    */
-  async getPublicKey(
-    request: KMSPublicKeyRequest = {}
-  ): Promise<KMSPublicKeyResponse> {
-    const response = await this.client.get<KMSPublicKeyResponse>(
-      '/api/kms/public-key',
-      {
-        params: {
-          keyId: request.keyId,
-        },
-      }
-    );
+  async getPublicKey(request: KMSPublicKeyRequest = {}): Promise<KMSPublicKeyResponse> {
+    const response = await this.client.get<KMSPublicKeyResponse>('/api/kms/public-key', {
+      params: {
+        keyId: request.keyId,
+      },
+    });
 
     return response;
   }
 }
-

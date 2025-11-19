@@ -8,11 +8,7 @@
 export { EnclaveClient } from './client/EnclaveClient';
 
 // ============ Status Enums (for client use) ============
-export {
-  CheckbookStatus,
-  AllocationStatus,
-  WithdrawRequestStatus,
-} from './types/models';
+export { CheckbookStatus, AllocationStatus, WithdrawRequestStatus } from './types/models';
 
 // ============ Data Model Types ============
 export type {
@@ -50,15 +46,10 @@ export type {
 } from './types/config';
 
 // ============ API Types ============
-export type {
-  APIResponse,
-  APIError as APIErrorResponse,
-} from './types/api';
+export type { APIResponse, APIError as APIErrorResponse } from './types/api';
 
 // ============ Event Types ============
-export {
-  EventName,
-} from './types/events';
+export { EventName } from './types/events';
 
 export type {
   EventMap,
@@ -73,10 +64,7 @@ export type {
 } from './types/events';
 
 // ============ WebSocket Types ============
-export {
-  WSMessageType,
-  WSChannel,
-} from './types/websocket';
+export { WSMessageType, WSChannel } from './types/websocket';
 
 // ============ Utility Functions ============
 export {
@@ -138,25 +126,17 @@ export {
 } from './utils';
 
 // ============ Formatters ============
-export {
-  CommitmentFormatter,
-  WithdrawFormatter,
-} from './formatters';
+export { CommitmentFormatter, WithdrawFormatter } from './formatters';
 
 // ============ Commitment Core ============
-export {
-  CommitmentCore,
-} from './utils/CommitmentCore';
+export { CommitmentCore } from './utils/CommitmentCore';
 export type {
   Allocation as CommitmentAllocation,
   Credential as CommitmentCredential,
 } from './utils/CommitmentCore';
 
 // ============ Withdraw Input Builder ============
-export {
-  buildWithdrawInput,
-  withdrawInputToZKVMFormat,
-} from './utils/WithdrawInputBuilder';
+export { buildWithdrawInput, withdrawInputToZKVMFormat } from './utils/WithdrawInputBuilder';
 export type {
   WithdrawInput,
   AllocationsFromCommitment,
@@ -180,4 +160,3 @@ export { WalletSDKContractProvider } from './providers';
 // ============ Version Info ============
 export const SDK_VERSION = '2.0.2';
 export const SDK_NAME = '@enclave-hq/sdk';
-

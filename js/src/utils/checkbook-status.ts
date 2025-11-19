@@ -28,10 +28,7 @@ export function canCreateCommitment(status: CheckbookStatus): boolean {
  * @returns True if allocations can be created
  */
 export function canCreateAllocations(status: CheckbookStatus): boolean {
-  return (
-    status === CheckbookStatus.ReadyForCommitment ||
-    status === CheckbookStatus.WithCheckbook
-  );
+  return status === CheckbookStatus.ReadyForCommitment || status === CheckbookStatus.WithCheckbook;
 }
 
 /**
@@ -40,10 +37,7 @@ export function canCreateAllocations(status: CheckbookStatus): boolean {
  * @returns True if the status indicates a retryable failure
  */
 export function isRetryableFailure(status: CheckbookStatus): boolean {
-  return (
-    status === CheckbookStatus.ProofFailed ||
-    status === CheckbookStatus.SubmissionFailed
-  );
+  return status === CheckbookStatus.ProofFailed || status === CheckbookStatus.SubmissionFailed;
 }
 
 /**
@@ -60,7 +54,3 @@ export function isProcessing(status: CheckbookStatus): boolean {
     status === CheckbookStatus.CommitmentPending
   );
 }
-
-
-
-

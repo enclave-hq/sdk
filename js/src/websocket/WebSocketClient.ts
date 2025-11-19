@@ -107,7 +107,7 @@ export class WebSocketClient {
     });
 
     // Set up message handler
-    this.messageHandler.on('*', (message) => {
+    this.messageHandler.on('*', message => {
       this.emit('message', message);
     });
   }
@@ -168,10 +168,7 @@ export class WebSocketClient {
       if (this.config.autoReconnect) {
         await this.attemptReconnection();
       } else {
-        throw new WebSocketError(
-          `Failed to connect: ${error.message}`,
-          { originalError: error }
-        );
+        throw new WebSocketError(`Failed to connect: ${error.message}`, { originalError: error });
       }
     }
   }
@@ -234,7 +231,7 @@ export class WebSocketClient {
     };
 
     const backendType = backendTypeMap[channel] || channel;
-    
+
     // Send message in backend format
     const message = {
       action: 'subscribe',
@@ -268,7 +265,7 @@ export class WebSocketClient {
     };
 
     const backendType = backendTypeMap[channel] || channel;
-    
+
     // Send message in backend format
     const message = {
       action: 'unsubscribe',
@@ -324,7 +321,7 @@ export class WebSocketClient {
   private emit(event: string, data?: any): void {
     const handlers = this.eventHandlers.get(event);
     if (handlers) {
-      handlers.forEach((handler) => {
+      handlers.forEach(handler => {
         try {
           handler(data);
         } catch (error) {
@@ -348,7 +345,9 @@ export class WebSocketClient {
    * Create default WebSocket adapter
    */
   private async createDefaultAdapter(): Promise<IWebSocketAdapter> {
-    const { BrowserWebSocketAdapter } = await import('../adapters/websocket/BrowserWebSocketAdapter');
+    const { BrowserWebSocketAdapter } = await import(
+      '../adapters/websocket/BrowserWebSocketAdapter'
+    );
     return new BrowserWebSocketAdapter();
   }
 
@@ -358,7 +357,7 @@ export class WebSocketClient {
   private setupAdapterHandlers(): void {
     if (!this.adapter) return;
 
-    this.adapter.onMessage((data) => {
+    this.adapter.onMessage(data => {
       try {
         const message = JSON.parse(data) as WSServerMessage;
         this.handleMessage(message);
@@ -376,7 +375,7 @@ export class WebSocketClient {
       this.handleDisconnect();
     });
 
-    this.adapter.onError((error) => {
+    this.adapter.onError(error => {
       this.logger.error('WebSocket adapter error:', error);
       this.emit('error', error);
     });
@@ -429,9 +428,11 @@ export class WebSocketClient {
     }
 
     this.setState(WebSocketState.RECONNECTING);
-    this.logger.info(`Reconnecting in ${delay}ms (attempt ${this.reconnectionManager.getAttempt()})`);
+    this.logger.info(
+      `Reconnecting in ${delay}ms (attempt ${this.reconnectionManager.getAttempt()})`
+    );
 
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    await new Promise(resolve => setTimeout(resolve, delay));
 
     try {
       await this.connect();
@@ -530,7 +531,7 @@ export class WebSocketClient {
       const currentTime = Date.now();
 
       // Force send ping if we're overdue (more than 1.5x the interval)
-      if (this.nextPingTime && currentTime >= this.nextPingTime + (this.config.pingInterval * 0.5)) {
+      if (this.nextPingTime && currentTime >= this.nextPingTime + this.config.pingInterval * 0.5) {
         try {
           this.lastPingTimestamp = currentTime;
           this.nextPingTime = currentTime + this.config.pingInterval;
@@ -602,4 +603,3 @@ export class WebSocketClient {
     this.visibilityChangeHandler = undefined;
   }
 }
-

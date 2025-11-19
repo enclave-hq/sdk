@@ -28,10 +28,7 @@ export function validateRequired<T>(
  * @param fieldName - Field name for error message
  * @throws ValidationError if string is empty
  */
-export function validateNonEmptyString(
-  value: string,
-  fieldName: string
-): void {
+export function validateNonEmptyString(value: string, fieldName: string): void {
   validateRequired(value, fieldName);
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new ValidationError(`${fieldName} must be a non-empty string`, fieldName);
@@ -44,10 +41,7 @@ export function validateNonEmptyString(
  * @param fieldName - Field name for error message
  * @throws ValidationError if not a positive number
  */
-export function validatePositiveNumber(
-  value: number,
-  fieldName: string
-): void {
+export function validatePositiveNumber(value: number, fieldName: string): void {
   validateRequired(value, fieldName);
   if (typeof value !== 'number' || value <= 0 || isNaN(value)) {
     throw new ValidationError(`${fieldName} must be a positive number`, fieldName);
@@ -60,16 +54,10 @@ export function validatePositiveNumber(
  * @param fieldName - Field name for error message
  * @throws ValidationError if not a non-negative number
  */
-export function validateNonNegativeNumber(
-  value: number,
-  fieldName: string
-): void {
+export function validateNonNegativeNumber(value: number, fieldName: string): void {
   validateRequired(value, fieldName);
   if (typeof value !== 'number' || value < 0 || isNaN(value)) {
-    throw new ValidationError(
-      `${fieldName} must be a non-negative number`,
-      fieldName
-    );
+    throw new ValidationError(`${fieldName} must be a non-negative number`, fieldName);
   }
 }
 
@@ -95,19 +83,12 @@ export function validateAmount(value: string, fieldName: string): void {
  * @param length - Expected length in bytes (optional)
  * @throws ValidationError if not a valid hex string
  */
-export function validateHex(
-  value: string,
-  fieldName: string,
-  length?: number
-): void {
+export function validateHex(value: string, fieldName: string, length?: number): void {
   validateNonEmptyString(value, fieldName);
 
   if (!isValidHex(value, length)) {
     const lengthMsg = length ? ` of length ${length} bytes` : '';
-    throw new ValidationError(
-      `${fieldName} must be a valid hex string${lengthMsg}`,
-      fieldName
-    );
+    throw new ValidationError(`${fieldName} must be a valid hex string${lengthMsg}`, fieldName);
   }
 }
 
@@ -121,10 +102,7 @@ export function validateEthAddress(value: string, fieldName: string): void {
   validateNonEmptyString(value, fieldName);
 
   if (!isValidAddress(value)) {
-    throw new ValidationError(
-      `${fieldName} must be a valid Ethereum address`,
-      fieldName
-    );
+    throw new ValidationError(`${fieldName} must be a valid Ethereum address`, fieldName);
   }
 }
 
@@ -141,10 +119,7 @@ export function validateUniversalAddress(
   validateRequired(value, fieldName);
 
   if (!value.chainId || !value.address) {
-    throw new ValidationError(
-      `${fieldName} must have chainId and address`,
-      fieldName
-    );
+    throw new ValidationError(`${fieldName} must have chainId and address`, fieldName);
   }
 
   validatePositiveNumber(value.chainId, `${fieldName}.chainId`);
@@ -195,10 +170,7 @@ export function validateChainId(value: number, fieldName: string): void {
 
   // Chain ID should be a reasonable number (not too large)
   if (value > 2 ** 32) {
-    throw new ValidationError(
-      `${fieldName} exceeds maximum chain ID`,
-      fieldName
-    );
+    throw new ValidationError(`${fieldName} exceeds maximum chain ID`, fieldName);
   }
 }
 
@@ -218,10 +190,7 @@ export function validateEnum<T extends Record<string, string>>(
 
   const validValues = Object.values(enumObj);
   if (!validValues.includes(value)) {
-    throw new ValidationError(
-      `${fieldName} must be one of: ${validValues.join(', ')}`,
-      fieldName
-    );
+    throw new ValidationError(`${fieldName} must be one of: ${validValues.join(', ')}`, fieldName);
   }
 }
 
@@ -240,10 +209,7 @@ export function validatePagination(page?: number, limit?: number): void {
     validatePositiveNumber(limit, 'limit');
 
     if (limit > 1000) {
-      throw new ValidationError(
-        'limit cannot exceed 1000',
-        'limit'
-      );
+      throw new ValidationError('limit cannot exceed 1000', 'limit');
     }
   }
 }
@@ -259,10 +225,7 @@ export function validateSignature(signature: string, fieldName: string): void {
 
   // Ethereum signatures are 65 bytes (130 hex chars + 0x prefix)
   if (!isValidHex(signature, 65)) {
-    throw new ValidationError(
-      `${fieldName} must be a valid 65-byte signature`,
-      fieldName
-    );
+    throw new ValidationError(`${fieldName} must be a valid 65-byte signature`, fieldName);
   }
 }
 
@@ -280,9 +243,7 @@ export function validateRequiredFields(
 ): void {
   validateRequired(obj, objectName);
 
-  const missingFields = fields.filter(
-    (field) => obj[field] === undefined || obj[field] === null
-  );
+  const missingFields = fields.filter(field => obj[field] === undefined || obj[field] === null);
 
   if (missingFields.length > 0) {
     throw new ValidationError(
@@ -291,4 +252,3 @@ export function validateRequiredFields(
     );
   }
 }
-

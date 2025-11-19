@@ -21,24 +21,24 @@ export function mapToFrontendStatus(
     [WithdrawRequestStatus.Proving]: WithdrawRequestFrontendStatus.Proving,
     [WithdrawRequestStatus.ProofFailed]: WithdrawRequestFrontendStatus.Failed,
     [WithdrawRequestStatus.ProofGenerated]: WithdrawRequestFrontendStatus.Submitting,
-    
+
     // Stage 2: On-chain Verification
     [WithdrawRequestStatus.Submitting]: WithdrawRequestFrontendStatus.Submitting,
     [WithdrawRequestStatus.SubmitFailed]: WithdrawRequestFrontendStatus.Failed,
     [WithdrawRequestStatus.VerifyFailed]: WithdrawRequestFrontendStatus.FailedPermanent,
     [WithdrawRequestStatus.Submitted]: WithdrawRequestFrontendStatus.Pending,
     [WithdrawRequestStatus.ExecuteConfirmed]: WithdrawRequestFrontendStatus.Processing,
-    
+
     // Stage 3: Intent Execution
     [WithdrawRequestStatus.WaitingForPayout]: WithdrawRequestFrontendStatus.Processing,
     [WithdrawRequestStatus.PayoutProcessing]: WithdrawRequestFrontendStatus.Processing,
     [WithdrawRequestStatus.PayoutFailed]: WithdrawRequestFrontendStatus.Failed,
     [WithdrawRequestStatus.PayoutCompleted]: WithdrawRequestFrontendStatus.Processing,
-    
+
     // Stage 4: Hook Purchase
     [WithdrawRequestStatus.HookProcessing]: WithdrawRequestFrontendStatus.Processing,
     [WithdrawRequestStatus.HookFailed]: WithdrawRequestFrontendStatus.Completed,
-    
+
     // Terminal States
     [WithdrawRequestStatus.Completed]: WithdrawRequestFrontendStatus.Completed,
     [WithdrawRequestStatus.CompletedWithHookFailed]: WithdrawRequestFrontendStatus.Completed,
@@ -46,7 +46,7 @@ export function mapToFrontendStatus(
     [WithdrawRequestStatus.ManuallyResolved]: WithdrawRequestFrontendStatus.Completed, // ⭐ Manually resolved = completed
     [WithdrawRequestStatus.Cancelled]: WithdrawRequestFrontendStatus.Failed,
   };
-  
+
   return mapping[backendStatus] || WithdrawRequestFrontendStatus.Failed;
 }
 
@@ -101,7 +101,7 @@ export function getStatusDisplayText(
       ko: '영구 실패',
     },
   };
-  
+
   return texts[wr.frontendStatus][locale];
 }
 
@@ -113,17 +113,17 @@ export function canRetry(wr: WithdrawRequest): boolean {
   if (wr.status === WithdrawRequestStatus.ProofFailed) {
     return true;
   }
-  
+
   // Stage 2: Submit failed (RPC/network error) - can retry
   if (wr.status === WithdrawRequestStatus.SubmitFailed) {
     return true;
   }
-  
+
   // Stage 2: Verify failed (proof invalid) - cannot retry
   if (wr.status === WithdrawRequestStatus.VerifyFailed) {
     return false;
   }
-  
+
   // ⭐ Simplified design: Payout/Hook/Fallback failures are not retried automatically
   // They are marked as failed_permanent and require manual resolution
   // Stage 3-4: Payout or Hook failed - cannot retry (waiting for manual resolution)
@@ -134,7 +134,7 @@ export function canRetry(wr: WithdrawRequest): boolean {
   ) {
     return false; // ⭐ No automatic retry, waiting for manual resolution
   }
-  
+
   return false;
 }
 
@@ -146,17 +146,17 @@ export function canCancel(wr: WithdrawRequest): boolean {
   if (wr.status === WithdrawRequestStatus.ProofFailed) {
     return true;
   }
-  
+
   // Stage 2: Submit failed - can cancel
   if (wr.status === WithdrawRequestStatus.SubmitFailed) {
     return true;
   }
-  
+
   // Stage 2: Verify failed - MUST cancel (only option)
   if (wr.status === WithdrawRequestStatus.VerifyFailed) {
     return true;
   }
-  
+
   // After execute confirmed, cannot cancel (nullifiers consumed)
   return false;
 }
@@ -225,7 +225,7 @@ export function getCurrentStage(wr: WithdrawRequest): 1 | 2 | 3 | 4 {
     [WithdrawRequestStatus.ManuallyResolved]: 4, // ⭐ Terminal state
     [WithdrawRequestStatus.Cancelled]: 1,
   };
-  
+
   return stageMapping[wr.status] || 1;
 }
 
@@ -236,16 +236,16 @@ export function getProgressPercentage(wr: WithdrawRequest): number {
   if (wr.status === WithdrawRequestStatus.Completed) {
     return 100;
   }
-  
+
   const stage = getCurrentStage(wr);
-  
+
   // Stage 1: 0-25%
   if (stage === 1) {
     if (wr.status === WithdrawRequestStatus.Proving) return 15;
     if (wr.status === WithdrawRequestStatus.ProofGenerated) return 25;
     return 0;
   }
-  
+
   // Stage 2: 25-50%
   if (stage === 2) {
     if (wr.status === WithdrawRequestStatus.Submitting) return 35;
@@ -253,7 +253,7 @@ export function getProgressPercentage(wr: WithdrawRequest): number {
     if (wr.status === WithdrawRequestStatus.ExecuteConfirmed) return 50;
     return 25;
   }
-  
+
   // Stage 3: 50-80%
   if (stage === 3) {
     if (wr.status === WithdrawRequestStatus.WaitingForPayout) return 60;
@@ -261,10 +261,10 @@ export function getProgressPercentage(wr: WithdrawRequest): number {
     if (wr.status === WithdrawRequestStatus.PayoutCompleted) return 80;
     return 50;
   }
-  
+
   // Stage 4: 80-100%
   if (wr.status === WithdrawRequestStatus.HookProcessing) return 90;
-  
+
   return 80;
 }
 
@@ -321,7 +321,9 @@ export function getErrorDescription(
 /**
  * Get recommended retry action
  */
-export function getRetryAction(wr: WithdrawRequest): 'retry_execute' | 'retry_payout' | 'retry_hook' | 'cancel' | null {
+export function getRetryAction(
+  wr: WithdrawRequest
+): 'retry_execute' | 'retry_payout' | 'retry_hook' | 'cancel' | null {
   if (wr.status === WithdrawRequestStatus.ProofFailed) {
     return 'cancel'; // User should recreate the request
   }
@@ -342,4 +344,3 @@ export function getRetryAction(wr: WithdrawRequest): 'retry_execute' | 'retry_pa
   }
   return null;
 }
-

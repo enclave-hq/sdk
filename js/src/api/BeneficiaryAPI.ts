@@ -149,9 +149,7 @@ export class BeneficiaryAPI {
    * });
    * ```
    */
-  async claimTimeout(
-    request: ClaimTimeoutRequest
-  ): Promise<ClaimTimeoutResponse> {
+  async claimTimeout(request: ClaimTimeoutRequest): Promise<ClaimTimeoutResponse> {
     validateNonEmptyString(request.id, 'id');
 
     const response = await this.client.post<ClaimTimeoutResponse>(
@@ -161,4 +159,3 @@ export class BeneficiaryAPI {
     return response;
   }
 }
-

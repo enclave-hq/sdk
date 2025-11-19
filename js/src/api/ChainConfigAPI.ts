@@ -52,9 +52,7 @@ export class ChainConfigAPI {
    * ```
    */
   async getChainConfig(chainId: number): Promise<ChainConfig> {
-    const response = await this.client.get<{ chain: ChainConfig }>(
-      `/api/chains/${chainId}`
-    );
+    const response = await this.client.get<{ chain: ChainConfig }>(`/api/chains/${chainId}`);
     return response.chain;
   }
 
@@ -94,7 +92,7 @@ export class ChainConfigAPI {
    * ```typescript
    * // Get RPC endpoint using SLIP-44 (API call)
    * const rpcUrl = await client.chainConfig.getRpcEndpoint(714); // BSC
-   * 
+   *
    * // Convert to EVM Chain ID for provider (chain operation)
    * const evmChainId = getEvmChainIdFromSlip44(714); // Returns 56
    * const provider = new ethers.JsonRpcProvider(rpcUrl, { chainId: evmChainId });
@@ -119,9 +117,7 @@ export class ChainConfigAPI {
    * ```
    */
   async listChains(): Promise<ChainConfig[]> {
-    const response = await this.client.get<{ chains: ChainConfig[] }>(
-      '/api/chains'
-    );
+    const response = await this.client.get<{ chains: ChainConfig[] }>('/api/chains');
     return response.chains;
   }
 
@@ -142,11 +138,11 @@ export class ChainConfigAPI {
   async getAllTreasuryAddresses(): Promise<Record<number, string>> {
     const chains = await this.listChains();
     const treasuries: Record<number, string> = {};
-    
+
     for (const chain of chains) {
       treasuries[chain.chain_id] = chain.treasury_address;
     }
-    
+
     return treasuries;
   }
 }

@@ -41,7 +41,7 @@ export class PricesStore extends BaseStore<TokenPrice> {
    * @returns Token price or undefined
    */
   getBySymbol(symbol: string): TokenPrice | undefined {
-    return this.find((p) => p.symbol.toLowerCase() === symbol.toLowerCase());
+    return this.find(p => p.symbol.toLowerCase() === symbol.toLowerCase());
   }
 
   /**
@@ -50,15 +50,15 @@ export class PricesStore extends BaseStore<TokenPrice> {
    * @returns Array of token prices
    */
   getBySymbols(symbols: string[]): TokenPrice[] {
-    const symbolsLower = symbols.map((s) => s.toLowerCase());
-    return this.filter((p) => symbolsLower.includes(p.symbol.toLowerCase()));
+    const symbolsLower = symbols.map(s => s.toLowerCase());
+    return this.filter(p => symbolsLower.includes(p.symbol.toLowerCase()));
   }
 
   /**
    * Get all symbols
    */
   @computed get symbols(): string[] {
-    return this.all.map((p) => p.symbol);
+    return this.all.map(p => p.symbol);
   }
 
   /**
@@ -66,7 +66,7 @@ export class PricesStore extends BaseStore<TokenPrice> {
    */
   @computed get priceMap(): Map<string, number> {
     const map = new Map<string, number>();
-    this.all.forEach((price) => {
+    this.all.forEach(price => {
       map.set(price.symbol.toLowerCase(), price.price);
     });
     return map;
@@ -80,7 +80,7 @@ export class PricesStore extends BaseStore<TokenPrice> {
   async fetchPrices(symbols?: string[]): Promise<TokenPrice[]> {
     return this.executeAction(async () => {
       const prices = await this.api.getTokenPrices({ symbols });
-      this.updateItems(prices, (p) => p.symbol);
+      this.updateItems(prices, p => p.symbol);
       return prices;
     }, 'Failed to fetch token prices');
   }
@@ -114,7 +114,7 @@ export class PricesStore extends BaseStore<TokenPrice> {
    * @param prices - Array of token prices
    */
   updatePrices(prices: TokenPrice[]): void {
-    this.updateItems(prices, (p) => p.symbol);
+    this.updateItems(prices, p => p.symbol);
     this.logger.debug(`Updated ${prices.length} prices`);
   }
 
@@ -132,7 +132,7 @@ export class PricesStore extends BaseStore<TokenPrice> {
     }
 
     this.logger.info(`Starting auto-refresh with interval: ${refreshInterval}ms`);
-    
+
     this.refreshIntervalId = setInterval(async () => {
       try {
         await this.fetchPrices();
@@ -195,7 +195,7 @@ export class PricesStore extends BaseStore<TokenPrice> {
    * Get prices with positive 24h change
    */
   @computed get gainers(): TokenPrice[] {
-    return this.filter((p) => (p.change24h ?? 0) > 0).sort(
+    return this.filter(p => (p.change24h ?? 0) > 0).sort(
       (a, b) => (b.change24h ?? 0) - (a.change24h ?? 0)
     );
   }
@@ -204,7 +204,7 @@ export class PricesStore extends BaseStore<TokenPrice> {
    * Get prices with negative 24h change
    */
   @computed get losers(): TokenPrice[] {
-    return this.filter((p) => (p.change24h ?? 0) < 0).sort(
+    return this.filter(p => (p.change24h ?? 0) < 0).sort(
       (a, b) => (a.change24h ?? 0) - (b.change24h ?? 0)
     );
   }
@@ -216,4 +216,3 @@ export class PricesStore extends BaseStore<TokenPrice> {
     this.stopAutoRefresh();
   }
 }
-

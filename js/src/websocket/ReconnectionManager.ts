@@ -90,4 +90,3 @@ export class ReconnectionManager {
     return this.backoff.getAttempt();
   }
 }
-
