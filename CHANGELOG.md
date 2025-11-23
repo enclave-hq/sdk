@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-01-26
+
+### Added
+- Add `getGlobalZKPayProxy()` method to `ChainConfigAPI` for retrieving global ZKPay Proxy address
+- Export chain utility functions: `getChainType()`, `isEVMChain()`, `isTronChain()`, and `ChainType` enum
+- Add `sync_block_number` and `last_synced_at` fields to `ChainConfig` interface
+
+### Changed
+- Improve `EnclaveClient` authentication logic to use `userAddress.chainId` when available
+- Enhance `WalletManager` initialization to use `address.chainId` for default chain ID
+- Update `ChainConfig` interface to match backend API response format
+- Remove `zkpay_address` from chain-specific configuration (now global configuration)
+
+### Removed
+- Remove `getZKPayAddress()` and `allZKPayAddresses` from `ChainConfigStore` (use `getGlobalZKPayProxy()` instead)
+
 ## [2.1.5] - 2025-01-25
 
 ### Added

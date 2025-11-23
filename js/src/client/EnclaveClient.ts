@@ -178,9 +178,19 @@ export class EnclaveClient {
     this.kytOracleAPI = new KYTOracleAPI(this.apiClient);
 
     // Initialize wallet manager
+    // If config.address is provided, use its chainId to set defaultChainId
+    const walletChainId = config.address?.chainId;
+    this.logger.info(`🔧 [EnclaveClient] Initializing WalletManager`, {
+      hasAddress: !!config.address,
+      addressChainId: config.address?.chainId,
+      addressChainName: config.address?.chainName,
+      addressSlip44: config.address?.slip44,
+      walletChainId,
+    });
     this.walletManager = new WalletManager({
       signer: config.signer,
       address: config.address,
+      chainId: walletChainId, // Use chainId from address if available
       logger: this.logger,
     });
 
@@ -430,9 +440,19 @@ export class EnclaveClient {
         );
       }
 
-      // Get SLIP-44 chain ID from wallet (used for authentication)
-      const chainId = this.walletManager.getDefaultChainId();
-      this.logger.debug(`Using SLIP-44 chain ID: ${chainId}`);
+      // Get SLIP-44 chain ID from user address (used for authentication)
+      // Prefer userAddress.chainId over defaultChainId to ensure correct chain is used
+      const chainId = this.userAddress?.chainId ?? this.walletManager.getDefaultChainId();
+      this.logger.info(`🔐 [Authenticate] Using SLIP-44 chain ID: ${chainId}`, {
+        userAddressChainId: this.userAddress?.chainId,
+        defaultChainId: this.walletManager.getDefaultChainId(),
+        userAddress: this.userAddress ? {
+          address: this.userAddress.address,
+          chainId: this.userAddress.chainId,
+          chainName: this.userAddress.chainName,
+          slip44: this.userAddress.slip44,
+        } : null,
+      });
 
       // Step 3: Authenticate with backend
       let authResponse: { token: string; user_address: any };

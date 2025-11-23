@@ -1,6 +1,7 @@
 /**
  * Chain Configuration Store
- * Manages chain configurations including Treasury and ZKPay addresses
+ * Manages chain configurations including Treasury addresses, RPC endpoints, and other chain-specific settings
+ * Note: ZKPay address is a global configuration (not chain-specific), use client.chainConfig.getGlobalZKPayProxy() instead
  * @module stores/ChainConfigStore
  */
 
@@ -58,16 +59,6 @@ export class ChainConfigStore extends BaseStore<ChainConfig> {
   }
 
   /**
-   * Get ZKPay address for a chain
-   * @param chainId - SLIP-44 chain ID
-   * @returns ZKPay address or undefined
-   */
-  getZKPayAddress(chainId: number): string | undefined {
-    const chain = this.getChain(chainId);
-    return chain?.zkpay_address;
-  }
-
-  /**
    * Get IntentManager address for a chain
    * @param chainId - SLIP-44 chain ID
    * @returns IntentManager address or undefined
@@ -112,19 +103,6 @@ export class ChainConfigStore extends BaseStore<ChainConfig> {
     for (const chain of this.allChains) {
       if (chain.treasury_address) {
         result[chain.chain_id] = chain.treasury_address;
-      }
-    }
-    return result;
-  }
-
-  /**
-   * Get all ZKPay addresses as a map
-   */
-  @computed get allZKPayAddresses(): Record<number, string> {
-    const result: Record<number, string> = {};
-    for (const chain of this.allChains) {
-      if (chain.zkpay_address) {
-        result[chain.chain_id] = chain.zkpay_address;
       }
     }
     return result;

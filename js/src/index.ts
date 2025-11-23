@@ -108,6 +108,10 @@ export {
   getSlip44FromChainId,
   getEvmChainIdFromSlip44,
   getChainName,
+  getChainType,
+  isEVMChain,
+  isTronChain,
+  ChainType,
 
   // Error classes
   EnclaveError,

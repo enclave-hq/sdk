@@ -7,6 +7,7 @@ import type { APIClient } from './APIClient';
 
 /**
  * Chain configuration response
+ * Matches the backend API response from GET /api/chains
  */
 export interface ChainConfig {
   id: number;
@@ -14,13 +15,16 @@ export interface ChainConfig {
   chain_name: string;
   treasury_address: string;
   intent_manager_address: string;
-  zkpay_address: string;
   rpc_endpoint: string;
   explorer_url: string;
   sync_enabled: boolean;
+  sync_block_number: number;
+  last_synced_at: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Note: zkpay_address is not included here because it's a global configuration,
+  // not chain-specific. Use getGlobalZKPayProxy() method instead.
 }
 
 /**
@@ -144,5 +148,20 @@ export class ChainConfigAPI {
     }
 
     return treasuries;
+  }
+
+  /**
+   * Get global ZKPay Proxy address
+   * ZKPay Proxy is a global configuration (same for all chains), not chain-specific
+   * @returns Global ZKPay Proxy contract address
+   * @example
+   * ```typescript
+   * const zkpayProxy = await client.chainConfig.getGlobalZKPayProxy();
+   * // "0xF5Dc3356F755E027550d82F665664b06977fa6d0"
+   * ```
+   */
+  async getGlobalZKPayProxy(): Promise<string> {
+    const response = await this.client.get<{ zkpay_proxy: string; source: string }>('/api/admin/config/zkpay-proxy');
+    return response.zkpay_proxy;
   }
 }
