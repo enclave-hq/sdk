@@ -250,7 +250,7 @@ export class CommitmentCore {
    * @param ownerAddress - Owner address
    * @param depositId - Deposit ID (32 bytes)
    * @param chainId - Chain ID
-   * @param tokenId - Token ID
+   * @param tokenKey - Token key string (e.g., "USDT", "USDC")
    * @param targetAllocation - Target allocation to generate nullifier for
    * @returns Nullifier hash (32 bytes)
    */
@@ -259,7 +259,7 @@ export class CommitmentCore {
     ownerAddress: UniversalAddress,
     depositId: Uint8Array,
     chainId: number,
-    tokenId: number,
+    tokenKey: string,
     targetAllocation: Allocation
   ): Uint8Array {
     // Step 1: Generate commitment
@@ -268,7 +268,7 @@ export class CommitmentCore {
       ownerAddress,
       depositId,
       chainId,
-      tokenId
+      tokenKey
     );
 
     // Step 2: Generate nullifier
@@ -284,7 +284,7 @@ export class CommitmentCore {
    * @param ownerAddress - Owner address
    * @param depositId - Deposit ID (32 bytes)
    * @param chainId - Chain ID
-   * @param tokenId - Token ID
+   * @param tokenKey - Token key string (e.g., "USDT", "USDC")
    * @returns Array of nullifier hashes (32 bytes each)
    */
   static generateNullifiersBatch(
@@ -292,7 +292,7 @@ export class CommitmentCore {
     ownerAddress: UniversalAddress,
     depositId: Uint8Array,
     chainId: number,
-    tokenId: number
+    tokenKey: string
   ): Uint8Array[] {
     // Step 1: Generate commitment once (performance optimization)
     const commitment = this.generateCommitmentWithOwner(
@@ -300,7 +300,7 @@ export class CommitmentCore {
       ownerAddress,
       depositId,
       chainId,
-      tokenId
+      tokenKey
     );
 
     // Step 2: Generate nullifier for each allocation

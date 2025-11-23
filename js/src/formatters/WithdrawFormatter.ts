@@ -42,7 +42,8 @@ export class WithdrawFormatter {
    * @param chainName - Optional chain name (e.g., "Ethereum", "BSC", "TRON").
    *                    If not provided, will be derived from beneficiary chainId.
    *                    Providing chainName makes the message more user-friendly in wallet signatures.
-   * @param checkbookInfo - Optional checkbook info containing localDepositId and chainId
+   * @param checkbookInfo - Optional checkbook info containing localDepositId and chainId (for backward compatibility)
+   * @param allocationCheckbookMap - Optional map from allocation ID to checkbook info (for cross-deposit support)
    * @param minOutput - Optional minimum output constraint (default: 0)
    * @returns Withdrawal sign data ready for signing
    */
@@ -53,7 +54,8 @@ export class WithdrawFormatter {
     lang: number = LANG_EN,
     chainName?: string,
     checkbookInfo?: { localDepositId?: number; slip44ChainId?: number },
-    minOutput: string = '0'
+    minOutput: string = '0',
+    allocationCheckbookMap?: Map<string, { localDepositId?: number; slip44ChainId?: number }>
   ): WithdrawalSignData {
     // Validate inputs
     validateNonEmptyArray(allocations, 'allocations');
@@ -109,7 +111,8 @@ export class WithdrawFormatter {
       lang,
       chainName,
       checkbookInfo,
-      minOutput
+      minOutput,
+      allocationCheckbookMap
     );
 
     // Compute message hash
@@ -196,7 +199,8 @@ export class WithdrawFormatter {
     lang: number,
     chainName?: string,
     checkbookInfo?: { localDepositId?: number; slip44ChainId?: number },
-    minOutput: string = '0'
+    minOutput: string = '0',
+    allocationCheckbookMap?: Map<string, { localDepositId?: number; slip44ChainId?: number }>
   ): string {
     let message = '';
 
@@ -226,11 +230,39 @@ export class WithdrawFormatter {
     }
 
     // 2. Allocations - display all allocations with deposit_id and seq
-    const depositId = checkbookInfo?.localDepositId || 0;
-    const allocationsWithInfo = allocations.map(alloc => ({
-      allocation: alloc,
-      depositId,
-    }));
+    // Support cross-deposit: each allocation uses its own checkbook's localDepositId
+    const allocationsWithInfo = allocations.map(alloc => {
+      // If allocationCheckbookMap is provided, use it to get the correct depositId for each allocation
+      // Otherwise, fall back to checkbookInfo (for backward compatibility)
+      let depositId: number;
+      if (allocationCheckbookMap && allocationCheckbookMap.has(alloc.id)) {
+        const allocCheckbookInfo = allocationCheckbookMap.get(alloc.id);
+        depositId = allocCheckbookInfo?.localDepositId || 0;
+        // Debug: Log the mapping (only in development)
+        if (process.env.NODE_ENV === 'development') {
+          // eslint-disable-next-line no-console
+          console.log(
+            `[WithdrawFormatter] Allocation ${alloc.id} -> depositId ${depositId} (from allocationCheckbookMap)`
+          );
+        }
+      } else {
+        depositId = checkbookInfo?.localDepositId || 0;
+        // This should not happen if allocationCheckbookMap is properly provided
+        // Log warning (always log this as it indicates a problem)
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[WithdrawFormatter] ⚠️ Allocation ${alloc.id} not found in allocationCheckbookMap!`,
+          `Using fallback depositId ${depositId}.`,
+          `Map has ${allocationCheckbookMap?.size || 0} entries.`,
+          `Map keys:`,
+          allocationCheckbookMap ? Array.from(allocationCheckbookMap.keys()) : 'null'
+        );
+      }
+      return {
+        allocation: alloc,
+        depositId,
+      };
+    });
 
     switch (lang) {
       case LANG_ZH:

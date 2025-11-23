@@ -102,27 +102,104 @@ export class WithdrawalAction {
       }
       allocations.push(allocation);
     }
+    
+    // Log allocations and their checkbookIds immediately after fetching
+    this.logger.info('📋 Allocations retrieved for withdrawal', {
+      allocationCount: allocations.length,
+      allocations: allocations.map(a => ({
+        id: a.id,
+        checkbookId: a.checkbookId,
+        seq: a.seq,
+        amount: a.amount,
+      })),
+      uniqueCheckbookIds: [...new Set(allocations.map(a => a.checkbookId))],
+      checkbookIdCount: new Set(allocations.map(a => a.checkbookId)).size,
+    });
 
     // Get token symbol from checkbook's token (tokenKey = token.symbol)
-    // All allocations in a withdraw request should be from the same checkbook, so we use the first allocation's checkbook
+    // Support cross-deposit: allocations can be from different checkbooks
+    // We'll use the first allocation's checkbook for token symbol (all should have the same token)
     const firstAllocation = allocations[0];
+    if (!firstAllocation) {
+      throw new Error('At least one allocation is required');
+    }
     let tokenSymbol: string;
 
-    // Get checkbook to access token symbol (tokenKey)
-    // Always fetch from API to ensure we have the latest token information
-    let checkbook = this.checkbooksStore.get(firstAllocation.checkbookId);
-    const needsRefresh = !checkbook || !checkbook.token?.symbol;
-
-    if (needsRefresh) {
-      // Fetch from API to get token information
-      this.logger.debug('Fetching checkbook from API to get token info', {
-        checkbookId: firstAllocation.checkbookId,
-        hasCheckbook: !!checkbook,
-        hasTokenSymbol: !!checkbook?.token?.symbol,
+    // Get all checkbooks for all allocations (support cross-deposit)
+    const checkbookMap = new Map<string, Checkbook>();
+    const allocationCheckbookMap = new Map<string, { localDepositId?: number; slip44ChainId?: number }>();
+    
+    // Log all allocations and their checkbookIds first
+    this.logger.info('🔍 Processing allocations for cross-deposit support', {
+      allocationCount: allocations.length,
+      allocations: allocations.map(a => ({
+        id: a.id,
+        checkbookId: a.checkbookId,
+        seq: a.seq,
+      })),
+      uniqueCheckbookIds: [...new Set(allocations.map(a => a.checkbookId))],
+      checkbookIdCount: new Set(allocations.map(a => a.checkbookId)).size,
+    });
+    
+    for (const allocation of allocations) {
+      if (!allocation.checkbookId) {
+        throw new Error(`Allocation ${allocation.id} has no checkbookId`);
+      }
+      
+      // Get checkbook from store or fetch from API
+      // IMPORTANT: Also check for localDepositId (required for cross-deposit support)
+      let checkbook = this.checkbooksStore.get(allocation.checkbookId);
+      const needsRefresh = !checkbook || !checkbook.token?.symbol || 
+                          checkbook.localDepositId === undefined || checkbook.localDepositId === null;
+      
+      if (needsRefresh) {
+        this.logger.info(`📥 Fetching checkbook ${allocation.checkbookId} from API for allocation ${allocation.id}`, {
+          checkbookId: allocation.checkbookId,
+          allocationId: allocation.id,
+          hasCheckbook: !!checkbook,
+          hasTokenSymbol: !!checkbook?.token?.symbol,
+          hasLocalDepositId: checkbook?.localDepositId !== undefined && checkbook?.localDepositId !== null,
+        });
+        checkbook = await this.checkbooksStore.fetchById(allocation.checkbookId);
+      } else {
+        this.logger.info(`✅ Using cached checkbook ${allocation.checkbookId} for allocation ${allocation.id}`, {
+          checkbookId: allocation.checkbookId,
+          allocationId: allocation.id,
+          localDepositId: checkbook.localDepositId,
+        });
+      }
+      
+      // Ensure localDepositId exists (critical for cross-deposit support)
+      if (checkbook.localDepositId === undefined || checkbook.localDepositId === null) {
+        throw new Error(
+          `Checkbook ${allocation.checkbookId} is missing localDepositId. ` +
+          `Cannot proceed with withdrawal. Please ensure the checkbook has been properly created.`
+        );
+      }
+      
+      if (!checkbook) {
+        throw new Error(`Checkbook ${allocation.checkbookId} not found`);
+      }
+      
+      checkbookMap.set(allocation.checkbookId, checkbook);
+      
+      // Store checkbook info for this allocation (for cross-deposit support)
+      allocationCheckbookMap.set(allocation.id, {
+        localDepositId: checkbook.localDepositId,
+        slip44ChainId: checkbook.slip44ChainId,
       });
-      checkbook = await this.checkbooksStore.fetchById(firstAllocation.checkbookId);
+      
+      // Debug log for cross-deposit support
+      this.logger.info('✅ Mapped allocation to checkbook', {
+        allocationId: allocation.id,
+        checkbookId: allocation.checkbookId,
+        localDepositId: checkbook.localDepositId,
+        slip44ChainId: checkbook.slip44ChainId,
+      });
     }
-
+    
+    // Use first allocation's checkbook for token symbol (all should have the same token)
+    const checkbook = checkbookMap.get(firstAllocation.checkbookId);
     if (!checkbook) {
       throw new Error(`Checkbook ${firstAllocation.checkbookId} not found`);
     }
@@ -230,7 +307,8 @@ export class WithdrawalAction {
     // Get chain name for better user experience in wallet signatures
     const chainName = params.intent.beneficiary.chainName || undefined;
 
-    // Prepare checkbook info for message formatting
+    // Prepare checkbook info for message formatting (for backward compatibility)
+    // Note: For cross-deposit support, allocationCheckbookMap is used instead
     const checkbookInfo = {
       localDepositId: checkbook.localDepositId,
       slip44ChainId: checkbook.slip44ChainId,
@@ -239,15 +317,35 @@ export class WithdrawalAction {
     // Get minOutput from params (default: 0)
     const minOutput = (params as any).minOutput || '0';
 
+    // Debug: Log allocationCheckbookMap before passing to formatter
+    // Always log this to help debug cross-deposit issues
+    this.logger.info('🔍 allocationCheckbookMap before prepareSignData', {
+      mapSize: allocationCheckbookMap.size,
+      allocations: allocations.map(a => ({
+        id: a.id,
+        checkbookId: a.checkbookId,
+        hasMapping: allocationCheckbookMap.has(a.id),
+        localDepositId: allocationCheckbookMap.get(a.id)?.localDepositId,
+        seq: a.seq,
+      })),
+      mapEntries: Array.from(allocationCheckbookMap.entries()).map(([id, info]) => ({
+        allocationId: id,
+        localDepositId: info.localDepositId,
+        slip44ChainId: info.slip44ChainId,
+      })),
+    });
+
     // Use WithdrawFormatter to generate sign data (matching lib.rs)
+    // Pass allocationCheckbookMap for cross-deposit support (each allocation uses its own depositId)
     const signData = WithdrawFormatter.prepareSignData(
       allocations,
       params.intent,
       tokenSymbol,
       lang,
       chainName, // chainName for better user experience
-      checkbookInfo, // checkbook info for deposit_id and chain_id
-      minOutput // minimum output constraint
+      checkbookInfo, // checkbook info for backward compatibility
+      minOutput, // minimum output constraint
+      allocationCheckbookMap // map from allocation ID to checkbook info (for cross-deposit support)
     );
 
     this.logger.debug('Withdrawal sign data prepared', {

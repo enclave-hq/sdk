@@ -779,3 +779,105 @@ export interface StatisticsOverviewResponse {
   /** Total volume amount in wei (raw, not converted to USD) */
   total_volume_amount: string;
 }
+
+// ============ KYT Oracle ============
+
+/**
+ * Get invitation code by address request
+ */
+
+/**
+ * Get fee info by address request
+ */
+export interface GetFeeInfoRequest {
+  /** User's address */
+  address: string;
+  /** Chain identifier (e.g., 'bsc', 'ethereum', 'polygon') */
+  chain: string;
+  /** Token key (optional, e.g., 'USDT', 'USDC') */
+  tokenKey?: string;
+}
+
+/**
+ * Fee information data
+ */
+export interface FeeInfoData {
+  /** Base fee in wei (BigInt as string) */
+  baseFee: string;
+  /** Fee rate in basis points (0.01% = 1 bps) */
+  feeRateBps: number;
+  /** Chain identifier */
+  chain: string;
+  /** Address */
+  address: string;
+  /** Token key */
+  tokenKey: string;
+  /** Risk level (low, medium, high, critical) */
+  riskLevel: string;
+  /** Risk score (0-100) */
+  riskScore: number;
+  /** Base fee rate percentage */
+  baseFeeRatePercent: number;
+  /** Risk-based fee percentage */
+  riskBasedFeePercent: number;
+  /** Final fee rate percentage */
+  finalFeeRatePercent: number;
+  /** Invitation code (if associated) */
+  invitationCode: string;
+  /** Invitation source ('local' or 'node-nft') */
+  invitationSource: string;
+}
+
+/**
+ * Get fee info by address response
+ */
+export interface GetFeeInfoResponse {
+  /** Success status */
+  success: boolean;
+  /** Fee information data */
+  data?: FeeInfoData;
+  /** Last query time */
+  last_query_time?: string;
+  /** Memo message: "更新成功" or "每次存款前只能查询一次" */
+  memo?: string;
+  /** Risk score from last query (included even when rate limited) */
+  risk_score?: number;
+  /** Risk level from last query (included even when rate limited) */
+  risk_level?: string;
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
+ * Associate address with invitation code request
+ */
+export interface AssociateAddressRequest {
+  /** User's address */
+  address: string;
+  /** Invitation code */
+  code: string;
+  /** Chain identifier (optional) */
+  chain?: string;
+  /** Token key for fee info (optional, defaults to 'USDT') */
+  tokenKey?: string;
+}
+
+/**
+ * Associate address with invitation code response
+ */
+export interface AssociateAddressResponse {
+  /** Success status */
+  success: boolean;
+  /** Success message */
+  message?: string;
+  /** Error message if failed */
+  error?: string;
+  /** Fee information (included if code changed and fee info was fetched) */
+  data?: FeeInfoData;
+  /** Last query time */
+  last_query_time?: string;
+  /** Risk score from last query */
+  risk_score?: number;
+  /** Risk level from last query */
+  risk_level?: string;
+}

@@ -32,6 +32,7 @@ import { ChainConfigAPI } from '../api/ChainConfigAPI';
 import { BeneficiaryAPI } from '../api/BeneficiaryAPI';
 import { TokenRoutingAPI } from '../api/TokenRoutingAPI';
 import { StatisticsAPI } from '../api/StatisticsAPI';
+import { KYTOracleAPI } from '../api/KYTOracleAPI';
 
 // Stores
 import { CheckbooksStore } from '../stores/CheckbooksStore';
@@ -88,6 +89,7 @@ export class EnclaveClient {
   private readonly beneficiaryAPI: BeneficiaryAPI;
   private readonly tokenRoutingAPI: TokenRoutingAPI;
   private readonly statisticsAPI: StatisticsAPI;
+  private readonly kytOracleAPI: KYTOracleAPI;
 
   // Stores
   public readonly stores: {
@@ -173,6 +175,7 @@ export class EnclaveClient {
     this.beneficiaryAPI = new BeneficiaryAPI(this.apiClient);
     this.tokenRoutingAPI = new TokenRoutingAPI(this.apiClient);
     this.statisticsAPI = new StatisticsAPI(this.apiClient);
+    this.kytOracleAPI = new KYTOracleAPI(this.apiClient);
 
     // Initialize wallet manager
     this.walletManager = new WalletManager({
@@ -383,7 +386,7 @@ export class EnclaveClient {
       const { nonce } = nonceResponse;
 
       // Use message from backend if available, otherwise create one
-      // Backend returns message in format: "ZKPay Authentication\nNonce: {nonce}\nTimestamp: {timestamp}"
+      // Backend returns message in format: "Enclave Authentication\nNonce: {nonce}\nTimestamp: {timestamp}"
       let message: string;
       if (nonceResponse.message) {
         message = nonceResponse.message;
@@ -901,5 +904,35 @@ export class EnclaveClient {
    */
   get tokenRouting(): TokenRoutingAPI {
     return this.tokenRoutingAPI;
+  }
+
+  /**
+   * Get KYT Oracle API for fee and risk assessment queries
+   * Use this to query invitation codes, fee information, and associate addresses with invitation codes
+   * @example
+   * ```typescript
+   * // Get invitation code for an address
+   * const codeInfo = await client.kytOracle.getInvitationCodeByAddress({
+   *   address: '0x...',
+   *   chain: 'bsc'
+   * });
+   *
+   * // Get fee information with rate limiting
+   * const feeInfo = await client.kytOracle.getFeeInfoByAddress({
+   *   address: '0x...',
+   *   chain: 'bsc',
+   *   tokenKey: 'USDT'
+   * });
+   *
+   * // Associate address with invitation code
+   * await client.kytOracle.associateAddressWithCode({
+   *   address: '0x...',
+   *   code: 'INVATE3',
+   *   chain: 'bsc'
+   * });
+   * ```
+   */
+  get kytOracle(): KYTOracleAPI {
+    return this.kytOracleAPI;
   }
 }

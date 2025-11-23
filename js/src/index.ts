@@ -46,7 +46,16 @@ export type {
 } from './types/config';
 
 // ============ API Types ============
-export type { APIResponse, APIError as APIErrorResponse } from './types/api';
+export type {
+  APIResponse,
+  APIError as APIErrorResponse,
+  // KYT Oracle API Types
+  GetFeeInfoRequest,
+  GetFeeInfoResponse,
+  FeeInfoData,
+  AssociateAddressRequest,
+  AssociateAddressResponse,
+} from './types/api';
 
 // ============ Event Types ============
 export { EventName } from './types/events';
