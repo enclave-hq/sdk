@@ -54,7 +54,7 @@ export default defineConfig({
   // 打包配置
   esbuildOptions(options) {
     options.banner = {
-      js: '// Enclave SDK v2.0 - https://enclave-hq.com',
+      js: '// Enclave SDK v2.2.2 - https://enclave-hq.com',
     };
   },
 });
