@@ -424,13 +424,16 @@ export class CommitmentFormatter {
     // Convert depositId to bytes
     const depositIdBytes = hexToBytes(depositId);
 
+    // Convert tokenId to string (tokenKey)
+    const tokenKey = String(tokenId);
+
     // Generate commitment
     const commitment = CommitmentCore.generateCommitmentWithOwner(
       coreAllocations,
       ownerAddress,
       depositIdBytes,
       chainId,
-      tokenId
+      tokenKey
     );
 
     return bytesToHex(commitment);
