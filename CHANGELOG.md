@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.2.1] - 2025-01-27
 
+### Fixed
+- Fix `generateCommitment` method to use `tokenKey: string` instead of `tokenId: number` parameter
+- Remove incorrect tokenId to tokenKey conversion (tokenKey should be passed directly)
+
 ### Changed
 - Update StatisticsAPI, CommitmentFormatter, and related utilities
 - Improve checkbook status handling and integration test documentation
