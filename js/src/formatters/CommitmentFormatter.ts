@@ -403,7 +403,7 @@ export class CommitmentFormatter {
    * @param ownerAddress - Owner's universal address
    * @param depositId - Deposit ID (32 bytes hex string)
    * @param chainId - Chain ID
-   * @param tokenId - Token ID
+   * @param tokenKey - Token key string (e.g., "USDT", "USDC")
    * @returns Commitment hash (hex string)
    */
   static generateCommitment(
@@ -411,7 +411,7 @@ export class CommitmentFormatter {
     ownerAddress: UniversalAddress,
     depositId: string,
     chainId: number,
-    tokenId: number
+    tokenKey: string
   ): string {
     const { hexToBytes, amountToBytes32, bytesToHex } = CommitmentCore;
 
@@ -423,9 +423,6 @@ export class CommitmentFormatter {
 
     // Convert depositId to bytes
     const depositIdBytes = hexToBytes(depositId);
-
-    // Convert tokenId to string (tokenKey)
-    const tokenKey = String(tokenId);
 
     // Generate commitment
     const commitment = CommitmentCore.generateCommitmentWithOwner(
