@@ -8,8 +8,13 @@
 import type { CommitmentSignData, UniversalAddress } from '../types/models';
 import { keccak256 } from '../utils/crypto';
 import { getChainName } from '../utils/chain';
-import { validateNonEmptyString, validateNonEmptyArray, validateAmount } from '../utils/validation';
+import {
+  validateNonEmptyString,
+  validateNonEmptyArray,
+  validateAmount,
+} from '../utils/validation';
 import { CommitmentCore } from '../utils/CommitmentCore';
+import { tronConverter } from '@enclave-hq/chain-utils';
 
 /**
  * Language codes (matching lib.rs)
@@ -47,7 +52,7 @@ export class CommitmentFormatter {
    * @param chainId - Chain ID (SLIP-44)
    * @param ownerAddress - Owner's universal address
    * @param lang - Language code (1=English, 2=Chinese, etc.)
-   * @param chainName - Optional chain name (e.g., "Ethereum", "BSC", "TRON").
+   * @param chainName - Optional chain name (e.g., "Ethereum", "BSC", "TRON"). 
    *                    If not provided, will be derived from chainId.
    *                    Providing chainName makes the message more user-friendly in wallet signatures.
    * @param localDepositId - Optional local deposit ID (uint64) for display. If provided, will be used directly instead of converting from depositId hex.
@@ -103,7 +108,7 @@ export class CommitmentFormatter {
     const messageHash = this.computeMessageHash(message);
 
     // Extract amounts for backward compatibility
-    const amounts = sortedAllocations.map(a => a.amount);
+    const amounts = sortedAllocations.map((a) => a.amount);
 
     return {
       checkbookId: depositId, // For backward compatibility
@@ -118,7 +123,9 @@ export class CommitmentFormatter {
    * Sort allocations by sequence number (ascending)
    * CRITICAL: This ensures consistency with lib.rs
    */
-  private static sortAllocationsBySeq(allocations: AllocationWithSeq[]): AllocationWithSeq[] {
+  private static sortAllocationsBySeq(
+    allocations: AllocationWithSeq[]
+  ): AllocationWithSeq[] {
     return [...allocations].sort((a, b) => a.seq - b.seq);
   }
 
@@ -178,16 +185,15 @@ export class CommitmentFormatter {
       const integerPart = amountBigInt / divisor;
       const decimalPart = amountBigInt % divisor;
 
-      // Format amount matching lib.rs get_deposit_data_to_sign (最多6位小数)
-      // lib.rs logic: format!("{:.6}", display_amount).trim_end_matches('0').trim_end_matches('.')
+      // Format decimal part (pad to 18 digits, then trim trailing zeros)
+      const decimalStr = decimalPart.toString().padStart(18, '0');
+      const trimmedDecimal = decimalStr.replace(/0+$/, '').replace(/\.$/, '');
+
       let formattedAmount: string;
       if (decimalPart === 0n) {
         formattedAmount = integerPart.toString();
       } else {
-        // Convert to number for formatting (matching lib.rs f64 conversion)
-        const amountNumber = Number(amountBigInt) / Number(divisor);
-        // Use toFixed(6) then trim trailing zeros (matching lib.rs format!("{:.6}", ...))
-        formattedAmount = amountNumber.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+        formattedAmount = `${integerPart}.${trimmedDecimal}`;
       }
 
       // Use tokenSymbol instead of "units" for better user experience
@@ -195,19 +201,17 @@ export class CommitmentFormatter {
     }
 
     // Total Amount (matching lib.rs - must be after allocations, before Deposit ID)
-    // Format matching lib.rs get_deposit_data_to_sign (最多6位小数)
     const totalDivisor = BigInt(10) ** BigInt(18);
     const totalIntegerPart = totalAmountBigInt / totalDivisor;
     const totalDecimalPart = totalAmountBigInt % totalDivisor;
-
+    const totalDecimalStr = totalDecimalPart.toString().padStart(18, '0');
+    const totalTrimmedDecimal = totalDecimalStr.replace(/0+$/, '').replace(/\.$/, '');
+    
     let totalFormatted: string;
     if (totalDecimalPart === 0n) {
       totalFormatted = totalIntegerPart.toString();
     } else {
-      // Convert to number for formatting (matching lib.rs f64 conversion)
-      const totalNumber = Number(totalAmountBigInt) / Number(totalDivisor);
-      // Use toFixed(6) then trim trailing zeros (matching lib.rs format!("{:.6}", ...))
-      totalFormatted = totalNumber.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
+      totalFormatted = `${totalIntegerPart}.${totalTrimmedDecimal}`;
     }
 
     switch (lang) {
@@ -228,37 +232,33 @@ export class CommitmentFormatter {
       depositIdDecimal = localDepositId.toString();
     } else {
       // Fallback: convert from depositId hex (32 bytes) to u64 (first 8 bytes)
-      const depositIdHex = depositId.startsWith('0x') ? depositId.slice(2) : depositId;
-      const depositIdBytes = Buffer.from(depositIdHex, 'hex');
-
-      // Convert first 8 bytes to u64 (big-endian) and then to decimal string
+    const depositIdHex = depositId.startsWith('0x') ? depositId.slice(2) : depositId;
+    const depositIdBytes = Buffer.from(depositIdHex, 'hex');
+    
+    // Convert first 8 bytes to u64 (big-endian) and then to decimal string
       depositIdDecimal = '0';
-      if (depositIdBytes.length >= 8) {
-        // Read first 8 bytes as big-endian u64
-        const first8Bytes = depositIdBytes.slice(0, 8);
-        // Convert to BigInt (big-endian)
-        let u64Value = BigInt(0);
-        for (let i = 0; i < 8; i++) {
-          const byte = first8Bytes[i];
-          if (byte !== undefined) {
-            u64Value = (u64Value << BigInt(8)) | BigInt(byte);
-          }
+    if (depositIdBytes.length >= 8) {
+      // Read first 8 bytes as big-endian u64
+      const first8Bytes = depositIdBytes.slice(0, 8);
+      // Convert to BigInt (big-endian)
+      let u64Value = BigInt(0);
+      for (let i = 0; i < 8; i++) {
+        const byte = first8Bytes[i];
+        if (byte !== undefined) {
+          u64Value = (u64Value << BigInt(8)) | BigInt(byte);
         }
-        depositIdDecimal = u64Value.toString();
       }
-
+      depositIdDecimal = u64Value.toString();
+      }
+      
       // Warn if localDepositId was not provided or was 0
       if (localDepositId === undefined || localDepositId === null) {
-        console.warn(
-          '⚠️ [CommitmentFormatter] localDepositId is missing, using fallback conversion from depositId hex'
-        );
+        console.warn('⚠️ [CommitmentFormatter] localDepositId is missing, using fallback conversion from depositId hex');
       } else if (localDepositId === 0) {
-        console.warn(
-          '⚠️ [CommitmentFormatter] localDepositId is 0, using fallback conversion from depositId hex'
-        );
+        console.warn('⚠️ [CommitmentFormatter] localDepositId is 0, using fallback conversion from depositId hex');
       }
     }
-
+    
     const ownerFormatted = this.formatOwnerAddress(ownerAddress, lang);
 
     switch (lang) {
@@ -281,34 +281,84 @@ export class CommitmentFormatter {
    * Format owner address according to lib.rs format_address
    * Matches lib.rs UniversalAddress::format_address exactly
    */
-  private static formatOwnerAddress(address: UniversalAddress, lang: number): string {
-    // Extract 20-byte address from 32-byte Universal Address (right-aligned)
-    // Universal Address format: [12 bytes zeros][20 bytes address]
-    // Use address.address (20-byte) if available, otherwise extract from address.data (32-byte)
+  private static formatOwnerAddress(
+    address: UniversalAddress,
+    lang: number
+  ): string {
+    const chainName = getChainName(address.chainId);
     let addrStr: string;
-    if (address.address) {
-      // Use 20-byte address directly (ensure lowercase to match lib.rs)
-      addrStr = address.address.toLowerCase();
-      if (!addrStr.startsWith('0x')) {
-        addrStr = '0x' + addrStr;
-      }
-    } else if (address.data) {
-      // Extract from 32-byte data (right-aligned, last 20 bytes)
-      const addressBytes = Buffer.from(address.data.slice(-20), 'hex');
-      addrStr = '0x' + addressBytes.toString('hex').toLowerCase();
-    } else {
-      // Fallback: use universalFormat if available
-      if (address.universalFormat) {
-        const universalHex = address.universalFormat.replace(/^0x/, '');
-        // Extract last 20 bytes (40 hex chars) from 32-byte (64 hex chars) Universal Address
-        const addressHex = universalHex.slice(-40);
-        addrStr = '0x' + addressHex.toLowerCase();
+
+    // For TRON (chainId=195), use Base58 format (matching lib.rs get_chain_specific_address)
+    if (address.chainId === 195) {
+      // If address.address already exists and is TRON Base58 format, use it directly
+      if (address.address && address.address.startsWith('T') && address.address.length === 34) {
+        addrStr = address.address;
       } else {
-        throw new Error('UniversalAddress must have either address, data, or universalFormat');
+        // Get 32-byte Universal Address data
+        let universalBytes: Uint8Array;
+        if (address.data) {
+          // Convert hex string to bytes
+          const hexStr = address.data.replace(/^0x/, '');
+          universalBytes = new Uint8Array(
+            hexStr.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+          );
+        } else if (address.universalFormat) {
+          // Convert hex string to bytes
+          const hexStr = address.universalFormat.replace(/^0x/, '');
+          universalBytes = new Uint8Array(
+            hexStr.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+          );
+        } else {
+          throw new Error('UniversalAddress must have data or universalFormat for TRON address conversion');
+        }
+
+        // Ensure 32 bytes (right-align: pad zeros at the beginning)
+        if (universalBytes.length !== 32) {
+          const padded = new Uint8Array(32);
+          const startPos = 32 - Math.min(universalBytes.length, 32);
+          padded.set(universalBytes.slice(-32), startPos);
+          universalBytes = padded;
+        }
+
+        // Convert to TRON Base58 address using tronConverter
+        try {
+          addrStr = tronConverter.fromBytes(universalBytes);
+        } catch (error) {
+          // Fallback to hex if conversion fails
+          console.warn('Failed to convert TRON address to Base58, using hex format:', error);
+          const addressBytes = universalBytes.slice(12, 32); // Extract last 20 bytes
+          addrStr = '0x' + Array.from(addressBytes)
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('')
+            .toLowerCase();
+        }
+      }
+    } else {
+      // For other chains (EVM, etc.), use hex format
+      // Extract 20-byte address from 32-byte Universal Address (right-aligned)
+      // Universal Address format: [12 bytes zeros][20 bytes address]
+      if (address.address) {
+        // Use 20-byte address directly (ensure lowercase to match lib.rs)
+        addrStr = address.address.toLowerCase();
+        if (!addrStr.startsWith('0x')) {
+          addrStr = '0x' + addrStr;
+        }
+      } else if (address.data) {
+        // Extract from 32-byte data (right-aligned, last 20 bytes)
+        const addressBytes = Buffer.from(address.data.slice(-20), 'hex');
+        addrStr = '0x' + addressBytes.toString('hex').toLowerCase();
+      } else {
+        // Fallback: use universalFormat if available
+        if (address.universalFormat) {
+          const universalHex = address.universalFormat.replace(/^0x/, '');
+          // Extract last 20 bytes (40 hex chars) from 32-byte (64 hex chars) Universal Address
+          const addressHex = universalHex.slice(-40);
+          addrStr = '0x' + addressHex.toLowerCase();
+        } else {
+          throw new Error('UniversalAddress must have either address, data, or universalFormat');
+        }
       }
     }
-
-    const chainName = getChainName(address.chainId);
 
     // Match lib.rs format_address exactly
     // lib.rs format: English: "{address} on {chain_name}", Chinese: "{chain_name}链上{address}地址"
@@ -328,6 +378,7 @@ export class CommitmentFormatter {
   private static computeMessageHash(message: string): string {
     return keccak256(message);
   }
+
 
   /**
    * Sort amounts in ascending order
@@ -352,7 +403,7 @@ export class CommitmentFormatter {
    * @param ownerAddress - Owner's universal address
    * @param depositId - Deposit ID (32 bytes hex string)
    * @param chainId - Chain ID
-   * @param tokenKey - Token key string (e.g., "USDT", "USDC")
+   * @param tokenId - Token ID
    * @returns Commitment hash (hex string)
    */
   static generateCommitment(
@@ -360,12 +411,12 @@ export class CommitmentFormatter {
     ownerAddress: UniversalAddress,
     depositId: string,
     chainId: number,
-    tokenKey: string
+    tokenId: number
   ): string {
     const { hexToBytes, amountToBytes32, bytesToHex } = CommitmentCore;
 
     // Convert allocations to CommitmentCore format
-    const coreAllocations = allocations.map(a => ({
+    const coreAllocations = allocations.map((a) => ({
       seq: a.seq,
       amount: amountToBytes32(a.amount),
     }));
@@ -373,35 +424,27 @@ export class CommitmentFormatter {
     // Convert depositId to bytes
     const depositIdBytes = hexToBytes(depositId);
 
-    // Generate commitment using tokenKey (matching ZKVM's token_key_hash)
+    // Generate commitment
     const commitment = CommitmentCore.generateCommitmentWithOwner(
       coreAllocations,
       ownerAddress,
       depositIdBytes,
       chainId,
-      tokenKey // Use tokenKey instead of tokenId
+      tokenId
     );
 
-    const commitmentHex = bytesToHex(commitment);
-    
-    // Log commitment for debugging
-    console.log('🔑 [CommitmentFormatter.generateCommitment] Generated commitment:', {
-      commitment: commitmentHex,
-      tokenKey,
-      chainId,
-      depositId,
-      allocationCount: allocations.length,
-      allocations: allocations.map(a => ({ seq: a.seq, amount: a.amount })),
-    });
-
-    return commitmentHex;
+    return bytesToHex(commitment);
   }
 
   /**
    * Generate commitment hashes for allocations (legacy method - deprecated)
    * @deprecated Use generateCommitment instead
    */
-  static generateCommitmentHashes(amounts: string[], owner: string, tokenId: string): string[] {
+  static generateCommitmentHashes(
+    amounts: string[],
+    owner: string,
+    tokenId: string
+  ): string[] {
     // This is a legacy method that doesn't match lib.rs
     // It's kept for backward compatibility but should not be used
     validateNonEmptyArray(amounts, 'amounts');
