@@ -54,11 +54,3 @@ export function isProcessing(status: CheckbookStatus): boolean {
     status === CheckbookStatus.CommitmentPending
   );
 }
-
-
-
-
-
-
-
-

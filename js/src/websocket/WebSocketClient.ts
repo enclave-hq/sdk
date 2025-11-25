@@ -9,9 +9,9 @@ import type {
   WSClientMessage,
   WSServerMessage,
   WSMessageType,
-  WSChannel,
   SubscriptionOptions,
 } from '../types/websocket';
+import { WSChannel } from '../types/websocket';
 import { WebSocketError } from '../utils/errors';
 import { getLogger } from '../utils/logger';
 import { ExponentialBackoff } from '../utils/retry';
@@ -215,8 +215,26 @@ export class WebSocketClient {
    * Subscribe to channel
    */
   async subscribe(channel: WSChannel, options?: SubscriptionOptions): Promise<void> {
+    // Check connection state with detailed logging
     if (!this.isConnected()) {
-      throw new WebSocketError('Cannot subscribe: not connected');
+      const error = new WebSocketError(`Cannot subscribe: not connected (state: ${this.state})`);
+      this.logger.error('Subscribe failed:', {
+        channel,
+        state: this.state,
+        hasAdapter: !!this.adapter,
+        adapterConnected: this.adapter?.isConnected?.() ?? false,
+      });
+      throw error;
+    }
+
+    // Double-check adapter connection state
+    if (this.adapter && !this.adapter.isConnected()) {
+      const error = new WebSocketError('Cannot subscribe: adapter not connected');
+      this.logger.error('Subscribe failed: adapter not connected', {
+        channel,
+        state: this.state,
+      });
+      throw error;
     }
 
     this.logger.info(`Subscribing to channel: ${channel}`);
@@ -241,8 +259,19 @@ export class WebSocketClient {
       timestamp: Date.now(),
     };
 
-    this.send(message as any);
-    this.subscriptionManager.addSubscription(channel, options);
+    try {
+      this.send(message as any);
+      this.subscriptionManager.addSubscription(channel, options);
+      this.logger.debug(`Subscription message sent for channel: ${channel}`);
+    } catch (error: any) {
+      this.logger.error(`Failed to subscribe to channel ${channel}:`, {
+        error: error.message || error,
+        errorType: error.constructor?.name,
+        channel,
+        backendType,
+      });
+      throw error;
+    }
   }
 
   /**
@@ -282,16 +311,28 @@ export class WebSocketClient {
    */
   send(message: WSClientMessage): void {
     if (!this.isConnected() || !this.adapter) {
-      throw new WebSocketError('Cannot send message: not connected');
+      const error = new WebSocketError('Cannot send message: not connected');
+      this.logger.error('Cannot send message:', {
+        state: this.state,
+        hasAdapter: !!this.adapter,
+        messageType: (message as any).type || (message as any).action,
+      });
+      throw error;
     }
 
     try {
       const json = JSON.stringify(message);
       this.adapter.send(json);
-      this.logger.debug('Sent WebSocket message:', message.type);
-    } catch (error) {
-      this.logger.error('Failed to send message:', error);
-      throw new WebSocketError(`Failed to send message: ${error.message}`);
+      this.logger.debug('Sent WebSocket message:', (message as any).type || (message as any).action);
+    } catch (error: any) {
+      this.logger.error('Failed to send message:', {
+        error: error.message || error,
+        errorType: error.constructor?.name,
+        messageType: (message as any).type || (message as any).action,
+        state: this.state,
+        adapterConnected: this.adapter?.isConnected?.() ?? false,
+      });
+      throw new WebSocketError(`Failed to send message: ${error.message || error}`, { originalError: error });
     }
   }
 
@@ -389,8 +430,42 @@ export class WebSocketClient {
 
     // Update last pong timestamp
     if (message.type === 'pong') {
-      this.lastPongTimestamp = Date.now();
+      const now = Date.now();
+      const timeSinceLastPing = this.lastPingTimestamp ? now - this.lastPingTimestamp : 0;
+      this.lastPongTimestamp = now;
       this.lastPingTimestamp = undefined; // Reset ping timestamp after receiving pong
+      this.logger.info(`✅ [WebSocket] Received pong, timestamp: ${now}, response time: ${timeSinceLastPing}ms`);
+    }
+
+    // Handle subscription_confirmed messages (backend format)
+    // Backend sends "subscription_confirmed" but SDK expects "subscribed"
+    if ((message as any).type === 'subscription_confirmed') {
+      this.logger.info(`✅ [WebSocket] Subscription confirmed: ${(message as any).sub_type}`);
+      // Convert to SDK format for compatibility
+      const convertedMessage = {
+        ...message,
+        type: 'subscribed' as any,
+        data: {
+          channel: (message as any).sub_type,
+        },
+      };
+      this.messageHandler.handle(convertedMessage as WSServerMessage);
+      return;
+    }
+
+    // Handle unsubscription_confirmed messages (backend format)
+    if ((message as any).type === 'unsubscription_confirmed') {
+      this.logger.info(`✅ [WebSocket] Unsubscription confirmed: ${(message as any).sub_type}`);
+      // Convert to SDK format for compatibility
+      const convertedMessage = {
+        ...message,
+        type: 'unsubscribed' as any,
+        data: {
+          channel: (message as any).sub_type,
+        },
+      };
+      this.messageHandler.handle(convertedMessage as WSServerMessage);
+      return;
     }
 
     // Process message through handler
@@ -463,8 +538,8 @@ export class WebSocketClient {
 
   /**
    * Start ping interval using a more reliable approach
-   * Uses requestAnimationFrame for better reliability when page is visible,
-   * and falls back to setInterval as a backup
+   * Uses setInterval as primary mechanism (not affected by Modal/rendering blocking)
+   * requestAnimationFrame is only used as a visual indicator, not for critical ping timing
    */
   private startPing(): void {
     this.stopPing(); // Clear any existing interval
@@ -472,20 +547,26 @@ export class WebSocketClient {
     const now = Date.now();
     this.nextPingTime = now + this.config.pingInterval;
 
-    // Use requestAnimationFrame for more reliable timing when page is visible
-    const pingLoop = () => {
+    this.logger.info(`🔄 [WebSocket] Starting ping mechanism, interval: ${this.config.pingInterval}ms, timeout: ${this.config.pingTimeout}ms`);
+
+    // Primary ping mechanism: Use setInterval (not affected by Modal/rendering)
+    // This ensures ping continues even when requestAnimationFrame is blocked
+    // setInterval runs in a separate task queue, independent of rendering
+    this.pingIntervalId = setInterval(() => {
       if (!this.isConnected()) {
-        this.pingAnimationFrameId = undefined;
+        this.logger.debug('Skipping ping check: not connected');
         return;
       }
 
       const currentTime = Date.now();
 
       // Check if last pong is too old (if we've received at least one pong)
+      // Use a longer timeout (2x pingInterval) to account for network delays
       if (this.lastPongTimestamp) {
         const timeSinceLastPong = currentTime - this.lastPongTimestamp;
-        if (timeSinceLastPong > this.config.pingTimeout) {
-          this.logger.warn('Ping timeout, disconnecting');
+        const maxPongAge = Math.max(this.config.pingTimeout, this.config.pingInterval * 2);
+        if (timeSinceLastPong > maxPongAge) {
+          this.logger.warn(`Ping timeout: last pong was ${timeSinceLastPong}ms ago (max: ${maxPongAge}ms), disconnecting`);
           this.handleDisconnect();
           return;
         }
@@ -493,10 +574,12 @@ export class WebSocketClient {
 
       // Check if we sent a ping but haven't received a pong within timeout
       // This handles the case where we've never received a pong
+      // Use a longer timeout to account for network delays and processing time
       if (this.lastPingTimestamp) {
         const timeSinceLastPing = currentTime - this.lastPingTimestamp;
-        if (timeSinceLastPing > this.config.pingTimeout) {
-          this.logger.warn('No pong received after ping timeout, disconnecting');
+        const maxPingWait = Math.max(this.config.pingTimeout, this.config.pingInterval * 1.5);
+        if (timeSinceLastPing > maxPingWait) {
+          this.logger.warn(`No pong received: ping sent ${timeSinceLastPing}ms ago (max: ${maxPingWait}ms), disconnecting`);
           this.handleDisconnect();
           return;
         }
@@ -507,43 +590,19 @@ export class WebSocketClient {
         try {
           this.lastPingTimestamp = currentTime;
           this.nextPingTime = currentTime + this.config.pingInterval;
+          // Use info level to ensure ping logs are visible
+          this.logger.info(`📤 [WebSocket] Sending ping, timestamp: ${currentTime}, connection state: ${this.state}`);
           this.send({
             type: 'ping' as WSMessageType.PING,
             timestamp: currentTime,
           });
         } catch (error) {
-          this.logger.error('Failed to send ping:', error);
+          this.logger.error('❌ [WebSocket] Failed to send ping:', error);
+          // If send fails, connection is likely broken, disconnect
+          this.handleDisconnect();
         }
       }
-
-      // Continue the loop
-      this.pingAnimationFrameId = requestAnimationFrame(pingLoop);
-    };
-
-    // Start the ping loop
-    this.pingAnimationFrameId = requestAnimationFrame(pingLoop);
-
-    // Also use setInterval as a backup to ensure we don't miss pings
-    // This helps when requestAnimationFrame is throttled (e.g., when tab is in background)
-    this.pingIntervalId = setInterval(() => {
-      if (!this.isConnected()) return;
-
-      const currentTime = Date.now();
-
-      // Force send ping if we're overdue (more than 1.5x the interval)
-      if (this.nextPingTime && currentTime >= this.nextPingTime + this.config.pingInterval * 0.5) {
-        try {
-          this.lastPingTimestamp = currentTime;
-          this.nextPingTime = currentTime + this.config.pingInterval;
-          this.send({
-            type: 'ping' as WSMessageType.PING,
-            timestamp: currentTime,
-          });
-        } catch (error) {
-          this.logger.error('Failed to send ping (backup interval):', error);
-        }
-      }
-    }, this.config.pingInterval);
+    }, this.config.pingInterval); // Use pingInterval as the check interval (30 seconds)
   }
 
   /**

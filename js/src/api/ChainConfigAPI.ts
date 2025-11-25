@@ -161,7 +161,9 @@ export class ChainConfigAPI {
    * ```
    */
   async getGlobalZKPayProxy(): Promise<string> {
-    const response = await this.client.get<{ zkpay_proxy: string; source: string }>('/api/admin/config/zkpay-proxy');
+    const response = await this.client.get<{ zkpay_proxy: string; source: string }>(
+      '/api/admin/config/zkpay-proxy'
+    );
     return response.zkpay_proxy;
   }
 }

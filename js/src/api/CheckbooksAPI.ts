@@ -238,7 +238,7 @@ export class CheckbooksAPI {
         (checkbook as any).slip44ChainId = backendCheckbook.slip44_chain_id;
         // Also set token.chainId from slip44_chain_id if not already set
         // IMPORTANT: Always ensure token object exists with proper structure
-          if (!checkbook.token) {
+        if (!checkbook.token) {
           // Create a minimal token object if it doesn't exist
           (checkbook as any).token = {
             id: `token_${checkbook.id || 'unknown'}`,
@@ -248,7 +248,10 @@ export class CheckbooksAPI {
             contractAddress: response.data.token?.address || '',
             chainId: backendCheckbook.slip44_chain_id, // Set from slip44_chain_id
             iconUrl: undefined,
-            isActive: response.data.token?.is_active !== undefined ? Boolean(response.data.token.is_active) : true,
+            isActive:
+              response.data.token?.is_active !== undefined
+                ? Boolean(response.data.token.is_active)
+                : true,
             metrics: undefined,
           };
         } else if (!checkbook.token.chainId) {

@@ -69,11 +69,24 @@ export class BrowserWebSocketAdapter implements IWebSocketAdapter {
    * Send message to server
    */
   send(data: string): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      throw new WebSocketError('WebSocket not connected');
+    if (!this.ws) {
+      throw new WebSocketError('WebSocket not initialized');
     }
 
-    this.ws.send(data);
+    // Check readyState - WebSocket.OPEN = 1
+    if (this.ws.readyState !== WebSocket.OPEN) {
+      const stateNames = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
+      const stateName = stateNames[this.ws.readyState] || `UNKNOWN(${this.ws.readyState})`;
+      throw new WebSocketError(`WebSocket not ready: state=${stateName} (${this.ws.readyState})`);
+    }
+
+    try {
+      this.ws.send(data);
+    } catch (error: any) {
+      throw new WebSocketError(`Failed to send WebSocket message: ${error.message || error}`, {
+        originalError: error,
+      });
+    }
   }
 
   /**

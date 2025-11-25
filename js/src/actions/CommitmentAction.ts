@@ -445,10 +445,13 @@ export class CommitmentAction {
       params.tokenKey
     );
 
-    this.logger.info('🔑 [CommitmentAction.submitCommitment] SDK-generated commitment (for comparison only):', {
-      commitment: sdkCommitment,
-      note: 'This commitment is NOT sent to backend. Backend will generate commitment via ZKVM.',
-    });
+    this.logger.info(
+      '🔑 [CommitmentAction.submitCommitment] SDK-generated commitment (for comparison only):',
+      {
+        commitment: sdkCommitment,
+        note: 'This commitment is NOT sent to backend. Backend will generate commitment via ZKVM.',
+      }
+    );
 
     // Submit to API (/api/commitments/submit POST)
     // This endpoint handles:

@@ -107,12 +107,12 @@ export class CommitmentCore {
     const depositIdBuf = Buffer.from(depositId);
     const chainIdBuf = Buffer.allocUnsafe(4);
     chainIdBuf.writeUInt32BE(chainId, 0);
-    
+
     // Calculate token_key_hash: keccak256(token_key.as_bytes())
     // Matching lib.rs: let token_key_hash: [u8; 32] = Keccak256::digest(input_token_key.as_bytes()).into();
     const tokenKeyHash = keccak256(Buffer.from(tokenKey, 'utf-8'));
     const tokenKeyHashBuf = Buffer.from(tokenKeyHash);
-    
+
     const ownerChainIdBuf = Buffer.allocUnsafe(4);
     ownerChainIdBuf.writeUInt32BE(ownerAddress.chainId, 0);
 

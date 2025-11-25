@@ -35,14 +35,11 @@ export class KYTOracleAPI {
     validateNonEmptyString(request.chain, 'chain');
 
     try {
-      const response = await this.client.post<GetFeeInfoResponse>(
-        '/api/kyt-oracle/fee-info',
-        {
-          address: request.address,
-          chain: request.chain,
-          token_key: request.tokenKey, // Optional
-        }
-      );
+      const response = await this.client.post<GetFeeInfoResponse>('/api/kyt-oracle/fee-info', {
+        address: request.address,
+        chain: request.chain,
+        token_key: request.tokenKey, // Optional
+      });
 
       return response;
     } catch (error) {
@@ -86,4 +83,3 @@ export class KYTOracleAPI {
     }
   }
 }
-

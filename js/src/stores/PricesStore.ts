@@ -175,8 +175,10 @@ export class PricesStore extends BaseStore<TokenPrice> {
     if (!price) return null;
 
     const amountBig = BigInt(amount);
-    const decimalsBig = BigInt(10 ** decimals);
-    const amountFloat = Number(amountBig) / Number(decimalsBig);
+    // 使用 BigInt 计算 divisor，避免浮点数精度问题
+    const divisor = BigInt(10) ** BigInt(decimals);
+    // 使用 BigInt 除法，然后转换为 number（仅用于最终价格计算）
+    const amountFloat = Number(amountBig) / Number(divisor);
 
     return amountFloat * price;
   }

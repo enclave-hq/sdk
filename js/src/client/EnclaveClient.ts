@@ -446,12 +446,14 @@ export class EnclaveClient {
       this.logger.info(`🔐 [Authenticate] Using SLIP-44 chain ID: ${chainId}`, {
         userAddressChainId: this.userAddress?.chainId,
         defaultChainId: this.walletManager.getDefaultChainId(),
-        userAddress: this.userAddress ? {
-          address: this.userAddress.address,
-          chainId: this.userAddress.chainId,
-          chainName: this.userAddress.chainName,
-          slip44: this.userAddress.slip44,
-        } : null,
+        userAddress: this.userAddress
+          ? {
+              address: this.userAddress.address,
+              chainId: this.userAddress.chainId,
+              chainName: this.userAddress.chainName,
+              slip44: this.userAddress.slip44,
+            }
+          : null,
       });
 
       // Step 3: Authenticate with backend
@@ -537,13 +539,13 @@ export class EnclaveClient {
     // Note: owner parameter is used for WebSocket filtering, but API calls use JWT
     await this.wsClient.subscribe(WSChannel.CHECKBOOKS, { owner });
     this.logger.info('✅ [EnclaveClient] Subscribed to CHECKBOOKS channel');
-    
+
     await this.wsClient.subscribe(WSChannel.ALLOCATIONS, { owner });
     this.logger.info('✅ [EnclaveClient] Subscribed to ALLOCATIONS channel');
-    
+
     await this.wsClient.subscribe(WSChannel.WITHDRAWALS, { owner });
     this.logger.info('✅ [EnclaveClient] Subscribed to WITHDRAWALS channel');
-    
+
     await this.wsClient.subscribe(WSChannel.PRICES);
     this.logger.info('✅ [EnclaveClient] Subscribed to PRICES channel');
 
@@ -663,7 +665,9 @@ export class EnclaveClient {
     switch (action) {
       case 'created':
       case 'updated':
-        this.logger.info(`📨 [EnclaveClient] Updating checkbook: ${checkbook.id}, action: ${action}`);
+        this.logger.info(
+          `📨 [EnclaveClient] Updating checkbook: ${checkbook.id}, action: ${action}`
+        );
         this.stores.checkbooks.updateCheckbook(checkbook);
         break;
       case 'deleted':
@@ -690,7 +694,9 @@ export class EnclaveClient {
     switch (action) {
       case 'created':
       case 'updated':
-        this.logger.info(`📨 [EnclaveClient] Updating allocation: ${allocation.id}, action: ${action}`);
+        this.logger.info(
+          `📨 [EnclaveClient] Updating allocation: ${allocation.id}, action: ${action}`
+        );
         // Convert backend Check model to frontend Allocation format
         // WebSocket messages contain backend format (snake_case), need to normalize
         const normalized = this.allocationsAPI.convertAllocation(allocation);

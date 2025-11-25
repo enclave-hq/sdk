@@ -484,11 +484,31 @@ export class WithdrawFormatter {
     if (decimalPart === 0n) {
       return `${integerPart} ${symbol}`;
     } else {
-      // Convert to number for formatting (matching lib.rs f64 conversion)
-      const amountNumber = Number(amountBigInt) / Number(divisor);
-      // Use toFixed(6) then trim trailing zeros (matching lib.rs format!("{:.6}", ...))
-      const formatted = amountNumber.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
-      return `${formatted} ${symbol}`;
+      // 使用 BigInt 计算，避免浮点数精度问题
+      // 限制最多显示6位小数
+      const maxDecimalDigits = 6;
+      const decimalStr = decimalPart.toString().padStart(decimals, '0');
+      
+      // 如果小数位数超过6位，进行四舍五入
+      if (decimalStr.length > maxDecimalDigits) {
+        const first6Digits = decimalStr.slice(0, maxDecimalDigits);
+        const seventhDigit = parseInt(decimalStr[maxDecimalDigits] || '0');
+        const rounded6Digits =
+          seventhDigit >= 5
+            ? (BigInt(first6Digits) + 1n).toString().padStart(maxDecimalDigits, '0')
+            : first6Digits;
+        
+        const trimmedDecimal = rounded6Digits.replace(/0+$/, '');
+        return trimmedDecimal
+          ? `${integerPart}.${trimmedDecimal} ${symbol}`
+          : `${integerPart} ${symbol}`;
+      } else {
+        // 小于等于6位，直接去掉尾部零
+        const trimmedDecimal = decimalStr.replace(/0+$/, '');
+        return trimmedDecimal
+          ? `${integerPart}.${trimmedDecimal} ${symbol}`
+          : `${integerPart} ${symbol}`;
+      }
     }
   }
 
