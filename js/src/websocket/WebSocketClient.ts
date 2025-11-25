@@ -5,7 +5,6 @@
 
 import type { IWebSocketAdapter, ILogger } from '../types/config';
 import type {
-  WSMessage,
   WSClientMessage,
   WSServerMessage,
   WSMessageType,
@@ -14,7 +13,6 @@ import type {
 import { WSChannel } from '../types/websocket';
 import { WebSocketError } from '../utils/errors';
 import { getLogger } from '../utils/logger';
-import { ExponentialBackoff } from '../utils/retry';
 import { SubscriptionManager } from './SubscriptionManager';
 import { MessageHandler } from './MessageHandler';
 import { ReconnectionManager } from './ReconnectionManager';
@@ -159,7 +157,7 @@ export class WebSocketClient {
 
       // Resubscribe to channels if reconnecting
       await this.resubscribeAll();
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error('WebSocket connection failed:', error);
       this.setState(WebSocketState.ERROR);
       this.emit('error', error);
@@ -237,7 +235,7 @@ export class WebSocketClient {
       throw error;
     }
 
-    this.logger.info(`Subscribing to channel: ${channel}`);
+    this.logger.debug(`Subscribing to channel: ${channel}`);
 
     // Backend expects: { action: "subscribe", type: "checkbooks", address: "0x...", timestamp: 1234567890 }
     // Map SDK channel names to backend subscription types
@@ -262,7 +260,7 @@ export class WebSocketClient {
     try {
       this.send(message as any);
       this.subscriptionManager.addSubscription(channel, options);
-      this.logger.debug(`Subscription message sent for channel: ${channel}`);
+      // Subscription message sent (no log needed)
     } catch (error: any) {
       this.logger.error(`Failed to subscribe to channel ${channel}:`, {
         error: error.message || error,
@@ -434,13 +432,13 @@ export class WebSocketClient {
       const timeSinceLastPing = this.lastPingTimestamp ? now - this.lastPingTimestamp : 0;
       this.lastPongTimestamp = now;
       this.lastPingTimestamp = undefined; // Reset ping timestamp after receiving pong
-      this.logger.info(`✅ [WebSocket] Received pong, timestamp: ${now}, response time: ${timeSinceLastPing}ms`);
+      this.logger.debug(`✅ [WebSocket] Received pong, response time: ${timeSinceLastPing}ms`);
     }
 
     // Handle subscription_confirmed messages (backend format)
     // Backend sends "subscription_confirmed" but SDK expects "subscribed"
     if ((message as any).type === 'subscription_confirmed') {
-      this.logger.info(`✅ [WebSocket] Subscription confirmed: ${(message as any).sub_type}`);
+      this.logger.debug(`✅ [WebSocket] Subscription confirmed: ${(message as any).sub_type}`);
       // Convert to SDK format for compatibility
       const convertedMessage = {
         ...message,
@@ -455,7 +453,7 @@ export class WebSocketClient {
 
     // Handle unsubscription_confirmed messages (backend format)
     if ((message as any).type === 'unsubscription_confirmed') {
-      this.logger.info(`✅ [WebSocket] Unsubscription confirmed: ${(message as any).sub_type}`);
+      this.logger.debug(`✅ [WebSocket] Unsubscription confirmed: ${(message as any).sub_type}`);
       // Convert to SDK format for compatibility
       const convertedMessage = {
         ...message,
@@ -475,7 +473,7 @@ export class WebSocketClient {
   /**
    * Handle disconnection
    */
-  private async handleDisconnect(): void {
+  private async handleDisconnect(): Promise<void> {
     this.stopPing();
     this.removeVisibilityHandlers();
 
@@ -547,7 +545,7 @@ export class WebSocketClient {
     const now = Date.now();
     this.nextPingTime = now + this.config.pingInterval;
 
-    this.logger.info(`🔄 [WebSocket] Starting ping mechanism, interval: ${this.config.pingInterval}ms, timeout: ${this.config.pingTimeout}ms`);
+    this.logger.debug(`🔄 [WebSocket] Starting ping mechanism, interval: ${this.config.pingInterval}ms, timeout: ${this.config.pingTimeout}ms`);
 
     // Primary ping mechanism: Use setInterval (not affected by Modal/rendering)
     // This ensures ping continues even when requestAnimationFrame is blocked
@@ -590,8 +588,7 @@ export class WebSocketClient {
         try {
           this.lastPingTimestamp = currentTime;
           this.nextPingTime = currentTime + this.config.pingInterval;
-          // Use info level to ensure ping logs are visible
-          this.logger.info(`📤 [WebSocket] Sending ping, timestamp: ${currentTime}, connection state: ${this.state}`);
+          this.logger.debug(`📤 [WebSocket] Sending ping`);
           this.send({
             type: 'ping' as WSMessageType.PING,
             timestamp: currentTime,
