@@ -93,20 +93,6 @@ export class WithdrawalsAPI {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const obj = data as any;
 
-    // Debug: Log available fields to understand backend structure
-    if (process.env.NODE_ENV === 'development' || process.env.DEBUG) {
-      const recipientFields = Object.keys(obj).filter(k => k.includes('recipient'));
-      const ownerFields = Object.keys(obj).filter(k => k.includes('owner'));
-      if (recipientFields.length > 0 || ownerFields.length > 0) {
-        console.log('[WithdrawalsAPI] Available fields:', {
-          recipientFields,
-          ownerFields,
-          hasRecipient: !!obj.recipient,
-          hasOwnerAddress: !!obj.owner_address,
-        });
-      }
-    }
-
     // Only convert allocation_ids JSON string to array (necessary for type safety)
     if (obj.allocation_ids && typeof obj.allocation_ids === 'string') {
       try {
