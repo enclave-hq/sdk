@@ -273,10 +273,17 @@ export class WithdrawFormatter {
         break;
     }
 
-    // Sort allocations by seq for display (matching lib.rs behavior)
-    const sortedBySeq = [...allocationsWithInfo].sort(
-      (a, b) => a.allocation.seq - b.allocation.seq
-    );
+    // Sort allocations by deposit_id and seq for display (matching lib.rs behavior)
+    // First sort by deposit_id, then by seq within the same deposit_id
+    const sortedBySeq = [...allocationsWithInfo].sort((a, b) => {
+      // First compare by deposit_id
+      const depositCmp = a.depositId - b.depositId;
+      if (depositCmp !== 0) {
+        return depositCmp;
+      }
+      // If deposit_id is the same, sort by seq
+      return a.allocation.seq - b.allocation.seq;
+    });
 
     for (const { allocation, depositId: depId } of sortedBySeq) {
       // Convert amount string to bytes32 format for formatting

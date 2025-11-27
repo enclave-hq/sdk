@@ -1,7 +1,7 @@
 /**
  * @module @enclave-hq/sdk
  * @description Enclave SDK - Privacy-preserving multi-chain DeFi protocol client library
- * @version 2.2.2
+ * @version 2.3.4
  */
 
 // ============ Core Client ============
@@ -171,5 +171,5 @@ export type {
 export { WalletSDKContractProvider } from './providers';
 
 // ============ Version Info ============
-export const SDK_VERSION = '2.2.2';
+export const SDK_VERSION = '2.3.4';
 export const SDK_NAME = '@enclave-hq/sdk';
