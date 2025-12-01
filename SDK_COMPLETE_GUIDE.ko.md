@@ -49,83 +49,301 @@ SDK 레이어 (@enclave-hq/sdk)
 
 ### 개요
 
-SDK는 **13개의 API 클라이언트 클래스**를 포함하며 **66개의 API 메서드**를 제공합니다.
+SDK는 **13개의 API 클라이언트 클래스**를 포함하며 **68개의 API 메서드**를 제공합니다.
 
 ### API 클라이언트 카테고리
 
 #### 1. 🔐 인증 관련 (AuthAPI) - 5개
-- `authenticate()` - 지갑 서명 로그인
-- `refreshToken()` - JWT Token 새로고침
-- `logout()` - 로그아웃
-- `verifyToken()` - Token 유효성 검증
-- `getNonce()` - 서명 챌린지 Nonce 가져오기
 
-#### 2. 📝 Checkbook 관련 (CheckbooksAPI) - 4개
-- `listCheckbooks()` - 사용자의 Checkbooks 목록
-- `getCheckbookById()` - 단일 Checkbook 조회
-- `getCheckbooksByOwner()` - 소유자별 Checkbooks 조회
-- `deleteCheckbook()` - Checkbook 삭제
+- **`authenticate(request: AuthRequest)`** - 지갑 서명 로그인
+  ```typescript
+  await client.auth.authenticate({
+    address: { universalFormat: '0x...' },
+    message: 'Sign this message...',
+    signature: '0x...',
+    chainId: 1
+  });
+  ```
+- **`refreshToken(request: RefreshTokenRequest)`** - JWT Token 새로고침
+  ```typescript
+  await client.auth.refreshToken({ token: 'old-token' });
+  ```
+- **`logout()`** - 로그아웃
+  ```typescript
+  await client.auth.logout();
+  ```
+- **`verifyToken()`** - Token 유효성 검증
+  ```typescript
+  const isValid = await client.auth.verifyToken();
+  ```
+- **`getNonce(address?: string)`** - 서명 챌린지 Nonce 가져오기
+  ```typescript
+  const { nonce, message } = await client.auth.getNonce('0x...');
+  ```
 
-#### 3. 💰 Allocation 관련 (AllocationsAPI) - 4개
-- `listAllocations()` - 할당 레코드 목록
-- `createAllocations()` - 할당 생성 (Commitment)
-- `getAllocationsByCheckbookId()` - Checkbook별 할당 조회
-- `getAllocationsByTokenIdAndStatus()` - Token 및 상태별 할당 조회
+#### 2. 📝 Checkbook 관련 (CheckbooksAPI) - 5개
+
+- **`listCheckbooks(request?: ListCheckbooksRequest)`** - 사용자의 Checkbooks 목록
+  ```typescript
+  const checkbooks = await client.checkbooks.listCheckbooks({
+    page: 1,
+    limit: 10,
+    status: 'active'
+  });
+  ```
+- **`getCheckbookById(request: GetCheckbookRequest)`** - 단일 Checkbook 조회
+  ```typescript
+  const checkbook = await client.checkbooks.getCheckbookById({ id: 'cb-123' });
+  ```
+- **`getCheckbookByDeposit(request: GetCheckbookByDepositRequest)`** - Deposit으로 Checkbook 조회
+  ```typescript
+  const checkbook = await client.checkbooks.getCheckbookByDeposit({
+    chainId: 1,
+    txHash: '0x...'
+  });
+  ```
+- **`getCheckbooksByOwner(owner: string, ...)`** - (사용 중단됨) 소유자별 Checkbooks 조회
+  ```typescript
+  // listCheckbooks()를 사용하십시오
+  ```
+- **`deleteCheckbook(id: string)`** - Checkbook 삭제
+  ```typescript
+  await client.checkbooks.deleteCheckbook('cb-123');
+  ```
+
+#### 3. 💰 Allocation 관련 (AllocationsAPI) - 5개
+
+- **`listAllocations(request?: ListAllocationsRequest)`** - 할당 레코드 목록
+  ```typescript
+  const allocations = await client.allocations.listAllocations({
+    checkbookId: 'cb-123',
+    status: 'active'
+  });
+  ```
+- **`searchAllocations(request: SearchAllocationsRequest)`** - 할당 일괄 검색
+  ```typescript
+  const results = await client.allocations.searchAllocations({
+    chain_slip44_id: 60,
+    addresses: ['0x...']
+  });
+  ```
+- **`createAllocations(request: CreateAllocationsRequest)`** - 할당 생성 (Commitment)
+  ```typescript
+  await client.allocations.createAllocations({
+    checkbookId: 'cb-123',
+    amounts: ['1000'],
+    tokenKey: 'USDT',
+    signature: '0x...',
+    message: '...'
+  });
+  ```
+- **`getAllocationsByCheckbookId(checkbookId: string, status?: string)`** - Checkbook별 할당 조회
+  ```typescript
+  const list = await client.allocations.getAllocationsByCheckbookId('cb-123');
+  ```
+- **`getAllocationsByTokenIdAndStatus(tokenId: string, status: string)`** - Token 및 상태별 할당 조회
+  ```typescript
+  const list = await client.allocations.getAllocationsByTokenIdAndStatus('token-1', 'active');
+  ```
 
 #### 4. 📤 Withdrawal 관련 (WithdrawalsAPI) - 7개
-- `listWithdrawRequests()` - 출금 요청 목록
-- `getWithdrawRequestById()` - 단일 출금 요청 조회
-- `getWithdrawRequestByNullifier()` - nullifier로 조회
-- `createWithdrawRequest()` - 출금 요청 생성
-- `retryWithdrawRequest()` - 실패한 출금 재시도
-- `cancelWithdrawRequest()` - 출금 요청 취소
-- `getWithdrawStats()` - 출금 통계 가져오기
+
+- **`listWithdrawRequests(request?: ListWithdrawRequestsRequest)`** - 출금 요청 목록
+  ```typescript
+  const requests = await client.withdrawals.listWithdrawRequests({
+    page: 1,
+    limit: 20,
+    status: 'pending'
+  });
+  ```
+- **`getWithdrawRequestById(request: GetWithdrawRequestRequest)`** - 단일 출금 요청 조회
+  ```typescript
+  const req = await client.withdrawals.getWithdrawRequestById({ id: 'req-123' });
+  ```
+- **`getWithdrawRequestByNullifier(request: GetWithdrawRequestByNullifierRequest)`** - nullifier로 조회
+  ```typescript
+  const req = await client.withdrawals.getWithdrawRequestByNullifier({ nullifier: '0x...' });
+  ```
+- **`createWithdrawRequest(request: CreateWithdrawRequestRequest)`** - 출금 요청 생성
+  ```typescript
+  await client.withdrawals.createWithdrawRequest({
+    checkbookId: 'cb-123',
+    allocationIds: ['alloc-1'],
+    intent: { ... },
+    signature: '0x...',
+    chainId: 1
+  });
+  ```
+- **`retryWithdrawRequest(request: RetryWithdrawRequestRequest)`** - 실패한 출금 재시도
+  ```typescript
+  await client.withdrawals.retryWithdrawRequest({ id: 'req-123' });
+  ```
+- **`cancelWithdrawRequest(request: CancelWithdrawRequestRequest)`** - 출금 요청 취소
+  ```typescript
+  await client.withdrawals.cancelWithdrawRequest({ id: 'req-123' });
+  ```
+- **`getWithdrawStats(request?: GetWithdrawStatsRequest)`** - 출금 통계 가져오기
+  ```typescript
+  const stats = await client.withdrawals.getWithdrawStats();
+  ```
 
 #### 5. 👥 Beneficiary 관련 (BeneficiaryAPI) - 3개 ⭐
-- `listBeneficiaryWithdrawRequests()` - 수혜자로서의 출금 요청 목록
-- `requestPayoutExecution()` - 페이아웃 실행 요청
-- `claimTimeout()` - 타임아웃 청구
+
+- **`listBeneficiaryWithdrawRequests(request?: ListBeneficiaryWithdrawRequestsRequest)`** - 수혜자로서의 출금 요청 목록
+  ```typescript
+  const requests = await client.beneficiary.listBeneficiaryWithdrawRequests({
+    status: 'waiting_for_payout'
+  });
+  ```
+- **`requestPayoutExecution(request: RequestPayoutExecutionRequest)`** - 페이아웃 실행 요청
+  ```typescript
+  await client.beneficiary.requestPayoutExecution({ id: 'req-123' });
+  ```
+- **`claimTimeout(request: ClaimTimeoutRequest)`** - 타임아웃 청구
+  ```typescript
+  await client.beneficiary.claimTimeout({ id: 'req-123' });
+  ```
 
 #### 6. 🏊 Pool & Token 관련 (PoolsAPI) - 5개
-- `listPools()` - 모든 풀 목록
-- `getPoolById()` - 풀 세부 정보 가져오기
-- `listTokens()` - 토큰 목록
-- `getTokenById()` - 토큰 세부 정보 가져오기
-- `getActiveTokens()` - 활성 토큰 가져오기
+
+- **`listPools(request?: ListPoolsRequest)`** - 모든 풀 목록
+  ```typescript
+  const pools = await client.pools.listPools({ isActive: true });
+  ```
+- **`getPoolById(request: GetPoolRequest)`** - 풀 세부 정보 가져오기
+  ```typescript
+  const pool = await client.pools.getPoolById({ id: 'pool-1' });
+  ```
+- **`listTokens(request?: ListTokensRequest)`** - 토큰 목록
+  ```typescript
+  const tokens = await client.pools.listTokens({ chainId: 1 });
+  ```
+- **`getTokenById(request: GetTokenRequest)`** - 토큰 세부 정보 가져오기
+  ```typescript
+  const token = await client.pools.getTokenById({ id: 'token-1' });
+  ```
+- **`getActiveTokens(chainId?: number)`** - 활성 토큰 가져오기
+  ```typescript
+  const tokens = await client.pools.getActiveTokens(1);
+  ```
 
 #### 7. 💹 가격 관련 (PricesAPI) - 3개
-- `getTokenPrices()` - 토큰 가격 일괄 가져오기
-- `getTokenPrice()` - 단일 토큰 가격 가져오기
-- `getAllPrices()` - 모든 가격 가져오기
+
+- **`getTokenPrices(request?: GetTokenPricesRequest)`** - 토큰 가격 일괄 가져오기
+  ```typescript
+  const prices = await client.prices.getTokenPrices({ symbols: ['ETH', 'USDT'] });
+  ```
+- **`getTokenPrice(symbol: string)`** - 단일 토큰 가격 가져오기
+  ```typescript
+  const price = await client.prices.getTokenPrice('ETH');
+  ```
+- **`getAllPrices()`** - 모든 가격 가져오기
+  ```typescript
+  const allPrices = await client.prices.getAllPrices();
+  ```
 
 #### 8. 📊 지표 관련 (MetricsAPI) - 6개
-- `getPoolMetrics()` - 풀 지표 가져오기
-- `getTokenMetrics()` - 토큰 지표 가져오기
-- `getPoolMetricsHistory()` - 풀 지표 이력 가져오기
-- `getTokenMetricsHistory()` - 토큰 지표 이력 가져오기
-- `getBatchPoolMetrics()` - 풀 지표 일괄 가져오기
-- `getBatchTokenMetrics()` - 토큰 지표 일괄 가져오기
+
+- **`getPoolMetrics(poolId: number)`** - 풀 지표 가져오기
+  ```typescript
+  const metrics = await client.metrics.getPoolMetrics(1);
+  ```
+- **`getTokenMetrics(assetId: string)`** - 토큰 지표 가져오기
+  ```typescript
+  const metrics = await client.metrics.getTokenMetrics('0x...');
+  ```
+- **`getPoolMetricsHistory(poolId: number, metricType: string, days?: number)`** - 풀 지표 이력 가져오기
+  ```typescript
+  const history = await client.metrics.getPoolMetricsHistory(1, 'apy', 30);
+  ```
+- **`getTokenMetricsHistory(assetId: string, metricType: string, days?: number)`** - 토큰 지표 이력 가져오기
+  ```typescript
+  const history = await client.metrics.getTokenMetricsHistory('0x...', 'price', 7);
+  ```
+- **`getBatchPoolMetrics(poolIds: number[])`** - 풀 지표 일괄 가져오기
+  ```typescript
+  const batch = await client.metrics.getBatchPoolMetrics([1, 2]);
+  ```
+- **`getBatchTokenMetrics(assetIds: string[])`** - 토큰 지표 일괄 가져오기
+  ```typescript
+  const batch = await client.metrics.getBatchTokenMetrics(['0x...', '0x...']);
+  ```
 
 #### 9. 🛣️ 견적 관련 (QuoteAPI) - 2개
-- `getRouteAndFees()` - 경로 및 수수료 조회
-- `getHookAsset()` - Hook 자산 정보 조회
+
+- **`getRouteAndFees(request: RouteAndFeesRequest)`** - 경로 및 수수료 조회
+  ```typescript
+  const quote = await client.quote.getRouteAndFees({
+    amount: '1000',
+    deposit_token: '0x...',
+    owner_data: { ... },
+    intent: { ... }
+  });
+  ```
+- **`getHookAsset(request: HookAssetRequest)`** - Hook 자산 정보 조회
+  ```typescript
+  const info = await client.quote.getHookAsset({
+    asset_id: '0x...',
+    chain_id: 1,
+    amount: '1000'
+  });
+  ```
 
 #### 10. 🔗 체인 설정 관련 (ChainConfigAPI) - 6개
-- `getChainConfig()` - 체인 설정 가져오기
-- `getTreasuryAddress()` - Treasury 주소 가져오기
-- `getIntentManagerAddress()` - IntentManager 주소 가져오기
-- `getRpcEndpoint()` - RPC 엔드포인트 가져오기
-- `listChains()` - 모든 활성 체인 목록
-- `getAllTreasuryAddresses()` - 모든 Treasury 주소 가져오기
+
+- **`getChainConfig(chainId: number)`** - 체인 설정 가져오기
+  ```typescript
+  const config = await client.chainConfig.getChainConfig(1);
+  ```
+- **`getTreasuryAddress(chainId: number)`** - Treasury 주소 가져오기
+  ```typescript
+  const address = await client.chainConfig.getTreasuryAddress(1);
+  ```
+- **`getIntentManagerAddress(chainId: number)`** - IntentManager 주소 가져오기
+  ```typescript
+  const address = await client.chainConfig.getIntentManagerAddress(1);
+  ```
+- **`getRpcEndpoint(chainId: number)`** - RPC 엔드포인트 가져오기
+  ```typescript
+  const rpc = await client.chainConfig.getRpcEndpoint(1);
+  ```
+- **`listChains()`** - 모든 활성 체인 목록
+  ```typescript
+  const chains = await client.chainConfig.listChains();
+  ```
+- **`getAllTreasuryAddresses()`** - 모든 Treasury 주소 가져오기
+  ```typescript
+  const addresses = await client.chainConfig.getAllTreasuryAddresses();
+  ```
 
 #### 11. 🔀 Token 라우팅 규칙 관련 (TokenRoutingAPI) - 3개 ⭐
-- `getAllowedTargets()` - 허용된 대상 체인 및 토큰 조회 (매개변수 없이 전체 조회 지원)
-- `getAllPoolsAndTokens()` - 모든 풀 및 토큰 가져오기 (편의 메서드)
-- `getTargetsForSource()` - 특정 소스의 대상 가져오기 (편의 메서드)
+
+- **`getAllowedTargets(request?: GetAllowedTargetsRequest)`** - 허용된 대상 체인 및 토큰 조회 (매개변수 없이 전체 조회 지원)
+  ```typescript
+  const targets = await client.tokenRouting.getAllowedTargets({
+    source_chain_id: 1,
+    source_token_key: 'USDT'
+  });
+  ```
+- **`getAllPoolsAndTokens()`** - 모든 풀 및 토큰 가져오기 (편의 메서드)
+  ```typescript
+  const all = await client.tokenRouting.getAllPoolsAndTokens();
+  ```
+- **`getTargetsForSource(sourceChainId: number, sourceTokenId: string)`** - 특정 소스의 대상 가져오기 (편의 메서드)
+  ```typescript
+  const targets = await client.tokenRouting.getTargetsForSource(1, 'USDT');
+  ```
 
 #### 12. 🔑 KMS 관련 (KMSAPI) - 2개
-- `sign()` - KMS를 사용하여 데이터 서명
-- `getPublicKey()` - KMS 관리 공개 키 가져오기
+
+- **`sign(request: KMSSignRequest)`** - KMS를 사용하여 데이터 서명
+  ```typescript
+  const sig = await client.kms.sign({ data: '0x...', keyId: '...' });
+  ```
+- **`getPublicKey(request?: KMSPublicKeyRequest)`** - KMS 관리 공개 키 가져오기
+  ```typescript
+  const pk = await client.kms.getPublicKey({ keyId: '...' });
+  ```
 
 #### 13. 🎯 EnclaveClient 고급 메서드 - 16개
 
@@ -160,8 +378,8 @@ SDK는 **13개의 API 클라이언트 클래스**를 포함하며 **66개의 API
 | API 카테고리 | 메서드 수 | 상태 |
 |-------------|----------|------|
 | 인증 | 5 | ✅ |
-| Checkbook | 4 | ✅ |
-| Allocation | 4 | ✅ |
+| Checkbook | 5 | ✅ |
+| Allocation | 5 | ✅ |
 | Withdrawal | 7 | ✅ |
 | Beneficiary | 3 | ⭐ 신규 |
 | Pool & Token | 5 | ✅ |
@@ -172,7 +390,7 @@ SDK는 **13개의 API 클라이언트 클래스**를 포함하며 **66개의 API
 | Token 라우팅 | 3 | ⭐ 신규 |
 | KMS | 2 | ✅ |
 | EnclaveClient 고급 | 16 | ✅ |
-| **합계** | **66** | ✅ |
+| **합계** | **68** | ✅ |
 
 ---
 

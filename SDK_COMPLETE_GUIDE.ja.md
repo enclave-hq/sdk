@@ -49,83 +49,301 @@ SDK 層 (@enclave-hq/sdk)
 
 ### 概要
 
-SDK には **13 の API クライアントクラス** が含まれ、**66 の API メソッド** を提供します。
+SDK には **13 の API クライアントクラス** が含まれ、**68 の API メソッド** を提供します。
 
 ### API クライアントカテゴリ
 
 #### 1. 🔐 認証関連 (AuthAPI) - 5個
-- `authenticate()` - ウォレット署名ログイン
-- `refreshToken()` - JWT Token の更新
-- `logout()` - ログアウト
-- `verifyToken()` - Token の有効性を検証
-- `getNonce()` - 署名チャレンジ Nonce を取得
 
-#### 2. 📝 Checkbook 関連 (CheckbooksAPI) - 4個
-- `listCheckbooks()` - ユーザーの Checkbooks を一覧表示
-- `getCheckbookById()` - 単一の Checkbook を取得
-- `getCheckbooksByOwner()` - 所有者で Checkbooks をクエリ
-- `deleteCheckbook()` - Checkbook を削除
+- **`authenticate(request: AuthRequest)`** - ウォレット署名ログイン
+  ```typescript
+  await client.auth.authenticate({
+    address: { universalFormat: '0x...' },
+    message: 'Sign this message...',
+    signature: '0x...',
+    chainId: 1
+  });
+  ```
+- **`refreshToken(request: RefreshTokenRequest)`** - JWT Token の更新
+  ```typescript
+  await client.auth.refreshToken({ token: 'old-token' });
+  ```
+- **`logout()`** - ログアウト
+  ```typescript
+  await client.auth.logout();
+  ```
+- **`verifyToken()`** - Token の有効性を検証
+  ```typescript
+  const isValid = await client.auth.verifyToken();
+  ```
+- **`getNonce(address?: string)`** - 署名チャレンジ Nonce を取得
+  ```typescript
+  const { nonce, message } = await client.auth.getNonce('0x...');
+  ```
 
-#### 3. 💰 Allocation 関連 (AllocationsAPI) - 4個
-- `listAllocations()` - 割り当てレコードを一覧表示
-- `createAllocations()` - 割り当てを作成（Commitment）
-- `getAllocationsByCheckbookId()` - Checkbook で割り当てをクエリ
-- `getAllocationsByTokenIdAndStatus()` - Token とステータスで割り当てをクエリ
+#### 2. 📝 Checkbook 関連 (CheckbooksAPI) - 5個
+
+- **`listCheckbooks(request?: ListCheckbooksRequest)`** - ユーザーの Checkbooks を一覧表示
+  ```typescript
+  const checkbooks = await client.checkbooks.listCheckbooks({
+    page: 1,
+    limit: 10,
+    status: 'active'
+  });
+  ```
+- **`getCheckbookById(request: GetCheckbookRequest)`** - 単一の Checkbook を取得
+  ```typescript
+  const checkbook = await client.checkbooks.getCheckbookById({ id: 'cb-123' });
+  ```
+- **`getCheckbookByDeposit(request: GetCheckbookByDepositRequest)`** - Deposit で Checkbook を取得
+  ```typescript
+  const checkbook = await client.checkbooks.getCheckbookByDeposit({
+    chainId: 1,
+    txHash: '0x...'
+  });
+  ```
+- **`getCheckbooksByOwner(owner: string, ...)`** - (非推奨) 所有者で Checkbooks をクエリ
+  ```typescript
+  // listCheckbooks() を使用してください
+  ```
+- **`deleteCheckbook(id: string)`** - Checkbook を削除
+  ```typescript
+  await client.checkbooks.deleteCheckbook('cb-123');
+  ```
+
+#### 3. 💰 Allocation 関連 (AllocationsAPI) - 5個
+
+- **`listAllocations(request?: ListAllocationsRequest)`** - 割り当てレコードを一覧表示
+  ```typescript
+  const allocations = await client.allocations.listAllocations({
+    checkbookId: 'cb-123',
+    status: 'active'
+  });
+  ```
+- **`searchAllocations(request: SearchAllocationsRequest)`** - 割り当てを一括検索
+  ```typescript
+  const results = await client.allocations.searchAllocations({
+    chain_slip44_id: 60,
+    addresses: ['0x...']
+  });
+  ```
+- **`createAllocations(request: CreateAllocationsRequest)`** - 割り当てを作成（Commitment）
+  ```typescript
+  await client.allocations.createAllocations({
+    checkbookId: 'cb-123',
+    amounts: ['1000'],
+    tokenKey: 'USDT',
+    signature: '0x...',
+    message: '...'
+  });
+  ```
+- **`getAllocationsByCheckbookId(checkbookId: string, status?: string)`** - Checkbook で割り当てをクエリ
+  ```typescript
+  const list = await client.allocations.getAllocationsByCheckbookId('cb-123');
+  ```
+- **`getAllocationsByTokenIdAndStatus(tokenId: string, status: string)`** - Token とステータスで割り当てをクエリ
+  ```typescript
+  const list = await client.allocations.getAllocationsByTokenIdAndStatus('token-1', 'active');
+  ```
 
 #### 4. 📤 Withdrawal 関連 (WithdrawalsAPI) - 7個
-- `listWithdrawRequests()` - 出金リクエストを一覧表示
-- `getWithdrawRequestById()` - 単一の出金リクエストを取得
-- `getWithdrawRequestByNullifier()` - nullifier でクエリ
-- `createWithdrawRequest()` - 出金リクエストを作成
-- `retryWithdrawRequest()` - 失敗した出金を再試行
-- `cancelWithdrawRequest()` - 出金リクエストをキャンセル
-- `getWithdrawStats()` - 出金統計を取得
+
+- **`listWithdrawRequests(request?: ListWithdrawRequestsRequest)`** - 出金リクエストを一覧表示
+  ```typescript
+  const requests = await client.withdrawals.listWithdrawRequests({
+    page: 1,
+    limit: 20,
+    status: 'pending'
+  });
+  ```
+- **`getWithdrawRequestById(request: GetWithdrawRequestRequest)`** - 単一の出金リクエストを取得
+  ```typescript
+  const req = await client.withdrawals.getWithdrawRequestById({ id: 'req-123' });
+  ```
+- **`getWithdrawRequestByNullifier(request: GetWithdrawRequestByNullifierRequest)`** - nullifier でクエリ
+  ```typescript
+  const req = await client.withdrawals.getWithdrawRequestByNullifier({ nullifier: '0x...' });
+  ```
+- **`createWithdrawRequest(request: CreateWithdrawRequestRequest)`** - 出金リクエストを作成
+  ```typescript
+  await client.withdrawals.createWithdrawRequest({
+    checkbookId: 'cb-123',
+    allocationIds: ['alloc-1'],
+    intent: { ... },
+    signature: '0x...',
+    chainId: 1
+  });
+  ```
+- **`retryWithdrawRequest(request: RetryWithdrawRequestRequest)`** - 失敗した出金を再試行
+  ```typescript
+  await client.withdrawals.retryWithdrawRequest({ id: 'req-123' });
+  ```
+- **`cancelWithdrawRequest(request: CancelWithdrawRequestRequest)`** - 出金リクエストをキャンセル
+  ```typescript
+  await client.withdrawals.cancelWithdrawRequest({ id: 'req-123' });
+  ```
+- **`getWithdrawStats(request?: GetWithdrawStatsRequest)`** - 出金統計を取得
+  ```typescript
+  const stats = await client.withdrawals.getWithdrawStats();
+  ```
 
 #### 5. 👥 Beneficiary 関連 (BeneficiaryAPI) - 3個 ⭐
-- `listBeneficiaryWithdrawRequests()` - 受益者としての出金リクエストを一覧表示
-- `requestPayoutExecution()` - ペイアウト実行をリクエスト
-- `claimTimeout()` - タイムアウトを請求
+
+- **`listBeneficiaryWithdrawRequests(request?: ListBeneficiaryWithdrawRequestsRequest)`** - 受益者としての出金リクエストを一覧表示
+  ```typescript
+  const requests = await client.beneficiary.listBeneficiaryWithdrawRequests({
+    status: 'waiting_for_payout'
+  });
+  ```
+- **`requestPayoutExecution(request: RequestPayoutExecutionRequest)`** - ペイアウト実行をリクエスト
+  ```typescript
+  await client.beneficiary.requestPayoutExecution({ id: 'req-123' });
+  ```
+- **`claimTimeout(request: ClaimTimeoutRequest)`** - タイムアウトを請求
+  ```typescript
+  await client.beneficiary.claimTimeout({ id: 'req-123' });
+  ```
 
 #### 6. 🏊 Pool & Token 関連 (PoolsAPI) - 5個
-- `listPools()` - すべてのプールを一覧表示
-- `getPoolById()` - プールの詳細を取得
-- `listTokens()` - トークンを一覧表示
-- `getTokenById()` - トークンの詳細を取得
-- `getActiveTokens()` - アクティブなトークンを取得
+
+- **`listPools(request?: ListPoolsRequest)`** - すべてのプールを一覧表示
+  ```typescript
+  const pools = await client.pools.listPools({ isActive: true });
+  ```
+- **`getPoolById(request: GetPoolRequest)`** - プールの詳細を取得
+  ```typescript
+  const pool = await client.pools.getPoolById({ id: 'pool-1' });
+  ```
+- **`listTokens(request?: ListTokensRequest)`** - トークンを一覧表示
+  ```typescript
+  const tokens = await client.pools.listTokens({ chainId: 1 });
+  ```
+- **`getTokenById(request: GetTokenRequest)`** - トークンの詳細を取得
+  ```typescript
+  const token = await client.pools.getTokenById({ id: 'token-1' });
+  ```
+- **`getActiveTokens(chainId?: number)`** - アクティブなトークンを取得
+  ```typescript
+  const tokens = await client.pools.getActiveTokens(1);
+  ```
 
 #### 7. 💹 価格関連 (PricesAPI) - 3個
-- `getTokenPrices()` - トークン価格を一括取得
-- `getTokenPrice()` - 単一のトークン価格を取得
-- `getAllPrices()` - すべての価格を取得
+
+- **`getTokenPrices(request?: GetTokenPricesRequest)`** - トークン価格を一括取得
+  ```typescript
+  const prices = await client.prices.getTokenPrices({ symbols: ['ETH', 'USDT'] });
+  ```
+- **`getTokenPrice(symbol: string)`** - 単一のトークン価格を取得
+  ```typescript
+  const price = await client.prices.getTokenPrice('ETH');
+  ```
+- **`getAllPrices()`** - すべての価格を取得
+  ```typescript
+  const allPrices = await client.prices.getAllPrices();
+  ```
 
 #### 8. 📊 指標関連 (MetricsAPI) - 6個
-- `getPoolMetrics()` - プール指標を取得
-- `getTokenMetrics()` - トークン指標を取得
-- `getPoolMetricsHistory()` - プール指標履歴を取得
-- `getTokenMetricsHistory()` - トークン指標履歴を取得
-- `getBatchPoolMetrics()` - プール指標を一括取得
-- `getBatchTokenMetrics()` - トークン指標を一括取得
+
+- **`getPoolMetrics(poolId: number)`** - プール指標を取得
+  ```typescript
+  const metrics = await client.metrics.getPoolMetrics(1);
+  ```
+- **`getTokenMetrics(assetId: string)`** - トークン指標を取得
+  ```typescript
+  const metrics = await client.metrics.getTokenMetrics('0x...');
+  ```
+- **`getPoolMetricsHistory(poolId: number, metricType: string, days?: number)`** - プール指標履歴を取得
+  ```typescript
+  const history = await client.metrics.getPoolMetricsHistory(1, 'apy', 30);
+  ```
+- **`getTokenMetricsHistory(assetId: string, metricType: string, days?: number)`** - トークン指標履歴を取得
+  ```typescript
+  const history = await client.metrics.getTokenMetricsHistory('0x...', 'price', 7);
+  ```
+- **`getBatchPoolMetrics(poolIds: number[])`** - プール指標を一括取得
+  ```typescript
+  const batch = await client.metrics.getBatchPoolMetrics([1, 2]);
+  ```
+- **`getBatchTokenMetrics(assetIds: string[])`** - トークン指標を一括取得
+  ```typescript
+  const batch = await client.metrics.getBatchTokenMetrics(['0x...', '0x...']);
+  ```
 
 #### 9. 🛣️ 見積もり関連 (QuoteAPI) - 2個
-- `getRouteAndFees()` - ルートと手数料をクエリ
-- `getHookAsset()` - Hook 資産情報をクエリ
+
+- **`getRouteAndFees(request: RouteAndFeesRequest)`** - ルートと手数料をクエリ
+  ```typescript
+  const quote = await client.quote.getRouteAndFees({
+    amount: '1000',
+    deposit_token: '0x...',
+    owner_data: { ... },
+    intent: { ... }
+  });
+  ```
+- **`getHookAsset(request: HookAssetRequest)`** - Hook 資産情報をクエリ
+  ```typescript
+  const info = await client.quote.getHookAsset({
+    asset_id: '0x...',
+    chain_id: 1,
+    amount: '1000'
+  });
+  ```
 
 #### 10. 🔗 チェーン設定関連 (ChainConfigAPI) - 6個
-- `getChainConfig()` - チェーン設定を取得
-- `getTreasuryAddress()` - Treasury アドレスを取得
-- `getIntentManagerAddress()` - IntentManager アドレスを取得
-- `getRpcEndpoint()` - RPC エンドポイントを取得
-- `listChains()` - すべてのアクティブなチェーンを一覧表示
-- `getAllTreasuryAddresses()` - すべての Treasury アドレスを取得
+
+- **`getChainConfig(chainId: number)`** - チェーン設定を取得
+  ```typescript
+  const config = await client.chainConfig.getChainConfig(1);
+  ```
+- **`getTreasuryAddress(chainId: number)`** - Treasury アドレスを取得
+  ```typescript
+  const address = await client.chainConfig.getTreasuryAddress(1);
+  ```
+- **`getIntentManagerAddress(chainId: number)`** - IntentManager アドレスを取得
+  ```typescript
+  const address = await client.chainConfig.getIntentManagerAddress(1);
+  ```
+- **`getRpcEndpoint(chainId: number)`** - RPC エンドポイントを取得
+  ```typescript
+  const rpc = await client.chainConfig.getRpcEndpoint(1);
+  ```
+- **`listChains()`** - すべてのアクティブなチェーンを一覧表示
+  ```typescript
+  const chains = await client.chainConfig.listChains();
+  ```
+- **`getAllTreasuryAddresses()`** - すべての Treasury アドレスを取得
+  ```typescript
+  const addresses = await client.chainConfig.getAllTreasuryAddresses();
+  ```
 
 #### 11. 🔀 Token ルーティング規則関連 (TokenRoutingAPI) - 3個 ⭐
-- `getAllowedTargets()` - 許可されたターゲットチェーンとトークンをクエリ（パラメータなしで全件クエリをサポート）
-- `getAllPoolsAndTokens()` - すべてのプールとトークンを取得（便利メソッド）
-- `getTargetsForSource()` - 特定のソースのターゲットを取得（便利メソッド）
+
+- **`getAllowedTargets(request?: GetAllowedTargetsRequest)`** - 許可されたターゲットチェーンとトークンをクエリ（パラメータなしで全件クエリをサポート）
+  ```typescript
+  const targets = await client.tokenRouting.getAllowedTargets({
+    source_chain_id: 1,
+    source_token_key: 'USDT'
+  });
+  ```
+- **`getAllPoolsAndTokens()`** - すべてのプールとトークンを取得（便利メソッド）
+  ```typescript
+  const all = await client.tokenRouting.getAllPoolsAndTokens();
+  ```
+- **`getTargetsForSource(sourceChainId: number, sourceTokenId: string)`** - 特定のソースのターゲットを取得（便利メソッド）
+  ```typescript
+  const targets = await client.tokenRouting.getTargetsForSource(1, 'USDT');
+  ```
 
 #### 12. 🔑 KMS 関連 (KMSAPI) - 2個
-- `sign()` - KMS を使用してデータに署名
-- `getPublicKey()` - KMS 管理の公開鍵を取得
+
+- **`sign(request: KMSSignRequest)`** - KMS を使用してデータに署名
+  ```typescript
+  const sig = await client.kms.sign({ data: '0x...', keyId: '...' });
+  ```
+- **`getPublicKey(request?: KMSPublicKeyRequest)`** - KMS 管理の公開鍵を取得
+  ```typescript
+  const pk = await client.kms.getPublicKey({ keyId: '...' });
+  ```
 
 #### 13. 🎯 EnclaveClient 高レベルメソッド - 16個
 
@@ -160,8 +378,8 @@ SDK には **13 の API クライアントクラス** が含まれ、**66 の AP
 | API カテゴリ | メソッド数 | ステータス |
 |-------------|-----------|----------|
 | 認証 | 5 | ✅ |
-| Checkbook | 4 | ✅ |
-| Allocation | 4 | ✅ |
+| Checkbook | 5 | ✅ |
+| Allocation | 5 | ✅ |
 | Withdrawal | 7 | ✅ |
 | Beneficiary | 3 | ⭐ 新規 |
 | Pool & Token | 5 | ✅ |
@@ -172,7 +390,7 @@ SDK には **13 の API クライアントクラス** が含まれ、**66 の AP
 | Token ルーティング | 3 | ⭐ 新規 |
 | KMS | 2 | ✅ |
 | EnclaveClient 高レベル | 16 | ✅ |
-| **合計** | **66** | ✅ |
+| **合計** | **68** | ✅ |
 
 ---
 

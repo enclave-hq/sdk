@@ -9,6 +9,8 @@ import type {
   ListAllocationsResponse,
   CreateAllocationsRequest,
   CreateAllocationsResponse,
+  SearchAllocationsRequest,
+  SearchAllocationsResponse,
 } from '../types/api';
 import type { Allocation } from '../types/models';
 import {
@@ -87,6 +89,36 @@ export class AllocationsAPI {
       // Preserve checkbook info from backend (for localDepositId access)
       ...(backendAllocation.checkbook && { _checkbook: backendAllocation.checkbook }),
     } as any; // Use 'as any' to allow _checkbook field
+  }
+
+  /**
+   * Search allocations by chain ID and addresses
+   * @param request - Search request parameters
+   * @returns List of found allocations
+   */
+  async searchAllocations(request: SearchAllocationsRequest): Promise<SearchAllocationsResponse> {
+    validateNonEmptyArray(request.addresses, 'addresses');
+
+    const response = await this.client.post<{
+      success: boolean;
+      data: any[];
+      count: number;
+    }>('/api/allocations/search', {
+      chain_slip44_id: request.chain_slip44_id,
+      addresses: request.addresses,
+      status: request.status,
+    });
+
+    // Convert backend snake_case to frontend camelCase
+    const convertedData = (response.data || []).map(allocation =>
+      this.convertAllocation(allocation)
+    );
+
+    return {
+      success: response.success,
+      data: convertedData,
+      count: response.count || convertedData.length,
+    };
   }
 
   /**

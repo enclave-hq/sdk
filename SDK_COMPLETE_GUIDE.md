@@ -49,83 +49,301 @@ SDK 层 (@enclave-hq/sdk)
 
 ### 总览
 
-SDK 共包含 **13 个 API 客户端类**，提供 **66 个 API 方法**。
+SDK 共包含 **13 个 API 客户端类**，提供 **68 个 API 方法**。
 
 ### API 客户端分类
 
 #### 1. 🔐 认证相关 (AuthAPI) - 5个
-- `authenticate()` - 钱包签名登录
-- `refreshToken()` - 刷新 JWT Token
-- `logout()` - 登出
-- `verifyToken()` - 验证 Token 有效性
-- `getNonce()` - 获取签名挑战 Nonce
 
-#### 2. 📝 Checkbook 相关 (CheckbooksAPI) - 4个
-- `listCheckbooks()` - 列出用户的 Checkbooks
-- `getCheckbookById()` - 查询单个 Checkbook
-- `getCheckbooksByOwner()` - 按所有者查询 Checkbooks
-- `deleteCheckbook()` - 删除 Checkbook
+- **`authenticate(request: AuthRequest)`** - 钱包签名登录
+  ```typescript
+  await client.auth.authenticate({
+    address: { universalFormat: '0x...' },
+    message: 'Sign this message...',
+    signature: '0x...',
+    chainId: 1
+  });
+  ```
+- **`refreshToken(request: RefreshTokenRequest)`** - 刷新 JWT Token
+  ```typescript
+  await client.auth.refreshToken({ token: 'old-token' });
+  ```
+- **`logout()`** - 登出
+  ```typescript
+  await client.auth.logout();
+  ```
+- **`verifyToken()`** - 验证 Token 有效性
+  ```typescript
+  const isValid = await client.auth.verifyToken();
+  ```
+- **`getNonce(address?: string)`** - 获取签名挑战 Nonce
+  ```typescript
+  const { nonce, message } = await client.auth.getNonce('0x...');
+  ```
 
-#### 3. 💰 Allocation 相关 (AllocationsAPI) - 4个
-- `listAllocations()` - 列出分配记录
-- `createAllocations()` - 创建分配（Commitment）
-- `getAllocationsByCheckbookId()` - 按 Checkbook 查询分配
-- `getAllocationsByTokenIdAndStatus()` - 按 Token 和状态查询分配
+#### 2. 📝 Checkbook 相关 (CheckbooksAPI) - 5个
+
+- **`listCheckbooks(request?: ListCheckbooksRequest)`** - 列出用户的 Checkbooks
+  ```typescript
+  const checkbooks = await client.checkbooks.listCheckbooks({
+    page: 1,
+    limit: 10,
+    status: 'active'
+  });
+  ```
+- **`getCheckbookById(request: GetCheckbookRequest)`** - 查询单个 Checkbook
+  ```typescript
+  const checkbook = await client.checkbooks.getCheckbookById({ id: 'cb-123' });
+  ```
+- **`getCheckbookByDeposit(request: GetCheckbookByDepositRequest)`** - 按 Deposit 查询 Checkbook
+  ```typescript
+  const checkbook = await client.checkbooks.getCheckbookByDeposit({
+    chainId: 1,
+    txHash: '0x...'
+  });
+  ```
+- **`getCheckbooksByOwner(owner: string, ...)`** - (已弃用) 按所有者查询
+  ```typescript
+  // 请使用 listCheckbooks()
+  ```
+- **`deleteCheckbook(id: string)`** - 删除 Checkbook
+  ```typescript
+  await client.checkbooks.deleteCheckbook('cb-123');
+  ```
+
+#### 3. 💰 Allocation 相关 (AllocationsAPI) - 5个
+
+- **`listAllocations(request?: ListAllocationsRequest)`** - 列出分配记录
+  ```typescript
+  const allocations = await client.allocations.listAllocations({
+    checkbookId: 'cb-123',
+    status: 'active'
+  });
+  ```
+- **`searchAllocations(request: SearchAllocationsRequest)`** - 批量查询分配
+  ```typescript
+  const results = await client.allocations.searchAllocations({
+    chain_slip44_id: 60,
+    addresses: ['0x...']
+  });
+  ```
+- **`createAllocations(request: CreateAllocationsRequest)`** - 创建分配（Commitment）
+  ```typescript
+  await client.allocations.createAllocations({
+    checkbookId: 'cb-123',
+    amounts: ['1000'],
+    tokenKey: 'USDT',
+    signature: '0x...',
+    message: '...'
+  });
+  ```
+- **`getAllocationsByCheckbookId(checkbookId: string, status?: string)`** - 按 Checkbook 查询分配
+  ```typescript
+  const list = await client.allocations.getAllocationsByCheckbookId('cb-123');
+  ```
+- **`getAllocationsByTokenIdAndStatus(tokenId: string, status: string)`** - 按 Token 和状态查询分配
+  ```typescript
+  const list = await client.allocations.getAllocationsByTokenIdAndStatus('token-1', 'active');
+  ```
 
 #### 4. 📤 Withdrawal 相关 (WithdrawalsAPI) - 7个
-- `listWithdrawRequests()` - 列出提款请求
-- `getWithdrawRequestById()` - 查询单个提款请求
-- `getWithdrawRequestByNullifier()` - 按 nullifier 查询
-- `createWithdrawRequest()` - 创建提款请求
-- `retryWithdrawRequest()` - 重试失败的提款
-- `cancelWithdrawRequest()` - 取消提款请求
-- `getWithdrawStats()` - 获取提款统计
+
+- **`listWithdrawRequests(request?: ListWithdrawRequestsRequest)`** - 列出提款请求
+  ```typescript
+  const requests = await client.withdrawals.listWithdrawRequests({
+    page: 1,
+    limit: 20,
+    status: 'pending'
+  });
+  ```
+- **`getWithdrawRequestById(request: GetWithdrawRequestRequest)`** - 查询单个提款请求
+  ```typescript
+  const req = await client.withdrawals.getWithdrawRequestById({ id: 'req-123' });
+  ```
+- **`getWithdrawRequestByNullifier(request: GetWithdrawRequestByNullifierRequest)`** - 按 nullifier 查询
+  ```typescript
+  const req = await client.withdrawals.getWithdrawRequestByNullifier({ nullifier: '0x...' });
+  ```
+- **`createWithdrawRequest(request: CreateWithdrawRequestRequest)`** - 创建提款请求
+  ```typescript
+  await client.withdrawals.createWithdrawRequest({
+    checkbookId: 'cb-123',
+    allocationIds: ['alloc-1'],
+    intent: { ... },
+    signature: '0x...',
+    chainId: 1
+  });
+  ```
+- **`retryWithdrawRequest(request: RetryWithdrawRequestRequest)`** - 重试失败的提款
+  ```typescript
+  await client.withdrawals.retryWithdrawRequest({ id: 'req-123' });
+  ```
+- **`cancelWithdrawRequest(request: CancelWithdrawRequestRequest)`** - 取消提款请求
+  ```typescript
+  await client.withdrawals.cancelWithdrawRequest({ id: 'req-123' });
+  ```
+- **`getWithdrawStats(request?: GetWithdrawStatsRequest)`** - 获取提款统计
+  ```typescript
+  const stats = await client.withdrawals.getWithdrawStats();
+  ```
 
 #### 5. 👥 Beneficiary 相关 (BeneficiaryAPI) - 3个 ⭐
-- `listBeneficiaryWithdrawRequests()` - 列出作为受益人的提款请求
-- `requestPayoutExecution()` - 请求执行 Payout
-- `claimTimeout()` - 超时领取
+
+- **`listBeneficiaryWithdrawRequests(request?: ListBeneficiaryWithdrawRequestsRequest)`** - 列出作为受益人的提款请求
+  ```typescript
+  const requests = await client.beneficiary.listBeneficiaryWithdrawRequests({
+    status: 'waiting_for_payout'
+  });
+  ```
+- **`requestPayoutExecution(request: RequestPayoutExecutionRequest)`** - 请求执行 Payout
+  ```typescript
+  await client.beneficiary.requestPayoutExecution({ id: 'req-123' });
+  ```
+- **`claimTimeout(request: ClaimTimeoutRequest)`** - 超时领取
+  ```typescript
+  await client.beneficiary.claimTimeout({ id: 'req-123' });
+  ```
 
 #### 6. 🏊 Pool & Token 相关 (PoolsAPI) - 5个
-- `listPools()` - 列出所有池
-- `getPoolById()` - 获取池详情
-- `listTokens()` - 列出代币
-- `getTokenById()` - 获取代币详情
-- `getActiveTokens()` - 获取活跃代币
+
+- **`listPools(request?: ListPoolsRequest)`** - 列出所有池
+  ```typescript
+  const pools = await client.pools.listPools({ isActive: true });
+  ```
+- **`getPoolById(request: GetPoolRequest)`** - 获取池详情
+  ```typescript
+  const pool = await client.pools.getPoolById({ id: 'pool-1' });
+  ```
+- **`listTokens(request?: ListTokensRequest)`** - 列出代币
+  ```typescript
+  const tokens = await client.pools.listTokens({ chainId: 1 });
+  ```
+- **`getTokenById(request: GetTokenRequest)`** - 获取代币详情
+  ```typescript
+  const token = await client.pools.getTokenById({ id: 'token-1' });
+  ```
+- **`getActiveTokens(chainId?: number)`** - 获取活跃代币
+  ```typescript
+  const tokens = await client.pools.getActiveTokens(1);
+  ```
 
 #### 7. 💹 价格相关 (PricesAPI) - 3个
-- `getTokenPrices()` - 批量获取代币价格
-- `getTokenPrice()` - 获取单个代币价格
-- `getAllPrices()` - 获取所有价格
+
+- **`getTokenPrices(request?: GetTokenPricesRequest)`** - 批量获取代币价格
+  ```typescript
+  const prices = await client.prices.getTokenPrices({ symbols: ['ETH', 'USDT'] });
+  ```
+- **`getTokenPrice(symbol: string)`** - 获取单个代币价格
+  ```typescript
+  const price = await client.prices.getTokenPrice('ETH');
+  ```
+- **`getAllPrices()`** - 获取所有价格
+  ```typescript
+  const allPrices = await client.prices.getAllPrices();
+  ```
 
 #### 8. 📊 指标相关 (MetricsAPI) - 6个
-- `getPoolMetrics()` - 获取池指标
-- `getTokenMetrics()` - 获取代币指标
-- `getPoolMetricsHistory()` - 获取池指标历史
-- `getTokenMetricsHistory()` - 获取代币指标历史
-- `getBatchPoolMetrics()` - 批量获取池指标
-- `getBatchTokenMetrics()` - 批量获取代币指标
+
+- **`getPoolMetrics(poolId: number)`** - 获取池指标
+  ```typescript
+  const metrics = await client.metrics.getPoolMetrics(1);
+  ```
+- **`getTokenMetrics(assetId: string)`** - 获取代币指标
+  ```typescript
+  const metrics = await client.metrics.getTokenMetrics('0x...');
+  ```
+- **`getPoolMetricsHistory(poolId: number, metricType: string, days?: number)`** - 获取池指标历史
+  ```typescript
+  const history = await client.metrics.getPoolMetricsHistory(1, 'apy', 30);
+  ```
+- **`getTokenMetricsHistory(assetId: string, metricType: string, days?: number)`** - 获取代币指标历史
+  ```typescript
+  const history = await client.metrics.getTokenMetricsHistory('0x...', 'price', 7);
+  ```
+- **`getBatchPoolMetrics(poolIds: number[])`** - 批量获取池指标
+  ```typescript
+  const batch = await client.metrics.getBatchPoolMetrics([1, 2]);
+  ```
+- **`getBatchTokenMetrics(assetIds: string[])`** - 批量获取代币指标
+  ```typescript
+  const batch = await client.metrics.getBatchTokenMetrics(['0x...', '0x...']);
+  ```
 
 #### 9. 🛣️ 报价相关 (QuoteAPI) - 2个
-- `getRouteAndFees()` - 查询路由和费用
-- `getHookAsset()` - 查询 Hook 资产信息
+
+- **`getRouteAndFees(request: RouteAndFeesRequest)`** - 查询路由和费用
+  ```typescript
+  const quote = await client.quote.getRouteAndFees({
+    amount: '1000',
+    deposit_token: '0x...',
+    owner_data: { ... },
+    intent: { ... }
+  });
+  ```
+- **`getHookAsset(request: HookAssetRequest)`** - 查询 Hook 资产信息
+  ```typescript
+  const info = await client.quote.getHookAsset({
+    asset_id: '0x...',
+    chain_id: 1,
+    amount: '1000'
+  });
+  ```
 
 #### 10. 🔗 链配置相关 (ChainConfigAPI) - 6个
-- `getChainConfig()` - 获取链配置
-- `getTreasuryAddress()` - 获取 Treasury 地址
-- `getIntentManagerAddress()` - 获取 IntentManager 地址
-- `getRpcEndpoint()` - 获取 RPC 端点
-- `listChains()` - 列出所有活跃链
-- `getAllTreasuryAddresses()` - 获取所有 Treasury 地址
+
+- **`getChainConfig(chainId: number)`** - 获取链配置
+  ```typescript
+  const config = await client.chainConfig.getChainConfig(1);
+  ```
+- **`getTreasuryAddress(chainId: number)`** - 获取 Treasury 地址
+  ```typescript
+  const address = await client.chainConfig.getTreasuryAddress(1);
+  ```
+- **`getIntentManagerAddress(chainId: number)`** - 获取 IntentManager 地址
+  ```typescript
+  const address = await client.chainConfig.getIntentManagerAddress(1);
+  ```
+- **`getRpcEndpoint(chainId: number)`** - 获取 RPC 端点
+  ```typescript
+  const rpc = await client.chainConfig.getRpcEndpoint(1);
+  ```
+- **`listChains()`** - 列出所有活跃链
+  ```typescript
+  const chains = await client.chainConfig.listChains();
+  ```
+- **`getAllTreasuryAddresses()`** - 获取所有 Treasury 地址
+  ```typescript
+  const addresses = await client.chainConfig.getAllTreasuryAddresses();
+  ```
 
 #### 11. 🔀 Token 路由规则相关 (TokenRoutingAPI) - 3个 ⭐
-- `getAllowedTargets()` - 查询允许的目标链和代币（支持无参数查询所有）
-- `getAllPoolsAndTokens()` - 获取所有池和代币（便捷方法）
-- `getTargetsForSource()` - 获取特定源的目标（便捷方法）
+
+- **`getAllowedTargets(request?: GetAllowedTargetsRequest)`** - 查询允许的目标链和代币（支持无参数查询所有）
+  ```typescript
+  const targets = await client.tokenRouting.getAllowedTargets({
+    source_chain_id: 1,
+    source_token_key: 'USDT'
+  });
+  ```
+- **`getAllPoolsAndTokens()`** - 获取所有池和代币（便捷方法）
+  ```typescript
+  const all = await client.tokenRouting.getAllPoolsAndTokens();
+  ```
+- **`getTargetsForSource(sourceChainId: number, sourceTokenId: string)`** - 获取特定源的目标（便捷方法）
+  ```typescript
+  const targets = await client.tokenRouting.getTargetsForSource(1, 'USDT');
+  ```
 
 #### 12. 🔑 KMS 相关 (KMSAPI) - 2个
-- `sign()` - 使用 KMS 对数据进行签名
-- `getPublicKey()` - 获取 KMS 管理的公钥
+
+- **`sign(request: KMSSignRequest)`** - 使用 KMS 对数据进行签名
+  ```typescript
+  const sig = await client.kms.sign({ data: '0x...', keyId: '...' });
+  ```
+- **`getPublicKey(request?: KMSPublicKeyRequest)`** - 获取 KMS 管理的公钥
+  ```typescript
+  const pk = await client.kms.getPublicKey({ keyId: '...' });
+  ```
 
 #### 13. 🎯 EnclaveClient 高级方法 - 16个
 
@@ -160,8 +378,8 @@ SDK 共包含 **13 个 API 客户端类**，提供 **66 个 API 方法**。
 | API 类别 | 接口数量 | 状态 |
 |---------|---------|------|
 | 认证 | 5 | ✅ |
-| Checkbook | 4 | ✅ |
-| Allocation | 4 | ✅ |
+| Checkbook | 5 | ✅ |
+| Allocation | 5 | ✅ |
 | Withdrawal | 7 | ✅ |
 | Beneficiary | 3 | ⭐ 新增 |
 | Pool & Token | 5 | ✅ |
@@ -172,7 +390,7 @@ SDK 共包含 **13 个 API 客户端类**，提供 **66 个 API 方法**。
 | Token 路由 | 3 | ⭐ 新增 |
 | KMS | 2 | ✅ |
 | EnclaveClient 高级方法 | 16 | ✅ |
-| **总计** | **66** | ✅ |
+| **总计** | **68** | ✅ |
 
 ---
 

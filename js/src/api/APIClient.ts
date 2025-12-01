@@ -69,13 +69,16 @@ export class APIClient {
             `Added Authorization header: Bearer ${this.authToken.substring(0, 20)}... for ${config.method?.toUpperCase()} ${config.url}`
           );
         } else {
-          // Only warn for endpoints that require auth, debug for public endpoints
+          // Only warn for endpoints that require auth, debug for public/IP-whitelisted endpoints
           const url = config.url || '';
           const isPublicEndpoint =
-            url.includes('/api/auth/nonce') || url.includes('/api/auth/login');
+            url.includes('/api/auth/nonce') || 
+            url.includes('/api/auth/login') ||
+            url.includes('/api/allocations/search') || // IP whitelisted
+            url.includes('/api/checkbooks/by-deposit'); // IP whitelisted
           if (isPublicEndpoint) {
             this.logger.debug(
-              `No auth token for public endpoint: ${config.method?.toUpperCase()} ${config.url}`
+              `No auth token for public/IP-whitelisted endpoint: ${config.method?.toUpperCase()} ${config.url}`
             );
           } else {
             this.logger.warn(

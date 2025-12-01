@@ -11,6 +11,7 @@ This directory contains examples demonstrating different use cases and integrati
 | [`authentication.ts`](#authentication) | Authentication flow | Custom auth implementation | SDK + ethers.js |
 | [`react-example.tsx`](#react-integration) | React hooks integration | React apps (simple) | SDK + React Hooks |
 | [`wallet-sdk-integration.tsx`](#wallet-sdk-integration) | Full wallet integration | React apps (production) | SDK + wallet-sdk + React |
+| [`advanced-queries.ts`](#advanced-queries) | Advanced backend queries | Backend Services/Admin | SDK + IP Whitelist |
 
 ---
 
@@ -170,6 +171,28 @@ const client = new EnclaveClient({ contractProvider });
 - 🎯 More flexible and extensible
 - 🎯 Better error handling
 - 🎯 Production-ready
+
+---
+
+### 6. Advanced Queries
+**File**: `advanced-queries.ts`
+**Use Case**: Backend services needing specialized data lookups
+**Best For**: Admin panels, indexers, specialized services
+
+```bash
+ts-node examples/advanced-queries.ts
+```
+
+**Key Features**:
+- ✅ Search allocations by chain and addresses
+- ✅ Look up checkbooks by deposit transaction hash
+- ✅ Backend API usage without full authentication (IP whitelisted)
+
+**When to use**:
+- Building admin dashboards
+- Verifying deposit status
+- Indexing allocations for users across multiple chains
+- Backend-to-backend communication
 
 ---
 

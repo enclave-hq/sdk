@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.5] - 2025-12-01
+
+### Added
+- Add `searchAllocations` method to `AllocationsAPI` for querying allocations by chain ID and address list
+- Add `getCheckbookByDeposit` method to `CheckbooksAPI` for looking up checkbooks by deposit transaction hash
+- Add `advanced-queries.ts` example demonstrating the new query features
+- Add support for IP whitelisted endpoints in `APIClient` (no auth warnings for public endpoints)
+
+### Changed
+- Update `APIClient` to suppress auth warnings for IP whitelisted endpoints (`/api/allocations/search`, `/api/checkbooks/by-deposit`)
+- Update SDK documentation across all languages (README and SDK_COMPLETE_GUIDE) to reflect new API methods
+- Update API method counts: AllocationsAPI (5 methods), CheckbooksAPI (5 methods), total 68 methods
+
 ## [2.3.3] - 2025-01-29
 
 ### Changed

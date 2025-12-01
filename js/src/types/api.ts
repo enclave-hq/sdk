@@ -133,6 +133,37 @@ export interface GetCheckbookResponse {
   checkbook: Checkbook;
 }
 
+/**
+ * Get checkbook by deposit request
+ */
+export interface GetCheckbookByDepositRequest {
+  /** SLIP-44 Chain ID */
+  chainId: number;
+  /** Deposit transaction hash */
+  txHash: string;
+}
+
+/**
+ * Get checkbook by deposit response
+ */
+export interface GetCheckbookByDepositResponse {
+  /** Success status */
+  success: boolean;
+  /** Checkbook data */
+  checkbook: Checkbook;
+  /** Token info (optional) */
+  token?: {
+    id: string;
+    symbol: string;
+    name?: string;
+    decimals?: number;
+    address?: string;
+    chain_id?: number;
+    chain_name?: string;
+    is_active?: boolean;
+  };
+}
+
 // ============ Allocations ============
 
 /**
@@ -156,6 +187,30 @@ export interface ListAllocationsRequest {
  * List allocations response
  */
 export interface ListAllocationsResponse extends PaginatedResponse<Allocation> {}
+
+/**
+ * Search allocations request
+ */
+export interface SearchAllocationsRequest {
+  /** Chain ID (SLIP-44) */
+  chain_slip44_id: number;
+  /** List of addresses to search */
+  addresses: string[];
+  /** Filter by status (optional) */
+  status?: string;
+}
+
+/**
+ * Search allocations response
+ */
+export interface SearchAllocationsResponse {
+  /** Success status */
+  success: boolean;
+  /** List of found allocations */
+  data: Allocation[];
+  /** Count of found items */
+  count: number;
+}
 
 /**
  * Create allocations (commitment) request
