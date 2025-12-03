@@ -174,6 +174,8 @@ export interface ListAllocationsRequest {
   checkbookId?: string;
   /** Filter by token ID */
   tokenId?: string;
+  /** Filter by token keys (e.g., ["USDT", "USDC"]) - supports multiple tokens */
+  tokenKeys?: string[];
   /** Filter by status */
   status?: string;
   // Note: owner is now automatically determined from JWT token if authenticated
@@ -198,6 +200,8 @@ export interface SearchAllocationsRequest {
   addresses: string[];
   /** Filter by status (optional) */
   status?: string;
+  /** Filter by token keys (e.g., ["USDT", "USDC"]) - supports multiple tokens */
+  token_keys?: string[];
 }
 
 /**

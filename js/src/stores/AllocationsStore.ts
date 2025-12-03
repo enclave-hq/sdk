@@ -128,6 +128,7 @@ export class AllocationsStore extends BaseStore<Allocation> {
   async fetchList(filters?: {
     checkbookId?: string;
     tokenId?: string;
+    tokenKeys?: string[]; // Filter by token keys (e.g., ["USDT", "USDC"])
     status?: string;
     page?: number;
     limit?: number;

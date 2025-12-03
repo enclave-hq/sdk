@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.6] - 2025-01-21
+
+### Added
+- Add `tokenKeys` filter support to `ListAllocationsRequest` for filtering allocations by multiple token keys (e.g., ["USDT", "USDC"])
+- Add `token_keys` filter support to `SearchAllocationsRequest` for filtering allocations by multiple token keys
+- Add `tokenKeys` parameter to `AllocationsStore.fetchList()` method
+- Update `advanced-queries.ts` example to group allocations by checkbook in response display
+
+### Changed
+- Update `AllocationsAPI.listAllocations()` to support `tokenKeys` array parameter (converts to comma-separated string for GET request)
+- Update `AllocationsAPI.searchAllocations()` to support `token_keys` array parameter in POST request
+- Improve allocation response display in examples to show checkbook grouping
+
 ## [2.3.5] - 2025-12-01
 
 ### Added

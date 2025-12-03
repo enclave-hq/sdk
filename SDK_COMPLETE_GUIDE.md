@@ -98,7 +98,7 @@ SDK 共包含 **13 个 API 客户端类**，提供 **68 个 API 方法**。
 - **`getCheckbookByDeposit(request: GetCheckbookByDepositRequest)`** - 按 Deposit 查询 Checkbook
   ```typescript
   const checkbook = await client.checkbooks.getCheckbookByDeposit({
-    chainId: 1,
+    chainId: 60,
     txHash: '0x...'
   });
   ```

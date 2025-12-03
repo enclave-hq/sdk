@@ -107,6 +107,7 @@ export class AllocationsAPI {
       chain_slip44_id: request.chain_slip44_id,
       addresses: request.addresses,
       status: request.status,
+      token_keys: request.token_keys, // Filter by token keys (e.g., ["USDT", "USDC"])
     });
 
     // Convert backend snake_case to frontend camelCase
@@ -133,6 +134,20 @@ export class AllocationsAPI {
     }
 
     // Owner is now automatically determined from JWT token if authenticated - no need to pass it
+    // Build query params - tokenKeys should be comma-separated string for GET request
+    const params: Record<string, any> = {
+      checkbookId: request.checkbookId,
+      tokenId: request.tokenId,
+      status: request.status,
+      page: request.page || 1,
+      limit: request.limit || 20,
+    };
+    
+    // Convert tokenKeys array to comma-separated string for GET request
+    if (request.tokenKeys && request.tokenKeys.length > 0) {
+      params.tokenKeys = request.tokenKeys.join(',');
+    }
+
     const response = await this.client.get<{
       data: any[];
       pagination: {
@@ -142,13 +157,7 @@ export class AllocationsAPI {
         pages: number;
       };
     }>('/api/allocations', {
-      params: {
-        checkbookId: request.checkbookId,
-        tokenId: request.tokenId,
-        status: request.status,
-        page: request.page || 1,
-        limit: request.limit || 20,
-      },
+      params,
     });
 
     // Convert backend snake_case to frontend camelCase

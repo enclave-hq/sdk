@@ -151,17 +151,43 @@ async function main() {
       chain_slip44_id: chainId,
       addresses: addressesToSearch,
       status: 'pending', // Optional: filter by status ('idle', 'pending', 'used')
+      token_keys: ['USDT', 'USDC'], // Optional: filter by token keys
     });
 
     console.log(`✅ Found ${response.count} allocations`);
     if (response.data && response.data.length > 0) {
-      console.log('   Sample results:');
-      response.data.slice(0, 3).forEach((alloc, i) => {
-        console.log(`   ${i + 1}. Allocation ${alloc.id}: ${alloc.amount} (status: ${alloc.status})`);
+      // Group allocations by checkbook
+      const allocationsByCheckbook = new Map<string, typeof response.data>();
+      
+      response.data.forEach((alloc) => {
+        const checkbookId = alloc.checkbookId || (alloc as any)._checkbook?.id || 'unknown';
+        if (!allocationsByCheckbook.has(checkbookId)) {
+          allocationsByCheckbook.set(checkbookId, []);
+        }
+        allocationsByCheckbook.get(checkbookId)!.push(alloc);
       });
-      if (response.data.length > 3) {
-        console.log(`   ... and ${response.data.length - 3} more`);
-      }
+
+      console.log(`   Grouped by ${allocationsByCheckbook.size} checkbook(s):`);
+      
+      // Display allocations grouped by checkbook
+      allocationsByCheckbook.forEach((allocs, checkbookId) => {
+        const firstAlloc = allocs[0];
+        const checkbook = (firstAlloc as any)._checkbook;
+        const tokenKey = checkbook?.token_key || firstAlloc.token?.symbol || 'UNKNOWN';
+        const localDepositId = checkbook?.local_deposit_id || 'N/A';
+        
+        console.log(`\n   📋 Checkbook: ${checkbookId}`);
+        console.log(`      Token: ${tokenKey}, Local Deposit ID: ${localDepositId}`);
+        console.log(`      Allocations: ${allocs.length}`);
+        
+        // Show sample allocations from this checkbook
+        allocs.slice(0, 3).forEach((alloc, i) => {
+          console.log(`      ${i + 1}. Allocation ${alloc.id}: ${alloc.amount} (status: ${alloc.status})`);
+        });
+        if (allocs.length > 3) {
+          console.log(`      ... and ${allocs.length - 3} more in this checkbook`);
+        }
+      });
     } else {
       console.log('   No allocations found for these addresses');
     }
