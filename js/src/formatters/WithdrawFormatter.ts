@@ -71,8 +71,13 @@ export class WithdrawFormatter {
       throw new Error('Intent.beneficiary must be a valid UniversalAddress');
     }
 
-    // Sort allocations by ID (IMPORTANT: for consistency)
-    const sortedAllocations = this.sortAllocationsById(allocations);
+    // Sort allocations by checkbook depositId and seq (matching lib.rs and frontend)
+    // First sort by depositId (from checkbook), then by seq within the same depositId
+    const sortedAllocations = this.sortAllocationsByDepositIdAndSeq(
+      allocations,
+      allocationCheckbookMap,
+      checkbookInfo
+    );
     const allocationIds = sortedAllocations.map(a => a.id);
 
     // Generate nullifier (matching lib.rs generate_nullifier)
@@ -131,8 +136,47 @@ export class WithdrawFormatter {
   }
 
   /**
+   * Sort allocations by checkbook depositId and seq (matching lib.rs and frontend)
+   * First sort by depositId (from checkbook), then by seq within the same depositId
+   * This matches the sorting logic in lib.rs get_withdraw_data_to_sign and frontend
+   */
+  private static sortAllocationsByDepositIdAndSeq(
+    allocations: Allocation[],
+    allocationCheckbookMap?: Map<string, { localDepositId?: number; slip44ChainId?: number }>,
+    checkbookInfo?: { localDepositId?: number; slip44ChainId?: number }
+  ): Allocation[] {
+    return [...allocations].sort((a, b) => {
+      // Get depositId for each allocation
+      let depositIdA: number;
+      let depositIdB: number;
+
+      if (allocationCheckbookMap && allocationCheckbookMap.has(a.id)) {
+        depositIdA = allocationCheckbookMap.get(a.id)?.localDepositId || 0;
+      } else {
+        depositIdA = checkbookInfo?.localDepositId || 0;
+      }
+
+      if (allocationCheckbookMap && allocationCheckbookMap.has(b.id)) {
+        depositIdB = allocationCheckbookMap.get(b.id)?.localDepositId || 0;
+      } else {
+        depositIdB = checkbookInfo?.localDepositId || 0;
+      }
+
+      // First compare by depositId
+      const depositCmp = depositIdA - depositIdB;
+      if (depositCmp !== 0) {
+        return depositCmp;
+      }
+
+      // If depositId is the same, sort by seq
+      return a.seq - b.seq;
+    });
+  }
+
+  /**
    * Sort allocations by ID (ascending, lexicographically)
-   * CRITICAL: This ensures consistency with lib.rs
+   * @deprecated Use sortAllocationsByDepositIdAndSeq instead for withdrawal
+   * This method is kept for backward compatibility but should not be used for withdrawal
    */
   private static sortAllocationsById(allocations: Allocation[]): Allocation[] {
     return [...allocations].sort((a, b) => a.id.localeCompare(b.id));
