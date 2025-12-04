@@ -174,15 +174,6 @@ export class WithdrawFormatter {
   }
 
   /**
-   * Sort allocations by ID (ascending, lexicographically)
-   * @deprecated Use sortAllocationsByDepositIdAndSeq instead for withdrawal
-   * This method is kept for backward compatibility but should not be used for withdrawal
-   */
-  private static sortAllocationsById(allocations: Allocation[]): Allocation[] {
-    return [...allocations].sort((a, b) => a.id.localeCompare(b.id));
-  }
-
-  /**
    * Sort allocation IDs in ascending order (lexicographically)
    * CRITICAL: This ensures consistency across all clients and backend
    */
