@@ -1,7 +1,7 @@
 # Enclave SDK 完全ガイド
 
-> **最終更新**: 2025-01-XX  
-> **SDK バージョン**: v2.0.2
+> **最終更新**: 2025-01-21  
+> **SDK バージョン**: v2.3.6
 
 **Languages**: [English](./SDK_COMPLETE_GUIDE.en.md) | [中文](./SDK_COMPLETE_GUIDE.md) | 日本語 | [한국어](./SDK_COMPLETE_GUIDE.ko.md)
 
@@ -88,7 +88,7 @@ SDK には **13 の API クライアントクラス** が含まれ、**68 の AP
   const checkbooks = await client.checkbooks.listCheckbooks({
     page: 1,
     limit: 10,
-    status: 'active'
+    status: 'with_checkbook' // Checkbook ステータス（例: 'pending', 'with_checkbook' など）
   });
   ```
 - **`getCheckbookById(request: GetCheckbookRequest)`** - 単一の Checkbook を取得
@@ -117,14 +117,16 @@ SDK には **13 の API クライアントクラス** が含まれ、**68 の AP
   ```typescript
   const allocations = await client.allocations.listAllocations({
     checkbookId: 'cb-123',
-    status: 'active'
+    status: 'idle', // 'idle', 'pending', または 'used'
+    tokenKeys: ['USDT', 'USDC'] // 複数のトークンキーでフィルタリング
   });
   ```
 - **`searchAllocations(request: SearchAllocationsRequest)`** - 割り当てを一括検索
   ```typescript
   const results = await client.allocations.searchAllocations({
     chain_slip44_id: 60,
-    addresses: ['0x...']
+    addresses: ['0x...'],
+    token_keys: ['USDT', 'USDC'] // 複数のトークンキーでフィルタリング
   });
   ```
 - **`createAllocations(request: CreateAllocationsRequest)`** - 割り当てを作成（Commitment）
@@ -143,7 +145,7 @@ SDK には **13 の API クライアントクラス** が含まれ、**68 の AP
   ```
 - **`getAllocationsByTokenIdAndStatus(tokenId: string, status: string)`** - Token とステータスで割り当てをクエリ
   ```typescript
-  const list = await client.allocations.getAllocationsByTokenIdAndStatus('token-1', 'active');
+  const list = await client.allocations.getAllocationsByTokenIdAndStatus('token-1', 'idle'); // 'idle', 'pending', または 'used'
   ```
 
 #### 4. 📤 Withdrawal 関連 (WithdrawalsAPI) - 7個
@@ -537,7 +539,15 @@ const targets = await client.tokenRouting.getTargetsForSource(
 
 ## 更新履歴
 
-### v2.0.2 (最新)
+### v2.3.6 (最新)
+
+- ✅ `listAllocations()` に `tokenKeys` フィルターサポートを追加 - 複数のトークンキー（例: ["USDT", "USDC"]）で割り当てをフィルタリング
+- ✅ `searchAllocations()` に `token_keys` フィルターサポートを追加 - 複数のトークンキーで割り当てをフィルタリング
+- ✅ 割り当てレスポンスの checkbook 情報に `user_address` フィールドを追加 - 預金者のユニバーサルアドレスを含む
+- ✅ `AllocationsStore.fetchList()` を更新して `tokenKeys` パラメータをサポート
+- ✅ 例での割り当てレスポンス表示を改善し、checkbook でグループ化して表示
+
+### v2.0.2
 
 - ✅ `BeneficiaryAPI` を追加 - 受益者操作
 - ✅ `TokenRoutingAPI` を追加 - Token ルーティング規則クエリ

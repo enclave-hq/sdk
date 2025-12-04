@@ -59,7 +59,7 @@ export interface GetAllowedTargetsRequest {
     type: string; // 'RawToken'
     beneficiary: {
       chainId: number; // Target chain SLIP-44 ID
-      address: string; // Beneficiary address
+      data: string; // Beneficiary address (32-byte Universal Address)
     };
     tokenKey: string; // Target token key (e.g., "USDT")
   };
@@ -204,7 +204,9 @@ export class TokenRoutingAPI {
       }
       if (request.intent.beneficiary) {
         body.beneficiary_chain_id = request.intent.beneficiary.chainId;
-        body.beneficiary_address = request.intent.beneficiary.address;
+        // Extract display address from data field
+        const { extractAddress } = await import('../utils/address');
+        body.beneficiary_address = extractAddress(request.intent.beneficiary);
       }
       if (request.intent.tokenKey) {
         body.target_token_key = request.intent.tokenKey;

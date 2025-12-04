@@ -118,12 +118,12 @@ export function validateUniversalAddress(
 ): void {
   validateRequired(value, fieldName);
 
-  if (!value.chainId || !value.address) {
-    throw new ValidationError(`${fieldName} must have chainId and address`, fieldName);
+  if (!value.chainId || !value.data) {
+    throw new ValidationError(`${fieldName} must have chainId and data`, fieldName);
   }
 
   validatePositiveNumber(value.chainId, `${fieldName}.chainId`);
-  validateNonEmptyString(value.address, `${fieldName}.address`);
+  validateNonEmptyString(value.data, `${fieldName}.data`);
 }
 
 /**

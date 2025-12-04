@@ -186,16 +186,14 @@ export enum HookStatus {
 export interface UniversalAddress {
   /** SLIP-44 chain ID (e.g., 714 for BSC, 60 for Ethereum, 195 for TRON) */
   chainId: number;
+  /** ⭐ 32-byte Universal Address (hex string with 0x prefix) - REQUIRED by backend API */
+  data: string;
   /** Chain name (e.g., 'ethereum', 'bsc', 'polygon') */
   chainName?: string;
-  /** Address string */
-  address: string;
-  /** Universal format representation */
+  /** Universal format representation (same as data, kept for backward compatibility) */
   universalFormat?: string;
   /** SLIP-44 ID (deprecated, use chainId instead - kept for backward compatibility) */
   slip44?: number;
-  /** Address data (20 bytes for EVM, variable for other chains) - legacy field */
-  data?: string;
 }
 
 /**

@@ -1,7 +1,7 @@
 # Enclave SDK Complete Guide
 
-> **Last Updated**: 2025-01-XX  
-> **SDK Version**: v2.0.2
+> **Last Updated**: 2025-01-21  
+> **SDK Version**: v2.3.6
 
 **Languages**: English | [中文](./SDK_COMPLETE_GUIDE.md) | [日本語](./SDK_COMPLETE_GUIDE.ja.md) | [한국어](./SDK_COMPLETE_GUIDE.ko.md)
 
@@ -88,7 +88,7 @@ The SDK includes **13 API client classes** providing **68 API methods**.
   const checkbooks = await client.checkbooks.listCheckbooks({
     page: 1,
     limit: 10,
-    status: 'active'
+    status: 'with_checkbook' // Checkbook status (e.g., 'pending', 'with_checkbook', etc.)
   });
   ```
 - **`getCheckbookById(request: GetCheckbookRequest)`** - Get single Checkbook
@@ -117,14 +117,16 @@ The SDK includes **13 API client classes** providing **68 API methods**.
   ```typescript
   const allocations = await client.allocations.listAllocations({
     checkbookId: 'cb-123',
-    status: 'active'
+    status: 'idle', // 'idle', 'pending', or 'used'
+    tokenKeys: ['USDT', 'USDC'] // Filter by multiple token keys
   });
   ```
 - **`searchAllocations(request: SearchAllocationsRequest)`** - Batch search allocations
   ```typescript
   const results = await client.allocations.searchAllocations({
     chain_slip44_id: 60,
-    addresses: ['0x...']
+    addresses: ['0x...'],
+    token_keys: ['USDT', 'USDC'] // Filter by multiple token keys
   });
   ```
 - **`createAllocations(request: CreateAllocationsRequest)`** - Create allocation (Commitment)
@@ -143,7 +145,7 @@ The SDK includes **13 API client classes** providing **68 API methods**.
   ```
 - **`getAllocationsByTokenIdAndStatus(tokenId: string, status: string)`** - Query allocations by Token and status
   ```typescript
-  const list = await client.allocations.getAllocationsByTokenIdAndStatus('token-1', 'active');
+  const list = await client.allocations.getAllocationsByTokenIdAndStatus('token-1', 'idle'); // 'idle', 'pending', or 'used'
   ```
 
 #### 4. 📤 Withdrawal (WithdrawalsAPI) - 7 methods
@@ -537,7 +539,15 @@ const targets = await client.tokenRouting.getTargetsForSource(
 
 ## Changelog
 
-### v2.0.2 (Latest)
+### v2.3.6 (Latest)
+
+- ✅ Added `tokenKeys` filter support to `listAllocations()` - Filter allocations by multiple token keys (e.g., ["USDT", "USDC"])
+- ✅ Added `token_keys` filter support to `searchAllocations()` - Filter allocations by multiple token keys
+- ✅ Added `user_address` field to checkbook information in allocation responses - Contains depositor's universal address
+- ✅ Updated `AllocationsStore.fetchList()` to support `tokenKeys` parameter
+- ✅ Improved allocation response display in examples to show checkbook grouping
+
+### v2.0.2
 
 - ✅ Added `BeneficiaryAPI` - Beneficiary operations
 - ✅ Added `TokenRoutingAPI` - Token routing rules query

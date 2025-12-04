@@ -90,7 +90,9 @@ export class WalletManager {
    */
   async getAddressString(): Promise<string> {
     const universalAddress = await this.getAddress();
-    return universalAddress.address;
+    // Extract display address from data field
+    const { extractAddress } = await import('../utils/address');
+    return extractAddress(universalAddress);
   }
 
   /**

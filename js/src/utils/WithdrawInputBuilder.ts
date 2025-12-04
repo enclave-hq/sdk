@@ -287,7 +287,7 @@ export function withdrawInputToZKVMFormat(
         beneficiary: {
           chain_id: withdrawInput.intent.beneficiary.chainId,
           address:
-            withdrawInput.intent.beneficiary.data || withdrawInput.intent.beneficiary.address,
+            withdrawInput.intent.beneficiary.data,
         },
         token_symbol: withdrawInput.intent.tokenSymbol || 'UNKNOWN',
       },
@@ -314,7 +314,7 @@ export function withdrawInputToZKVMFormat(
         beneficiary: {
           chain_id: withdrawInput.intent.beneficiary.chainId,
           address:
-            withdrawInput.intent.beneficiary.data || withdrawInput.intent.beneficiary.address,
+            withdrawInput.intent.beneficiary.data,
         },
         asset_token_symbol: withdrawInput.intent.assetTokenSymbol || 'UNKNOWN',
       },
@@ -345,7 +345,7 @@ export function withdrawInputToZKVMFormat(
   // Convert owner address to ZKVM format
   const ownerAddressFormat = {
     chain_id: withdrawInput.owner_address.chainId,
-    address: withdrawInput.owner_address.data || withdrawInput.owner_address.address,
+    address: withdrawInput.owner_address.data,
   };
 
   return {

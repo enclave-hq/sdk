@@ -162,6 +162,6 @@ const allocations = client.stores.allocations.all;
 
 ---
 
-**版本**: 2.0.0
-**最后更新**: 2025-01-17
-**状态**: 生产就绪（JavaScript SDK）
+**版本**: 2.3.6
+**最后更新**: 2025-01-21
+**状态**: 已更新 tokenKeys 过滤和 user_address 支持（JavaScript SDK）

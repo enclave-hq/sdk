@@ -117,7 +117,7 @@ export class CommitmentCore {
     ownerChainIdBuf.writeUInt32BE(ownerAddress.chainId, 0);
 
     // Convert owner address to 32 bytes (right-aligned, left-padded with zeros)
-    const ownerDataBuf = this.addressToBytes32(ownerAddress.address);
+    const ownerDataBuf = this.addressToBytes32(ownerAddress.data);
 
     // Sort allocations by seq
     const sortedAllocations = [...allocations].sort((a, b) => a.seq - b.seq);
@@ -188,7 +188,7 @@ export class CommitmentCore {
     tokenIdBuf.writeUInt16BE(credential.token_id, 0);
     const ownerChainIdBuf = Buffer.allocUnsafe(4);
     ownerChainIdBuf.writeUInt32BE(ownerAddress.chainId, 0);
-    const ownerDataBuf = this.addressToBytes32(ownerAddress.address);
+    const ownerDataBuf = this.addressToBytes32(ownerAddress.data);
 
     // Hash all allocations in order: left_hashes + current + right_hashes
     const allocationHashes: Uint8Array[] = [];

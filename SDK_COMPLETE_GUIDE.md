@@ -1,7 +1,7 @@
 # Enclave SDK 完整指南
 
-> **最后更新**: 2025-01-XX  
-> **SDK 版本**: v2.0.2
+> **最后更新**: 2025-01-21  
+> **SDK 版本**: v2.3.6
 
 **Languages**: [English](./SDK_COMPLETE_GUIDE.en.md) | 中文 | [日本語](./SDK_COMPLETE_GUIDE.ja.md) | [한국어](./SDK_COMPLETE_GUIDE.ko.md)
 
@@ -88,7 +88,7 @@ SDK 共包含 **13 个 API 客户端类**，提供 **68 个 API 方法**。
   const checkbooks = await client.checkbooks.listCheckbooks({
     page: 1,
     limit: 10,
-    status: 'active'
+    status: 'with_checkbook' // Checkbook 状态（如 'pending', 'with_checkbook' 等）
   });
   ```
 - **`getCheckbookById(request: GetCheckbookRequest)`** - 查询单个 Checkbook
@@ -117,14 +117,16 @@ SDK 共包含 **13 个 API 客户端类**，提供 **68 个 API 方法**。
   ```typescript
   const allocations = await client.allocations.listAllocations({
     checkbookId: 'cb-123',
-    status: 'active'
+    status: 'idle', // 'idle', 'pending', 或 'used'
+    tokenKeys: ['USDT', 'USDC'] // 按多个代币键过滤
   });
   ```
 - **`searchAllocations(request: SearchAllocationsRequest)`** - 批量查询分配
   ```typescript
   const results = await client.allocations.searchAllocations({
     chain_slip44_id: 60,
-    addresses: ['0x...']
+    addresses: ['0x...'],
+    token_keys: ['USDT', 'USDC'] // 按多个代币键过滤
   });
   ```
 - **`createAllocations(request: CreateAllocationsRequest)`** - 创建分配（Commitment）
@@ -143,7 +145,7 @@ SDK 共包含 **13 个 API 客户端类**，提供 **68 个 API 方法**。
   ```
 - **`getAllocationsByTokenIdAndStatus(tokenId: string, status: string)`** - 按 Token 和状态查询分配
   ```typescript
-  const list = await client.allocations.getAllocationsByTokenIdAndStatus('token-1', 'active');
+  const list = await client.allocations.getAllocationsByTokenIdAndStatus('token-1', 'idle'); // 'idle', 'pending', 或 'used'
   ```
 
 #### 4. 📤 Withdrawal 相关 (WithdrawalsAPI) - 7个
@@ -537,7 +539,15 @@ const targets = await client.tokenRouting.getTargetsForSource(
 
 ## 更新日志
 
-### v2.0.2 (最新)
+### v2.3.6 (最新)
+
+- ✅ 新增 `tokenKeys` 过滤支持到 `listAllocations()` - 按多个代币键过滤分配（如 ["USDT", "USDC"]）
+- ✅ 新增 `token_keys` 过滤支持到 `searchAllocations()` - 按多个代币键过滤分配
+- ✅ 在分配响应的 checkbook 信息中新增 `user_address` 字段 - 包含存款人的通用地址
+- ✅ 更新 `AllocationsStore.fetchList()` 支持 `tokenKeys` 参数
+- ✅ 改进示例中的分配响应显示，按 checkbook 分组展示
+
+### v2.0.2
 
 - ✅ 新增 `BeneficiaryAPI` - 受益人操作
 - ✅ 新增 `TokenRoutingAPI` - Token 路由规则查询

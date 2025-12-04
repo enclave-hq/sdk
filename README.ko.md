@@ -156,7 +156,7 @@ const allocations = client.stores.allocations.all;
 
 ---
 
-**버전**: 2.0.0  
-**최종 업데이트**: 2025-01-17  
-**상태**: 프로덕션 준비 완료 (JavaScript SDK)
+**버전**: 2.3.6  
+**최종 업데이트**: 2025-01-21  
+**상태**: tokenKeys 필터링 및 user_address 지원 업데이트 (JavaScript SDK)
 

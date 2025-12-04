@@ -133,8 +133,8 @@ export function createUniversalAddress(
   return {
     chainId: slip44,
     chainName: getChainName(chainId),
-    address: validatedAddress, // Keep original address format
     universalFormat: universalFormatHex, // 32-byte Universal Address format
+    data: universalFormatHex, // 32-byte Universal Address (required by backend API)
     slip44: slip44,
   };
 }
@@ -178,12 +178,53 @@ export function parseUniversalAddress(addressString: string): UniversalAddress {
 }
 
 /**
+ * Extract display address from UniversalAddress data field
+ * @param universalAddress - Universal address object
+ * @returns Display address string (EVM hex or TRON Base58)
+ */
+function extractDisplayAddress(universalAddress: UniversalAddress): string {
+  if (!universalAddress.data) {
+    throw new Error('UniversalAddress.data is required');
+  }
+
+  const dataHex = universalAddress.data.replace(/^0x/, '');
+  if (dataHex.length !== 64) {
+    throw new Error(`Invalid data length: expected 64 (32-byte) hex chars, got ${dataHex.length}`);
+  }
+
+  // For TRON (chainId=195), convert to Base58
+  if (universalAddress.chainId === 195) {
+    const universalBytes = new Uint8Array(
+      dataHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+    );
+    try {
+      return tronConverter.fromBytes(universalBytes);
+    } catch (error) {
+      // Fallback to hex if conversion fails
+      const addressBytes = universalBytes.slice(12, 32); // Extract last 20 bytes
+      return (
+        '0x' +
+        Array.from(addressBytes)
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('')
+          .toLowerCase()
+      );
+    }
+  } else {
+    // For EVM chains, extract last 20 bytes (40 hex chars)
+    const addressHex = dataHex.slice(-40);
+    return '0x' + addressHex.toLowerCase();
+  }
+}
+
+/**
  * Format universal address to string (format: "slip44_chain_id:address")
  * @param universalAddress - Universal address object (chainId should be SLIP-44 chain ID)
  * @returns Formatted string (format: "slip44_chain_id:address")
  */
 export function formatUniversalAddress(universalAddress: UniversalAddress): string {
-  return `${universalAddress.chainId}:${universalAddress.address}`;
+  const displayAddr = extractDisplayAddress(universalAddress);
+  return `${universalAddress.chainId}:${displayAddr}`;
 }
 
 /**
@@ -193,7 +234,7 @@ export function formatUniversalAddress(universalAddress: UniversalAddress): stri
  * @returns True if addresses are equal
  */
 export function universalAddressEquals(addr1: UniversalAddress, addr2: UniversalAddress): boolean {
-  return addr1.chainId === addr2.chainId && addressEquals(addr1.address, addr2.address);
+  return addr1.chainId === addr2.chainId && addr1.data === addr2.data;
 }
 
 /**
@@ -208,8 +249,9 @@ export function isValidUniversalAddress(address: UniversalAddress): boolean {
       address !== null &&
       typeof address.chainId === 'number' &&
       address.chainId > 0 &&
-      typeof address.address === 'string' &&
-      isValidAddress(address.address)
+      typeof address.data === 'string' &&
+      address.data.startsWith('0x') &&
+      address.data.length === 66 // 0x + 64 hex chars (32 bytes)
     );
   } catch {
     return false;
@@ -219,10 +261,10 @@ export function isValidUniversalAddress(address: UniversalAddress): boolean {
 /**
  * Extract address from universal address
  * @param universalAddress - Universal address object
- * @returns Plain address string
+ * @returns Plain address string (display format)
  */
 export function extractAddress(universalAddress: UniversalAddress): string {
-  return universalAddress.address;
+  return extractDisplayAddress(universalAddress);
 }
 
 /**

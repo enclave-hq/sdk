@@ -156,7 +156,7 @@ We welcome contributions! Please see our [Contributing Guidelines](../CONTRIBUTI
 
 ---
 
-**Version**: 2.0.0  
+**Version**: 2.3.6  
 **Last Updated**: 2025-01-21  
-**Status**: Updated for Backend v2.0 (JavaScript SDK)
+**Status**: Updated with tokenKeys filtering and user_address support (JavaScript SDK)
 

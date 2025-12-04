@@ -93,7 +93,11 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
    * @returns Array of withdrawal requests
    */
   getByOwner(owner: string): WithdrawRequest[] {
-    return this.filter(w => w.owner.address.toLowerCase() === owner.toLowerCase());
+    const { extractAddress } = require('../utils/address');
+    return this.filter(w => {
+      const ownerAddr = extractAddress(w.owner);
+      return ownerAddr.toLowerCase() === owner.toLowerCase();
+    });
   }
 
   /**
@@ -222,10 +226,11 @@ export class WithdrawalsStore extends BaseStore<WithdrawRequest> {
         };
       } else if ('beneficiary' in params.intent) {
         // Nested format (legacy format)
+        const beneficiary = params.intent.beneficiary as any;
         intentData = {
           type: params.intent.type,
-          beneficiaryChainId: params.intent.beneficiary.chain_id,
-          beneficiaryAddress: params.intent.beneficiary.address,
+          beneficiaryChainId: beneficiary.chain_id,
+          beneficiaryAddress: beneficiary.data || beneficiary.address || '',
           tokenSymbol: (params.intent as any).tokenIdentifier || '',
           assetId: params.intent.assetId,
         };

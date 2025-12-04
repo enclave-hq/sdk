@@ -1,7 +1,7 @@
 # Enclave SDK 완전 가이드
 
-> **최종 업데이트**: 2025-01-XX  
-> **SDK 버전**: v2.0.2
+> **최종 업데이트**: 2025-01-21  
+> **SDK 버전**: v2.3.6
 
 **Languages**: [English](./SDK_COMPLETE_GUIDE.en.md) | [中文](./SDK_COMPLETE_GUIDE.md) | [日本語](./SDK_COMPLETE_GUIDE.ja.md) | 한국어
 
@@ -88,7 +88,7 @@ SDK는 **13개의 API 클라이언트 클래스**를 포함하며 **68개의 API
   const checkbooks = await client.checkbooks.listCheckbooks({
     page: 1,
     limit: 10,
-    status: 'active'
+    status: 'with_checkbook' // Checkbook 상태 (예: 'pending', 'with_checkbook' 등)
   });
   ```
 - **`getCheckbookById(request: GetCheckbookRequest)`** - 단일 Checkbook 조회
@@ -117,14 +117,16 @@ SDK는 **13개의 API 클라이언트 클래스**를 포함하며 **68개의 API
   ```typescript
   const allocations = await client.allocations.listAllocations({
     checkbookId: 'cb-123',
-    status: 'active'
+    status: 'idle', // 'idle', 'pending', 또는 'used'
+    tokenKeys: ['USDT', 'USDC'] // 여러 토큰 키로 필터링
   });
   ```
 - **`searchAllocations(request: SearchAllocationsRequest)`** - 할당 일괄 검색
   ```typescript
   const results = await client.allocations.searchAllocations({
     chain_slip44_id: 60,
-    addresses: ['0x...']
+    addresses: ['0x...'],
+    token_keys: ['USDT', 'USDC'] // 여러 토큰 키로 필터링
   });
   ```
 - **`createAllocations(request: CreateAllocationsRequest)`** - 할당 생성 (Commitment)
@@ -143,7 +145,7 @@ SDK는 **13개의 API 클라이언트 클래스**를 포함하며 **68개의 API
   ```
 - **`getAllocationsByTokenIdAndStatus(tokenId: string, status: string)`** - Token 및 상태별 할당 조회
   ```typescript
-  const list = await client.allocations.getAllocationsByTokenIdAndStatus('token-1', 'active');
+  const list = await client.allocations.getAllocationsByTokenIdAndStatus('token-1', 'idle'); // 'idle', 'pending', 또는 'used'
   ```
 
 #### 4. 📤 Withdrawal 관련 (WithdrawalsAPI) - 7개
@@ -537,7 +539,15 @@ const targets = await client.tokenRouting.getTargetsForSource(
 
 ## 업데이트 로그
 
-### v2.0.2 (최신)
+### v2.3.6 (최신)
+
+- ✅ `listAllocations()`에 `tokenKeys` 필터 지원 추가 - 여러 토큰 키(예: ["USDT", "USDC"])로 할당 필터링
+- ✅ `searchAllocations()`에 `token_keys` 필터 지원 추가 - 여러 토큰 키로 할당 필터링
+- ✅ 할당 응답의 checkbook 정보에 `user_address` 필드 추가 - 예금자의 유니버설 주소 포함
+- ✅ `AllocationsStore.fetchList()` 업데이트하여 `tokenKeys` 매개변수 지원
+- ✅ 예제에서 할당 응답 표시 개선, checkbook별로 그룹화하여 표시
+
+### v2.0.2
 
 - ✅ `BeneficiaryAPI` 추가 - 수혜자 작업
 - ✅ `TokenRoutingAPI` 추가 - Token 라우팅 규칙 조회

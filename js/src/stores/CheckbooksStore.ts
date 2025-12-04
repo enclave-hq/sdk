@@ -92,7 +92,11 @@ export class CheckbooksStore extends BaseStore<Checkbook> {
    * @returns Array of checkbooks
    */
   getByOwner(owner: string): Checkbook[] {
-    return this.filter(c => c.owner.address.toLowerCase() === owner.toLowerCase());
+    const { extractAddress } = require('../utils/address');
+    return this.filter(c => {
+      const ownerAddr = extractAddress(c.owner);
+      return ownerAddr.toLowerCase() === owner.toLowerCase();
+    });
   }
 
   /**

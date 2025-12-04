@@ -276,7 +276,9 @@ export class EnclaveClient {
     try {
       // Get user address
       this.userAddress = await this.walletManager.getAddress();
-      this.logger.info(`User address: ${this.userAddress.address}`);
+      const { extractAddress } = await import('../utils/address');
+      const displayAddress = extractAddress(this.userAddress);
+      this.logger.info(`User address: ${displayAddress}`);
 
       // Authenticate if not already authenticated
       if (!this.authenticated) {
@@ -448,9 +450,9 @@ export class EnclaveClient {
         defaultChainId: this.walletManager.getDefaultChainId(),
         userAddress: this.userAddress
           ? {
-              address: this.userAddress.address,
               chainId: this.userAddress.chainId,
               chainName: this.userAddress.chainName,
+              data: this.userAddress.data,
               slip44: this.userAddress.slip44,
             }
           : null,
@@ -459,7 +461,9 @@ export class EnclaveClient {
       // Step 3: Authenticate with backend
       let authResponse: { token: string; user_address: any };
       try {
-        this.logger.debug(`Calling authenticate API with address: ${this.userAddress?.address}`);
+        const { extractAddress } = await import('../utils/address');
+        const displayAddress = this.userAddress ? extractAddress(this.userAddress) : 'N/A';
+        this.logger.debug(`Calling authenticate API with address: ${displayAddress}`);
         authResponse = await this.authAPI.authenticate({
           address: this.userAddress!,
           signature,

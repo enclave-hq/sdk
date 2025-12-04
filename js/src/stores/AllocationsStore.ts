@@ -108,7 +108,11 @@ export class AllocationsStore extends BaseStore<Allocation> {
    * @returns Array of allocations
    */
   getByOwner(owner: string): Allocation[] {
-    return this.filter(a => a.owner.address.toLowerCase() === owner.toLowerCase());
+    const { extractAddress } = require('../utils/address');
+    return this.filter(a => {
+      const ownerAddr = extractAddress(a.owner);
+      return ownerAddr.toLowerCase() === owner.toLowerCase();
+    });
   }
 
   /**
