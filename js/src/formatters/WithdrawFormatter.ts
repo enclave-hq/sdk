@@ -13,6 +13,7 @@ import {
   validateChainId,
 } from '../utils/validation';
 import { CommitmentCore } from '../utils/CommitmentCore';
+import { tronConverter } from '@enclave-hq/chain-utils';
 
 /**
  * Language codes (matching lib.rs)
@@ -426,20 +427,103 @@ export class WithdrawFormatter {
   /**
    * Format beneficiary address according to lib.rs format_address
    * IMPORTANT: Address must be lowercase to match Rust hex::encode behavior
+   * Extracts address from data field based on chainId (supports TRON Base58 and EVM hex formats)
    */
   private static formatBeneficiaryAddress(address: UniversalAddress, lang: number): string {
-    // Normalize address to lowercase to match Rust hex::encode behavior
-    // Rust uses: format!("0x{}", hex::encode(self.to_ethereum_address()))
-    // which always produces lowercase hex
     const chainName = this.getChainName(address.chainId);
-    let addrStr = address.address;
+    let addrStr: string;
 
-    // Convert to lowercase if it's an EVM address (starts with 0x)
-    // This ensures consistency with Rust's hex::encode which always produces lowercase
-    if (addrStr.startsWith('0x') || addrStr.startsWith('0X')) {
-      addrStr = '0x' + addrStr.slice(2).toLowerCase();
+    // For TRON (chainId=195), use Base58 format (matching lib.rs get_chain_specific_address)
+    if (address.chainId === 195) {
+      // If address.address already exists and is TRON Base58 format, use it directly
+      if (address.address && address.address.startsWith('T') && address.address.length === 34) {
+        addrStr = address.address;
+      } else {
+        // Get 32-byte Universal Address data
+        let universalBytes: Uint8Array;
+        if (address.data) {
+          // Convert hex string to bytes
+          const hexStr = address.data.replace(/^0x/, '');
+          universalBytes = new Uint8Array(
+            hexStr.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+          );
+        } else if (address.universalFormat) {
+          // Convert hex string to bytes
+          const hexStr = address.universalFormat.replace(/^0x/, '');
+          universalBytes = new Uint8Array(
+            hexStr.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+          );
+        } else {
+          throw new Error(
+            'UniversalAddress must have data or universalFormat for TRON address conversion'
+          );
+        }
+
+        // Ensure 32 bytes (right-align: pad zeros at the beginning)
+        if (universalBytes.length !== 32) {
+          const padded = new Uint8Array(32);
+          const startPos = 32 - Math.min(universalBytes.length, 32);
+          padded.set(universalBytes.slice(-32), startPos);
+          universalBytes = padded;
+        }
+
+        // Convert to TRON Base58 address using tronConverter
+        try {
+          addrStr = tronConverter.fromBytes(universalBytes);
+        } catch (error) {
+          // Fallback to hex if conversion fails
+          console.warn('Failed to convert TRON address to Base58, using hex format:', error);
+          const addressBytes = universalBytes.slice(12, 32); // Extract last 20 bytes
+          addrStr =
+            '0x' +
+            Array.from(addressBytes)
+              .map(b => b.toString(16).padStart(2, '0'))
+              .join('')
+              .toLowerCase();
+        }
+      }
+    } else {
+      // For other chains (EVM, etc.), use hex format
+      // Extract 20-byte address from 32-byte Universal Address (right-aligned)
+      // Universal Address format: [12 bytes zeros][20 bytes address]
+      if (address.address) {
+        // Use 20-byte address directly (ensure lowercase to match lib.rs)
+        addrStr = address.address.toLowerCase();
+        if (!addrStr.startsWith('0x')) {
+          addrStr = '0x' + addrStr;
+        }
+      } else if (address.data) {
+        // Extract from 32-byte data (right-aligned, last 20 bytes)
+        const dataHex = address.data.replace(/^0x/, '');
+        if (dataHex.length === 64) {
+          // 32-byte Universal Address: extract last 20 bytes (40 hex chars)
+          const addressHex = dataHex.slice(-40);
+          addrStr = '0x' + addressHex.toLowerCase();
+        } else if (dataHex.length === 40) {
+          // Already 20-byte address
+          addrStr = '0x' + dataHex.toLowerCase();
+        } else {
+          throw new Error(
+            `Invalid data length: expected 64 (32-byte) or 40 (20-byte) hex chars, got ${dataHex.length}`
+          );
+        }
+      } else if (address.universalFormat) {
+        // Fallback: use universalFormat if available
+        const universalHex = address.universalFormat.replace(/^0x/, '');
+        if (universalHex.length === 64) {
+          // Extract last 20 bytes (40 hex chars) from 32-byte (64 hex chars) Universal Address
+          const addressHex = universalHex.slice(-40);
+          addrStr = '0x' + addressHex.toLowerCase();
+        } else {
+          addrStr = address.universalFormat;
+        }
+      } else {
+        throw new Error('UniversalAddress must have either address, data, or universalFormat');
+      }
     }
 
+    // Match lib.rs format_address exactly
+    // lib.rs format: English: "{address} on {chain_name}", Chinese: "{chain_name}链上{address}地址"
     switch (lang) {
       case LANG_ZH:
         return `${chainName}链上${addrStr}地址`;
