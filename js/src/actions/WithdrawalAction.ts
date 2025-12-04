@@ -69,22 +69,16 @@ export class WithdrawalAction {
 
     // Validate beneficiary from intent
     validateChainId(params.intent.beneficiary.chainId, 'intent.beneficiary.chainId');
-    // Accept universalFormat (preferred), data (legacy), or address (for display)
-    const beneficiaryAddress =
-      params.intent.beneficiary.universalFormat ||
-      params.intent.beneficiary.data ||
-      params.intent.beneficiary.address;
-    if (!beneficiaryAddress) {
-      throw new Error(
-        'intent.beneficiary.universalFormat, intent.beneficiary.data, or intent.beneficiary.address is required'
-      );
+    // Only accept data field (32-byte Universal Address format)
+    if (!params.intent.beneficiary.data) {
+      throw new Error('intent.beneficiary.data is required (32-byte Universal Address format)');
     }
-    validateNonEmptyString(beneficiaryAddress, 'intent.beneficiary.address');
+    validateNonEmptyString(params.intent.beneficiary.data, 'intent.beneficiary.data');
 
     this.logger.info('Preparing withdrawal', {
       allocationCount: params.allocationIds.length,
       beneficiaryChainId: params.intent.beneficiary.chainId,
-      beneficiaryAddress: beneficiaryAddress,
+      beneficiaryAddress: params.intent.beneficiary.data,
       intentType: params.intent.type,
     });
 
@@ -393,19 +387,11 @@ export class WithdrawalAction {
       throw new Error('Intent.beneficiary.chainId must be a non-negative number');
     }
 
-    // Validate beneficiary address - accept either universalFormat or data
-    // universalFormat is the 32-byte Universal Address format (preferred)
-    // data is the legacy field name (for backward compatibility)
-    if (!intent.beneficiary.universalFormat && !intent.beneficiary.data) {
-      throw new Error('Intent.beneficiary.universalFormat or Intent.beneficiary.data is required');
+    // Validate beneficiary address - only accept data field (32-byte Universal Address format)
+    if (!intent.beneficiary.data) {
+      throw new Error('Intent.beneficiary.data is required (32-byte Universal Address format)');
     }
-
-    // If universalFormat is provided, use it; otherwise use data
-    const beneficiaryData = intent.beneficiary.universalFormat || intent.beneficiary.data;
-    validateNonEmptyString(
-      beneficiaryData,
-      'Intent.beneficiary.universalFormat or Intent.beneficiary.data'
-    );
+    validateNonEmptyString(intent.beneficiary.data, 'Intent.beneficiary.data');
 
     // Type-specific validation
     if (intent.type === 'RawToken') {
@@ -639,16 +625,13 @@ export class WithdrawalAction {
     tokenSymbol: string;
     assetId?: string;
   } {
-    // Use Universal Address format (32-byte) for beneficiary address - REQUIRED
-    // Accept either universalFormat (preferred) or data (legacy)
-    const universalAddress = intent.beneficiary.universalFormat || intent.beneficiary.data;
-    if (!universalAddress) {
-      throw new Error(
-        'Universal Address format is required. intent.beneficiary.universalFormat or intent.beneficiary.data is missing.'
-      );
+    // Use data field (32-byte Universal Address format) - REQUIRED by backend
+    if (!intent.beneficiary.data) {
+      throw new Error('intent.beneficiary.data is required (32-byte Universal Address format)');
     }
+
     // Remove 0x prefix if present, backend expects hex string without prefix
-    const beneficiaryAddress = universalAddress.replace(/^0x/, '');
+    const beneficiaryAddress = intent.beneficiary.data.replace(/^0x/, '');
 
     if (intent.type === 'RawToken') {
       return {
