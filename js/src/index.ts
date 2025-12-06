@@ -24,6 +24,7 @@ export type {
   CommitmentParams,
   CommitmentSignData,
   SignedCommitment,
+  CommitmentResponse,
   WithdrawalParams,
   WithdrawalSignData,
   SignedWithdrawal,
@@ -171,5 +172,5 @@ export type {
 export { WalletSDKContractProvider } from './providers';
 
 // ============ Version Info ============
-export const SDK_VERSION = '2.3.6';
+export const SDK_VERSION = '2.3.11';
 export const SDK_NAME = '@enclave-hq/sdk';

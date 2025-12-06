@@ -13,9 +13,9 @@ import { ConnectionState } from '../types/config';
 import type {
   CommitmentParams,
   WithdrawalParams,
-  Allocation,
   WithdrawRequest,
   UniversalAddress,
+  CommitmentResponse,
 } from '../types/models';
 
 // API Clients
@@ -796,12 +796,12 @@ export class EnclaveClient {
    * Create commitment (full flow)
    * @param params - Commitment parameters
    * @param lang - Language code (default: LANG_EN)
-   * @returns Created allocations
+   * @returns Commitment response with checkbook, checks, and token info
    */
   async createCommitment(
     params: CommitmentParams,
     lang: number = 1 // LANG_EN
-  ): Promise<Allocation[]> {
+  ): Promise<CommitmentResponse> {
     return this.commitmentAction.createCommitment(params, lang);
   }
 
@@ -822,9 +822,9 @@ export class EnclaveClient {
    * Submit signed commitment
    * @param params - Commitment parameters
    * @param signature - Signature
-   * @returns Created allocations
+   * @returns Commitment response with checkbook, checks, and token info
    */
-  async submitCommitment(params: CommitmentParams, signature: string): Promise<Allocation[]> {
+  async submitCommitment(params: CommitmentParams, signature: string): Promise<CommitmentResponse> {
     return this.commitmentAction.submitCommitment(params, signature);
   }
 

@@ -3,7 +3,7 @@
  * @module actions/CommitmentAction
  */
 
-import type { CommitmentParams, Allocation, Checkbook } from '../types/models';
+import type { CommitmentParams, Allocation, Checkbook, CommitmentResponse } from '../types/models';
 import type { AllocationsAPI } from '../api/AllocationsAPI';
 import type { AllocationsStore } from '../stores/AllocationsStore';
 import type { CheckbooksStore } from '../stores/CheckbooksStore';
@@ -346,9 +346,9 @@ export class CommitmentAction {
    * Submit signed commitment to backend (Step 2)
    * @param params - Commitment parameters
    * @param signature - User's signature
-   * @returns Created allocations
+   * @returns Commitment response with checkbook, checks, and token info
    */
-  async submitCommitment(params: CommitmentParams, signature: string): Promise<Allocation[]> {
+  async submitCommitment(params: CommitmentParams, signature: string): Promise<CommitmentResponse> {
     validateNonEmptyString(signature, 'signature');
 
     this.logger.info('📤 [CommitmentAction.submitCommitment] Submitting commitment to backend', {
@@ -554,6 +554,13 @@ export class CommitmentAction {
       commitment?: string;
       proof_data?: string;
       public_values?: string;
+      tx_hash?: string;
+      queue_id?: string;
+      total_amount?: string;
+      allocations_count?: number;
+      message?: string;
+      token?: any; // Token info from backend (if available)
+      remaining_amount?: string; // Remaining amount from backend (if available)
     }>('/api/commitments/submit', buildCommitmentRequest);
 
     // BuildCommitmentHandler returns 'checks' in the response
@@ -620,6 +627,105 @@ export class CommitmentAction {
       this.store.updateItems(allocations, a => a.id);
     }
 
+    // Process checkbook data from backend response
+    let processedCheckbook: Checkbook | undefined;
+    if (response.checkbook) {
+      // Use CheckbooksAPI's processCheckbookData method if available
+      const checkbooksAPI = (this.checkbooksStore as any).api;
+      if (checkbooksAPI && typeof checkbooksAPI.processCheckbookData === 'function') {
+        // Access private method via type assertion (not ideal but necessary)
+        processedCheckbook = (checkbooksAPI as any).processCheckbookData(
+          response.checkbook,
+          response.token
+        );
+      } else {
+        // Fallback: process checkbook data manually
+        const backendCheckbook = response.checkbook as any;
+        processedCheckbook = {
+          id: backendCheckbook.id,
+          localDepositId: backendCheckbook.local_deposit_id,
+          slip44ChainId: backendCheckbook.slip44_chain_id,
+          owner: ownerAddr,
+          token: checkbook?.token || {
+            id: `token_${params.tokenKey}`,
+            symbol: params.tokenKey,
+            name: params.tokenKey,
+            decimals: tokenDecimals,
+            contractAddress: '',
+            chainId: chainId,
+            iconUrl: undefined,
+            isActive: true,
+          },
+          depositAmount: backendCheckbook.gross_amount || backendCheckbook.amount || '0',
+          grossAmount: backendCheckbook.gross_amount,
+          allocatableAmount: backendCheckbook.allocatable_amount,
+          feeTotalLocked: backendCheckbook.fee_total_locked,
+          remainingAmount: '0', // Will be calculated below
+          depositTxHash: backendCheckbook.deposit_transaction_hash || '',
+          depositBlockNumber: backendCheckbook.deposit_block_number || 0,
+          status: backendCheckbook.status,
+          commitment: commitment || backendCheckbook.commitment,
+          createdAt: backendCheckbook.created_at
+            ? new Date(backendCheckbook.created_at).getTime()
+            : Date.now(),
+          updatedAt: backendCheckbook.updated_at
+            ? new Date(backendCheckbook.updated_at).getTime()
+            : Date.now(),
+        } as Checkbook;
+      }
+      
+      // Update checkbook in store
+      if (processedCheckbook) {
+        this.checkbooksStore.updateCheckbook(processedCheckbook);
+      }
+    }
+
+    // Calculate remaining amount: use backend value if available, otherwise calculate
+    let remainingAmount = response.remaining_amount || '0';
+    if (!remainingAmount || remainingAmount === '0') {
+      if (processedCheckbook?.allocatableAmount) {
+        try {
+          const allocatableBig = BigInt(processedCheckbook.allocatableAmount);
+          const totalAllocated = allocations.reduce(
+            (sum, alloc) => sum + BigInt(alloc.amount || '0'),
+            BigInt(0)
+          );
+          const remainingBig = allocatableBig - totalAllocated;
+          remainingAmount = remainingBig >= 0 ? remainingBig.toString() : '0';
+        } catch (error) {
+          this.logger.warn('Failed to calculate remaining amount:', error);
+          remainingAmount = processedCheckbook.allocatableAmount || '0';
+        }
+      }
+    }
+
+    // Build complete response
+    const commitmentResponse: CommitmentResponse = {
+      checkbook: processedCheckbook || checkbook,
+      checks: allocations,
+      checksCount: allocations.length,
+      token: response.token
+        ? {
+            symbol: response.token.symbol,
+            name: response.token.name,
+            decimals: response.token.decimals,
+            address: response.token.address,
+            chain_id: response.token.chain_id,
+            chain_name: response.token.chain_name,
+            is_active: response.token.is_active,
+          }
+        : undefined,
+      remainingAmount: remainingAmount,
+      commitment: commitment,
+      txHash: response.tx_hash,
+      queueId: response.queue_id,
+      proofData: response.proof_data,
+      publicValues: response.public_values,
+      totalAmount: response.total_amount,
+      allocationsCount: response.allocations_count || allocations.length,
+      message: response.message,
+    };
+
     this.logger.info(
       `✅ [CommitmentAction.submitCommitment] Successfully created ${allocations.length} allocations via /api/commitments/submit`,
       {
@@ -628,6 +734,9 @@ export class CommitmentAction {
         allocationAmounts: allocations.map(a => a.amount),
         commitment: commitment,
         hasCommitment: allocations.every(a => !!a.commitment),
+        checkbookId: processedCheckbook?.id,
+        checkbookStatus: processedCheckbook?.status,
+        remainingAmount: remainingAmount,
       }
     );
     this.logger.info('   ✅ ZKVM proof generation and commitment submission handled by backend');
@@ -638,16 +747,16 @@ export class CommitmentAction {
       this.logger.warn('   ⚠️ No commitment received from backend response');
     }
 
-    return allocations;
+    return commitmentResponse;
   }
 
   /**
    * Create commitment (full flow: prepare + sign + submit) (Step 3)
    * @param params - Commitment parameters
    * @param lang - Language code (default: LANG_EN)
-   * @returns Created allocations
+   * @returns Commitment response with checkbook, checks, and token info
    */
-  async createCommitment(params: CommitmentParams, lang: number = LANG_EN): Promise<Allocation[]> {
+  async createCommitment(params: CommitmentParams, lang: number = LANG_EN): Promise<CommitmentResponse> {
     this.logger.info('🚀 [CommitmentAction] Starting commitment creation (full flow)', {
       checkbookId: params.checkbookId,
       amountCount: params.amounts.length,
@@ -686,11 +795,14 @@ export class CommitmentAction {
       tokenKey: params.tokenKey,
       commitmentCount: signData.amounts.length,
     });
-    const allocations = await this.submitCommitment(params, signature);
-    this.logger.info('✅ [CommitmentAction] Step 3 completed: Allocations created', {
-      allocationCount: allocations.length,
-      allocationIds: allocations.map(a => a.id),
-      allocationStatuses: allocations.map(a => a.status),
+    const commitmentResponse = await this.submitCommitment(params, signature);
+    this.logger.info('✅ [CommitmentAction] Step 3 completed: Commitment created', {
+      allocationCount: commitmentResponse.checks.length,
+      allocationIds: commitmentResponse.checks.map(a => a.id),
+      allocationStatuses: commitmentResponse.checks.map(a => a.status),
+      checkbookId: commitmentResponse.checkbook.id,
+      checkbookStatus: commitmentResponse.checkbook.status,
+      remainingAmount: commitmentResponse.remainingAmount,
     });
 
     // Note: After creating allocations, backend should automatically call ZKVM service
@@ -704,10 +816,11 @@ export class CommitmentAction {
     );
 
     this.logger.info('✅ [CommitmentAction] Commitment creation flow completed', {
-      allocationIds: allocations.map(a => a.id),
+      checkbookId: commitmentResponse.checkbook.id,
+      allocationIds: commitmentResponse.checks.map(a => a.id),
     });
 
-    return allocations;
+    return commitmentResponse;
   }
 
   /**

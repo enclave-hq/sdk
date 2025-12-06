@@ -516,6 +516,46 @@ export interface SignedCommitment {
   signature: string;
 }
 
+/**
+ * Commitment creation response (from /api/commitments/submit)
+ */
+export interface CommitmentResponse {
+  /** Checkbook information */
+  checkbook: Checkbook;
+  /** Created allocations (checks) */
+  checks: Allocation[];
+  /** Number of checks created */
+  checksCount: number;
+  /** Token information */
+  token?: {
+    symbol: string;
+    name?: string;
+    decimals?: number;
+    address?: string;
+    chain_id?: number;
+    chain_name?: string;
+    is_active?: boolean;
+  };
+  /** Remaining amount available for allocation */
+  remainingAmount?: string;
+  /** Commitment hash */
+  commitment?: string;
+  /** Transaction hash (if submitted to blockchain) */
+  txHash?: string;
+  /** Queue ID (if using queue service) */
+  queueId?: string;
+  /** Proof data (optional) */
+  proofData?: string;
+  /** Public values (optional) */
+  publicValues?: string;
+  /** Total amount */
+  totalAmount?: string;
+  /** Allocations count */
+  allocationsCount?: number;
+  /** Success message */
+  message?: string;
+}
+
 // ============ Withdrawal ============
 
 /**
