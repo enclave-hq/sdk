@@ -59,7 +59,6 @@ import { createLogger } from '../utils/logger';
 import type { ILogger } from '../types/config';
 import { ConfigError, AuthError, NetworkError, APIError } from '../utils/errors';
 import { validateRequired, validateUrl } from '../utils/validation';
-import { createUniversalAddress, extractAddress } from '../utils/address';
 import { getSlip44FromChainId } from '../utils/chain';
 
 /**
@@ -69,7 +68,7 @@ import { getSlip44FromChainId } from '../utils/chain';
 export class EnclaveClient {
   // Configuration
   private readonly config: Required<
-    Omit<EnclaveConfig, 'address' | 'authToken' | 'headers' | 'storageAdapter' | 'wsAdapter'>
+    Omit<EnclaveConfig, 'address' | 'authToken' | 'headers' | 'storageAdapter' | 'wsAdapter' | 'chainId'>
   >;
   private readonly originalConfig: EnclaveConfig; // Save original config for accessing address
   private readonly logger: ILogger;
