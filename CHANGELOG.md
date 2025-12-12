@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-01-21
+
+### Added
+- Add `chainId` parameter to `EnclaveConfig` interface for easier chain-specific client initialization
+- Support direct `chainId` parameter in `EnclaveClient` constructor (SLIP-44 format, e.g., 714 for BSC, 60 for Ethereum, 195 for TRON)
+- Automatic conversion from EVM Chain ID to SLIP-44 format (e.g., 56 → 714 for BSC, 1 → 60 for Ethereum)
+- `EnclaveClient` now automatically creates `UniversalAddress` from signer when `chainId` is provided without `address`
+
+### Changed
+- Improve `EnclaveClient` initialization to handle `chainId` parameter and automatically set up chain-specific address
+- Enhance `WalletManager` initialization to use `chainId` from config when `address` is not provided
+- Update `connect()` method to ensure address uses correct `chainId` when provided
+
+### Usage Example
+```typescript
+// Now you can directly specify chainId when creating EnclaveClient
+const client = new EnclaveClient({
+  apiUrl: 'https://api.enclave-hq.com',
+  wsUrl: 'wss://api.enclave-hq.com/ws',
+  signer: privateKey,
+  chainId: 60  // Ethereum (SLIP-44) or 1 (EVM Chain ID, auto-converted)
+});
+```
+
+## [2.3.13] - 2025-01-21
+
+### Fixed
+- Fixed `WalletManager` constructor to correctly extract display address from `UniversalAddress` using `extractAddress()` instead of accessing non-existent `address` field
+- Fixed `address is required` validation error when initializing SDK with `UniversalAddress` from config
+
+## [2.3.12] - 2025-01-21
+
+### Added
+- Add `metadata` field to `GetFeeInfoResponse` interface with complete MistTrack details
+- Add support for address labels (`labels`, `label_type`) in MistTrack details
+- Add support for malicious events statistics (`malicious_events`) in MistTrack details
+- Add support for used platforms information (`used_platforms`) in MistTrack details
+- Add support for relation information (`relation_info`) in MistTrack details
+
+### Changed
+- Update `GetFeeInfoResponse` type definition to include all new MistTrack data fields
+- Enhance KYT Oracle API response types with complete risk assessment information
+
 ## [2.3.6] - 2025-01-21
 
 ### Added

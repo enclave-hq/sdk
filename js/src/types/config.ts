@@ -215,6 +215,16 @@ export interface EnclaveConfig {
   address?: UniversalAddress;
 
   /**
+   * Chain ID (SLIP-44 format, e.g., 714 for BSC, 60 for Ethereum, 195 for TRON)
+   * If provided, will automatically create UniversalAddress from signer
+   * Can also accept EVM Chain ID (e.g., 56 for BSC), will be converted to SLIP-44
+   * @example 60 // Ethereum
+   * @example 714 // BSC
+   * @example 195 // TRON
+   */
+  chainId?: number;
+
+  /**
    * Enable automatic WebSocket reconnection
    * @default true
    */

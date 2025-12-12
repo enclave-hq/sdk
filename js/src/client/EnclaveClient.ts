@@ -59,6 +59,8 @@ import { createLogger } from '../utils/logger';
 import type { ILogger } from '../types/config';
 import { ConfigError, AuthError, NetworkError, APIError } from '../utils/errors';
 import { validateRequired, validateUrl } from '../utils/validation';
+import { createUniversalAddress, extractAddress } from '../utils/address';
+import { getSlip44FromChainId } from '../utils/chain';
 
 /**
  * Main Enclave SDK client
@@ -69,6 +71,7 @@ export class EnclaveClient {
   private readonly config: Required<
     Omit<EnclaveConfig, 'address' | 'authToken' | 'headers' | 'storageAdapter' | 'wsAdapter'>
   >;
+  private readonly originalConfig: EnclaveConfig; // Save original config for accessing address
   private readonly logger: ILogger;
 
   // Core components
@@ -117,6 +120,9 @@ export class EnclaveClient {
 
     // Initialize logger
     this.logger = config.logger || createLogger(config.logLevel);
+
+    // Save original config for logging (address is excluded from this.config)
+    this.originalConfig = config;
 
     // Set default config
     this.config = {
@@ -178,10 +184,29 @@ export class EnclaveClient {
     this.kytOracleAPI = new KYTOracleAPI(this.apiClient);
 
     // Initialize wallet manager
-    // If config.address is provided, use its chainId to set defaultChainId
-    const walletChainId = config.address?.chainId;
+    // If config.chainId is provided but config.address is not, create UniversalAddress from signer
+    let finalAddress = config.address;
+    let walletChainId = config.address?.chainId;
+    
+    if (config.chainId !== undefined && !config.address) {
+      // Convert to SLIP-44 if needed (e.g., EVM chain ID 56 -> SLIP-44 714)
+      const slip44ChainId = getSlip44FromChainId(config.chainId) ?? config.chainId;
+      
+      // Get address from signer (will be derived during connect, but we need chainId now)
+      // For now, we'll let WalletManager derive it, but set the chainId
+      walletChainId = slip44ChainId;
+      
+      this.logger.info(`🔧 [EnclaveClient] chainId provided (${config.chainId}), will create UniversalAddress during connect`, {
+        providedChainId: config.chainId,
+        slip44ChainId,
+      });
+    } else if (config.address) {
+      walletChainId = config.address.chainId;
+    }
+    
     this.logger.info(`🔧 [EnclaveClient] Initializing WalletManager`, {
       hasAddress: !!config.address,
+      hasChainId: config.chainId !== undefined,
       addressChainId: config.address?.chainId,
       addressChainName: config.address?.chainName,
       addressSlip44: config.address?.slip44,
@@ -189,8 +214,8 @@ export class EnclaveClient {
     });
     this.walletManager = new WalletManager({
       signer: config.signer,
-      address: config.address,
-      chainId: walletChainId, // Use chainId from address if available
+      address: finalAddress,
+      chainId: walletChainId ?? config.chainId, // Use chainId from address if available, otherwise use config.chainId
       logger: this.logger,
     });
 
@@ -275,10 +300,74 @@ export class EnclaveClient {
 
     try {
       // Get user address
+      this.logger.info('[EnclaveClient] 🔍 从 walletManager 获取地址...');
       this.userAddress = await this.walletManager.getAddress();
       const { extractAddress } = await import('../utils/address');
       const displayAddress = extractAddress(this.userAddress);
-      this.logger.info(`User address: ${displayAddress}`);
+      // 使用 originalConfig 访问 address，因为它在 Required 中被排除了
+      const configAddress = this.originalConfig.address;
+      
+      // If chainId was provided but address was not, ensure the address has the correct chainId
+      if (this.originalConfig.chainId !== undefined && !configAddress) {
+        const slip44ChainId = getSlip44FromChainId(this.originalConfig.chainId) ?? this.originalConfig.chainId;
+        // Update the address with the correct chainId
+        this.userAddress = {
+          ...this.userAddress,
+          chainId: slip44ChainId,
+        };
+        this.logger.info(`[EnclaveClient] ✅ 使用 chainId ${this.originalConfig.chainId} (SLIP-44: ${slip44ChainId}) 更新地址`);
+      }
+      
+      this.logger.info('[EnclaveClient] 📋 地址验证前:', {
+        walletManagerAddress: displayAddress,
+        hasConfigAddress: !!configAddress,
+        configAddress: configAddress ? extractAddress(configAddress) : null,
+      });
+      
+      // 验证地址是否一致：如果传入了 config.address，确保 WalletManager 返回的地址与之匹配
+      if (configAddress) {
+        const configDisplayAddress = extractAddress(configAddress);
+        this.logger.info('[EnclaveClient] 🔍 比较地址:', {
+          walletManagerAddress: displayAddress,
+          configAddress: configDisplayAddress,
+          match: displayAddress.toLowerCase() === configDisplayAddress.toLowerCase(),
+        });
+        
+        if (displayAddress.toLowerCase() !== configDisplayAddress.toLowerCase()) {
+          this.logger.warn(`[EnclaveClient] ⚠️ WalletManager 返回的地址与配置地址不一致，清除缓存并重新设置:`, {
+            walletManagerAddress: displayAddress,
+            configAddress: configDisplayAddress,
+          });
+          // 清除 WalletManager 的地址缓存
+          this.walletManager.clearAddress();
+          // 强制设置正确的地址
+          this.walletManager.setAddress(configAddress);
+          // 重新获取地址
+          this.userAddress = await this.walletManager.getAddress();
+          const correctedDisplayAddress = extractAddress(this.userAddress);
+          this.logger.info(`[EnclaveClient] ✅ 地址已更正:`, {
+            correctedAddress: correctedDisplayAddress,
+            originalAddress: displayAddress,
+          });
+        } else {
+          this.logger.info('[EnclaveClient] ✅ 地址匹配，无需修复');
+        }
+      } else {
+        this.logger.warn('[EnclaveClient] ⚠️ 没有传入 config.address，无法验证地址一致性');
+      }
+      
+      this.logger.info(`[EnclaveClient] 用户地址:`, {
+        displayAddress: extractAddress(this.userAddress),
+        universalAddress: {
+          chainId: this.userAddress.chainId,
+          data: this.userAddress.data,
+        },
+        configAddress: configAddress ? {
+          chainId: configAddress.chainId,
+          data: configAddress.data,
+          extractedAddress: extractAddress(configAddress),
+        } : null,
+      });
 
       // Authenticate if not already authenticated
       if (!this.authenticated) {
