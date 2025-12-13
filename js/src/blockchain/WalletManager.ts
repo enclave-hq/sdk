@@ -6,7 +6,7 @@
 import type { UniversalAddress } from '../types/models';
 import type { SignerInput } from '../types/config';
 import { SignerAdapter } from './SignerAdapter';
-import { createUniversalAddress } from '../utils/address';
+import { createUniversalAddress, extractAddress } from '../utils/address';
 import { SignerError } from '../utils/errors';
 import type { ILogger } from '../types/config';
 import { getLogger } from '../utils/logger';
@@ -48,13 +48,31 @@ export class WalletManager {
       this.defaultChainId = 714; // Default to BSC (SLIP-44: 714)
     }
 
+    this.logger.info(`[WalletManager] 初始化:`, {
+      configChainId: config.chainId,
+      defaultChainId: this.defaultChainId,
+      hasAddress: !!config.address,
+      addressChainId: config.address?.chainId,
+      addressData: config.address?.data,
+      addressExtracted: config.address ? extractAddress(config.address) : null,
+    });
+
     // Initialize signer adapter
     this.signerAdapter = new SignerAdapter(config.signer);
 
     // Set address if provided
     if (config.address) {
       this.address = config.address;
-      this.signerAdapter.setAddress(config.address.address);
+      // Extract display address from UniversalAddress (EVM hex or TRON Base58)
+      const displayAddress = extractAddress(config.address);
+      this.logger.info(`[WalletManager] 设置地址到 signerAdapter:`, {
+        displayAddress,
+        universalAddress: {
+          chainId: config.address.chainId,
+          data: config.address.data,
+        },
+      });
+      this.signerAdapter.setAddress(displayAddress);
     }
 
     this.logger.debug('WalletManager initialized');
@@ -67,19 +85,40 @@ export class WalletManager {
   async getAddress(): Promise<UniversalAddress> {
     // Return cached address if available
     if (this.address) {
+      this.logger.info(`[WalletManager] 返回缓存的地址:`, {
+        chainId: this.address.chainId,
+        data: this.address.data,
+        extractedAddress: extractAddress(this.address),
+      });
       return this.address;
     }
 
     try {
       // Get address from signer
+      this.logger.info(`[WalletManager] 从 signer 获取地址，defaultChainId: ${this.defaultChainId}`);
       const address = await this.signerAdapter.getAddress();
+      this.logger.info(`[WalletManager] signer 返回的地址: ${address}`);
 
       // Create universal address
+      this.logger.info(`[WalletManager] 创建 UniversalAddress:`, {
+        address,
+        defaultChainId: this.defaultChainId,
+      });
       this.address = createUniversalAddress(address, this.defaultChainId);
-
-      this.logger.info(`Derived address: ${address}`);
+      
+      this.logger.info(`[WalletManager] UniversalAddress 创建结果:`, {
+        chainId: this.address.chainId,
+        data: this.address.data,
+        extractedAddress: extractAddress(this.address),
+        originalAddress: address,
+      });
+      
       return this.address;
     } catch (error) {
+      this.logger.error(`[WalletManager] 获取地址失败:`, {
+        error: error instanceof Error ? error.message : String(error),
+        defaultChainId: this.defaultChainId,
+      });
       throw new SignerError(`Failed to get address: ${(error as Error).message}`);
     }
   }
@@ -205,5 +244,21 @@ export class WalletManager {
   clearAddress(): void {
     this.address = null;
     this.logger.debug('Address cache cleared');
+  }
+
+  /**
+   * Set address (force update cached address)
+   */
+  setAddress(address: UniversalAddress): void {
+    this.address = address;
+    const displayAddress = extractAddress(address);
+    this.signerAdapter.setAddress(displayAddress);
+    this.logger.info(`[WalletManager] 强制设置地址:`, {
+      displayAddress,
+      universalAddress: {
+        chainId: address.chainId,
+        data: address.data,
+      },
+    });
   }
 }

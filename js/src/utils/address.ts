@@ -75,9 +75,22 @@ export function createUniversalAddress(
   address: string,
   chainId: number = 714 // Default to BSC (SLIP-44: 714)
 ): UniversalAddress {
+  console.log('[createUniversalAddress] 📋 输入参数:', {
+    address,
+    chainId,
+    addressLength: address.length,
+    addressStartsWithT: address.startsWith('T'),
+  });
+  
   // Get chain type to determine which converter to use
   const chainType = getChainType(chainId);
   const slip44 = getSlip44FromChainId(chainId) ?? chainId;
+  
+  console.log('[createUniversalAddress] 🔧 链信息:', {
+    chainType,
+    slip44,
+    originalChainId: chainId,
+  });
 
   // Select appropriate address converter based on chain type
   let converter: AddressConverter;
@@ -89,15 +102,24 @@ export function createUniversalAddress(
     address.startsWith('T') &&
     /^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$/.test(address);
 
+  console.log('[createUniversalAddress] 🔍 地址格式检查:', {
+    isTronFormat,
+    addressLength: address.length,
+    startsWithT: address.startsWith('T'),
+    chainType,
+  });
+
   // If address looks like TRON format, use TRON converter regardless of chainType
   // This handles cases where getChainType might return null for chainId 195
   if (isTronFormat) {
+    console.log('[createUniversalAddress] ✅ 识别为 TRON 地址格式，使用 TRON converter');
     converter = tronConverter;
     if (!tronConverter.isValid(address)) {
       throw new ValidationError('Invalid TRON address', 'address');
     }
     validatedAddress = address;
   } else if (chainType === ChainType.TRON) {
+    console.log('[createUniversalAddress] ✅ chainType 为 TRON，使用 TRON converter');
     converter = tronConverter;
     // Validate TRON address format
     if (!tronConverter.isValid(address)) {
@@ -105,6 +127,7 @@ export function createUniversalAddress(
     }
     validatedAddress = address; // Keep original Base58 address for TRON
   } else if (chainType === ChainType.EVM) {
+    console.log('[createUniversalAddress] ✅ chainType 为 EVM，使用 EVM converter');
     converter = evmConverter;
     // Validate EVM address format
     if (!isValidAddress(address)) {
@@ -112,6 +135,7 @@ export function createUniversalAddress(
     }
     validatedAddress = toChecksumAddress(address);
   } else {
+    console.log('[createUniversalAddress] ⚠️ chainType 未知，默认使用 EVM converter');
     // For unknown chain types, default to EVM format
     converter = evmConverter;
     if (!isValidAddress(address)) {
@@ -119,24 +143,52 @@ export function createUniversalAddress(
     }
     validatedAddress = toChecksumAddress(address);
   }
+  
+  console.log('[createUniversalAddress] 🔧 转换器选择:', {
+    converterType: converter === tronConverter ? 'TRON' : 'EVM',
+    validatedAddress,
+  });
 
   // Convert address to 32-byte format using chain-utils
   const addressBytes = converter.toBytes(validatedAddress);
+  console.log('[createUniversalAddress] 🔧 地址转换为 bytes:', {
+    addressBytesLength: addressBytes.length,
+    addressBytesPreview: Array.from(addressBytes.slice(0, 10)).map(b => b.toString(16).padStart(2, '0')).join(' ') + '...',
+  });
 
   // Convert to universal format (32 bytes as hex string)
   const universalFormatHex =
     '0x' +
     Array.from(addressBytes)
       .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+      .join('')
+      .padStart(64, '0'); // Ensure 32 bytes (64 hex chars)
 
-  return {
+  const result = {
     chainId: slip44,
     chainName: getChainName(chainId),
     universalFormat: universalFormatHex, // 32-byte Universal Address format
     data: universalFormatHex, // 32-byte Universal Address (required by backend API)
     slip44: slip44,
   };
+  
+  // Extract display address for logging
+  let extractedDisplayAddress = 'N/A'
+  try {
+    extractedDisplayAddress = extractDisplayAddress(result)
+  } catch (e) {
+    // Ignore extraction error for logging
+  }
+  
+  console.log('[createUniversalAddress] ✅ 创建 UniversalAddress 结果:', {
+    chainId: result.chainId,
+    slip44: result.slip44,
+    data: result.data,
+    dataLength: result.data.length,
+    extractedAddress: extractedDisplayAddress,
+  });
+
+  return result;
 }
 
 /**
@@ -178,6 +230,47 @@ export function parseUniversalAddress(addressString: string): UniversalAddress {
 }
 
 /**
+ * Convert Universal Address to TRON Base58 address
+ * This is the unified utility function for all TRON address conversions
+ * Uses chain-utils tronConverter, which prioritizes TronWeb when available
+ * 
+ * @param universalAddress - Universal address object (must have chainId=195 and data field)
+ * @returns TRON Base58 address (starts with T)
+ * @throws Error if conversion fails
+ */
+export function convertUniversalAddressToTronAddress(universalAddress: UniversalAddress): string {
+  if (universalAddress.chainId !== 195) {
+    throw new Error(`Invalid chain ID for TRON conversion: expected 195, got ${universalAddress.chainId}`);
+  }
+
+  if (!universalAddress.data) {
+    throw new Error('UniversalAddress.data is required for TRON address conversion');
+  }
+
+  const dataHex = universalAddress.data.replace(/^0x/, '');
+  if (dataHex.length !== 64) {
+    throw new Error(`Invalid data length: expected 64 (32-byte) hex chars, got ${dataHex.length}`);
+  }
+
+  const universalBytes = new Uint8Array(
+    dataHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
+  );
+  
+  // Use chain-utils tronConverter (prioritizes TronWeb when available)
+  try {
+    const tronAddress = tronConverter.fromBytes(universalBytes, true); // useTronWeb = true
+    console.log('[convertUniversalAddressToTronAddress] ✅ 转换 TRON 地址成功:', {
+      tronAddress,
+      universalData: dataHex,
+    });
+    return tronAddress;
+  } catch (error) {
+    console.error('[convertUniversalAddressToTronAddress] ❌ TRON 地址转换失败:', error);
+    throw new Error(`TRON address conversion failed: ${error instanceof Error ? error.message : String(error)}. Please ensure TronWeb is loaded in browser environment.`);
+  }
+}
+
+/**
  * Extract display address from UniversalAddress data field
  * @param universalAddress - Universal address object
  * @returns Display address string (EVM hex or TRON Base58)
@@ -192,24 +285,9 @@ function extractDisplayAddress(universalAddress: UniversalAddress): string {
     throw new Error(`Invalid data length: expected 64 (32-byte) hex chars, got ${dataHex.length}`);
   }
 
-  // For TRON (chainId=195), convert to Base58
+  // For TRON (chainId=195), use unified conversion function
   if (universalAddress.chainId === 195) {
-    const universalBytes = new Uint8Array(
-      dataHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
-    );
-    try {
-      return tronConverter.fromBytes(universalBytes);
-    } catch (error) {
-      // Fallback to hex if conversion fails
-      const addressBytes = universalBytes.slice(12, 32); // Extract last 20 bytes
-      return (
-        '0x' +
-        Array.from(addressBytes)
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('')
-          .toLowerCase()
-      );
-    }
+    return convertUniversalAddressToTronAddress(universalAddress);
   } else {
     // For EVM chains, extract last 20 bytes (40 hex chars)
     const addressHex = dataHex.slice(-40);

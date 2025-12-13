@@ -897,12 +897,58 @@ export interface GetFeeInfoResponse {
   data?: FeeInfoData;
   /** Last query time */
   last_query_time?: string;
-  /** Memo message: "更新成功" or "每次存款前只能查询一次" */
+  /** Next allowed query time (when rate limited) */
+  next_allowed_time?: string;
+  /** Memo message: "更新成功" or "每个地址每5分钟只能查询一次，请稍后再试" */
   memo?: string;
   /** Risk score from last query (included even when rate limited) */
   risk_score?: number;
   /** Risk level from last query (included even when rate limited) */
   risk_level?: string;
+  /** Complete detailed information from last query (includes MistTrack details) */
+  metadata?: {
+    mistTrackDetails?: {
+      score?: number;
+      hacking_event?: string;
+      detail_list?: string[];
+      risk_level?: string;
+      risk_detail?: Array<{
+        entity: string;
+        risk_type: string;
+        exposure_type: string;
+        hop_num: number;
+        volume: number;
+        percent: number;
+      }>;
+      risk_report_url?: string;
+      // 新增字段
+      labels?: string[];
+      label_type?: string;
+      malicious_events?: {
+        phishing: number;
+        ransom: number;
+        stealing: number;
+        laundering: number;
+        phishing_list?: string[];
+        ransom_list?: string[];
+        stealing_list?: string[];
+        laundering_list?: string[];
+      };
+      used_platforms?: {
+        exchange?: { count: number; list?: string[] };
+        dex?: { count: number; list?: string[] };
+        mixer?: { count: number; list?: string[] };
+        nft?: { count: number; list?: string[] };
+      };
+      relation_info?: {
+        wallet?: { count: number; list?: string[] };
+        ens?: { count: number; list?: string[] };
+        twitter?: { count: number; list?: string[] };
+      };
+    };
+    queryTime?: string;
+    [key: string]: any;
+  };
   /** Error message if failed */
   error?: string;
 }

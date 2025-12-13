@@ -10,7 +10,7 @@ import { keccak256 } from '../utils/crypto';
 import { getChainName } from '../utils/chain';
 import { validateNonEmptyString, validateNonEmptyArray, validateAmount } from '../utils/validation';
 import { CommitmentCore } from '../utils/CommitmentCore';
-import { tronConverter } from '@enclave-hq/chain-utils';
+import { convertUniversalAddressToTronAddress } from '../utils/address';
 
 /**
  * Language codes (matching lib.rs)
@@ -329,51 +329,15 @@ export class CommitmentFormatter {
     const chainName = getChainName(address.chainId);
     let addrStr: string;
 
-    // Get 32-byte Universal Address data
-    let universalBytes: Uint8Array;
-    if (address.data) {
-      // Convert hex string to bytes
-      const hexStr = address.data.replace(/^0x/, '');
-      universalBytes = new Uint8Array(
-        hexStr.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
-      );
-    } else if (address.universalFormat) {
-      // Convert hex string to bytes
-      const hexStr = address.universalFormat.replace(/^0x/, '');
-      universalBytes = new Uint8Array(
-        hexStr.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []
-      );
-    } else {
-      throw new Error('UniversalAddress must have data or universalFormat');
-    }
-
-    // Ensure 32 bytes (right-align: pad zeros at the beginning)
-    if (universalBytes.length !== 32) {
-      const padded = new Uint8Array(32);
-      const startPos = 32 - Math.min(universalBytes.length, 32);
-      padded.set(universalBytes.slice(-32), startPos);
-      universalBytes = padded;
-    }
-
-    // For TRON (chainId=195), use Base58 format (matching lib.rs get_chain_specific_address)
+    // For TRON (chainId=195), use unified conversion function
     if (address.chainId === 195) {
-      // Convert to TRON Base58 address using tronConverter
-      try {
-        addrStr = tronConverter.fromBytes(universalBytes);
-      } catch (error) {
-        // Fallback to hex if conversion fails
-        console.warn('Failed to convert TRON address to Base58, using hex format:', error);
-        const addressBytes = universalBytes.slice(12, 32); // Extract last 20 bytes
-        addrStr =
-          '0x' +
-          Array.from(addressBytes)
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('')
-            .toLowerCase();
-      }
+      addrStr = convertUniversalAddressToTronAddress(address);
     } else {
       // For other chains (EVM, etc.), extract 20-byte address from 32-byte Universal Address
       // Universal Address format: [12 bytes zeros][20 bytes address]
+      if (!address.data) {
+        throw new Error('UniversalAddress.data is required');
+      }
       const dataHex = address.data.replace(/^0x/, '');
       if (dataHex.length === 64) {
         // 32-byte Universal Address: extract last 20 bytes (40 hex chars)

@@ -161,13 +161,16 @@ export class SignerAdapter implements ISigner {
 
     // Return cached address if available
     if (this.address) {
+      console.log('[SignerAdapter] 返回缓存的地址:', this.address);
       return this.address;
     }
 
     try {
       // Get address from Signer object
       if (this.signer) {
+        console.log('[SignerAdapter] 从 signer 对象获取地址...');
         this.address = await this.signer.getAddress();
+        console.log('[SignerAdapter] signer 返回的地址:', this.address);
         return this.address;
       }
 
@@ -176,6 +179,12 @@ export class SignerAdapter implements ISigner {
         'Cannot derive address from callback signer. Please provide address in config.'
       );
     } catch (error) {
+      console.error('[SignerAdapter] 获取地址失败:', {
+        error: error instanceof Error ? error.message : String(error),
+        hasSigner: !!this.signer,
+        hasCallback: !!this.callback,
+        cachedAddress: this.address,
+      });
       throw new SignerError(`Failed to get address: ${(error as Error).message}`);
     }
   }

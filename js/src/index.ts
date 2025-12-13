@@ -85,6 +85,7 @@ export {
   createUniversalAddress,
   parseUniversalAddress,
   formatUniversalAddress,
+  extractAddress,
   universalAddressEquals,
 
   // Amount utilities

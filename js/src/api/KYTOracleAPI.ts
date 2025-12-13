@@ -24,11 +24,40 @@ export class KYTOracleAPI {
   }
 
   /**
-   * Get fee info by address (with rate limiting)
+   * Get fee info by address from cache only (GET request, no MistTrack refresh)
    * @param request - Request with address, chain, and optional token key
    * @returns Fee information including risk score and invitation code
    */
   async getFeeInfoByAddress(request: GetFeeInfoRequest): Promise<GetFeeInfoResponse> {
+    // Validate request
+    validateRequired(request, 'request');
+    validateNonEmptyString(request.address, 'address');
+    validateNonEmptyString(request.chain, 'chain');
+
+    try {
+      const response = await this.client.get<GetFeeInfoResponse>('/api/kyt-oracle/fee-info', {
+        params: {
+          address: request.address,
+          chain: request.chain,
+          token_key: request.tokenKey, // Optional
+        },
+      });
+
+      return response;
+    } catch (error) {
+      if (error instanceof NetworkError || error instanceof APIError) {
+        throw error;
+      }
+      throw new Error(`Failed to get fee info: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Refresh fee info by address (POST request, may query MistTrack if rate limit allows)
+   * @param request - Request with address, chain, and optional token key
+   * @returns Fee information including risk score and invitation code
+   */
+  async refreshFeeInfoByAddress(request: GetFeeInfoRequest): Promise<GetFeeInfoResponse> {
     // Validate request
     validateRequired(request, 'request');
     validateNonEmptyString(request.address, 'address');
@@ -46,7 +75,7 @@ export class KYTOracleAPI {
       if (error instanceof NetworkError || error instanceof APIError) {
         throw error;
       }
-      throw new Error(`Failed to get fee info: ${(error as Error).message}`);
+      throw new Error(`Failed to refresh fee info: ${(error as Error).message}`);
     }
   }
 
