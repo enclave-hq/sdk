@@ -262,4 +262,37 @@ export class AllocationsAPI {
 
     return response.data;
   }
+
+  /**
+   * Get allocation by ID
+   * @param id - Allocation ID
+   * @returns Allocation data
+   */
+  async getAllocationById(id: string): Promise<Allocation> {
+    validateNonEmptyString(id, 'id');
+
+    const response = await this.client.get<{
+      success?: boolean;
+      id: string;
+      checkbook_id?: string;
+      checkbookId?: string;
+      seq: number;
+      amount: string;
+      status: string;
+      nullifier?: string;
+      withdraw_request_id?: string;
+      withdrawRequestId?: string;
+      commitment?: string;
+      created_at?: string;
+      createdAt?: string;
+      updated_at?: string;
+      updatedAt?: string;
+      owner?: any;
+      token?: any;
+      checkbook?: any;
+    }>(`/api/allocations/${id}`);
+
+    // Convert backend format to frontend format
+    return this.convertAllocation(response);
+  }
 }

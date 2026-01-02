@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2025-01-02
+
+### Fixed
+- Fixed "Allocation not found" error in `WithdrawalAction.prepareWithdraw` when allocation is not in store
+- Changed allocation lookup from `fetchList()` to `fetchById()` to avoid pagination issues
+- Added `getAllocationById()` method to `AllocationsAPI` for direct allocation lookup
+- Added `fetchById()` method to `AllocationsStore` for fetching single allocation by ID
+- Improved error handling and logging in withdrawal preparation process
+
 ## [2.4.0] - 2025-01-21
 
 ### Added

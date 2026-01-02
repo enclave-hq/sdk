@@ -87,9 +87,15 @@ export class WithdrawalAction {
     for (const allocationId of params.allocationIds) {
       let allocation = this.allocationsStore.get(allocationId);
       if (!allocation) {
-        // Fetch from API if not in store - fetch list and find the allocation
-        const fetchedAllocations = await this.allocationsStore.fetchList({});
-        allocation = fetchedAllocations.find(a => a.id === allocationId);
+        // Fetch from API if not in store - use fetchById for direct lookup
+        this.logger.info(`📥 Fetching allocation ${allocationId} from API (not in store)`);
+        try {
+          allocation = await this.allocationsStore.fetchById(allocationId);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Failed to fetch allocation ${allocationId}: ${errorMessage}`);
+          throw new Error(`Allocation ${allocationId} not found: ${errorMessage}`);
+        }
       }
       if (!allocation) {
         throw new Error(`Allocation ${allocationId} not found`);

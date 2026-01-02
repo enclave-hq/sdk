@@ -173,6 +173,19 @@ export class AllocationsStore extends BaseStore<Allocation> {
   }
 
   /**
+   * Fetch allocation by ID from API
+   * @param id - Allocation ID
+   * @returns Allocation data
+   */
+  async fetchById(id: string): Promise<Allocation> {
+    return this.executeAction(async () => {
+      const allocation = await this.api.getAllocationById(id);
+      this.set(allocation.id, allocation);
+      return allocation;
+    }, 'Failed to fetch allocation by ID');
+  }
+
+  /**
    * Create allocations (commitment)
    * @param params - Creation parameters
    * @returns Created allocations
